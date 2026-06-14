@@ -136,9 +136,11 @@ Google blocks OAuth inside embedded WebViews. The native app uses the system bro
 The native auth client stores the PKCE verifier in **localStorage** (survives Chrome Custom Tab). Android uses a full page navigation after sign-in so session cookies reach the server.
 
 **Sign-in flow:**
-1. Tap **Continue with Google** or **Continue with Apple** (iOS only) → opens Safari / Chrome Custom Tab
-2. After provider + Supabase auth → redirects to `co.slidepress.app://auth/callback?code=...`
-3. App exchanges the code client-side, syncs the session, and navigates to campaigns
+1. Tap **Continue with Google** → opens Safari / Chrome Custom Tab → deep link back to the app
+2. Tap **Continue with Apple** (iOS only) → native Face ID / Apple ID sheet (no Safari)
+3. After auth, navigates to campaigns
+
+Google uses browser OAuth + deep link. Apple on iOS uses the native Sign in with Apple sheet and `signInWithIdToken` (bundle ID `co.slidepress.app`).
 
 **Password reset flow:**
 1. Forgot password email links to `co.slidepress.app://auth/callback` (native) with session tokens
@@ -170,11 +172,21 @@ Google Cloud Console redirect URI stays **only** the Supabase callback (`https:/
 
 Enable the **Apple** provider in **Supabase → Authentication → Providers**.
 
+**Supabase Client IDs** (comma-separated):
+
+```
+co.slidepress.app,co.slidepress.app.auth
+```
+
+- `co.slidepress.app` — native iOS sign-in (`signInWithIdToken`)
+- `co.slidepress.app.auth` — web OAuth if you add Apple on web later
+
+**Secret Key** is only required for web OAuth (`co.slidepress.app.auth`). Native iOS does not use it.
+
 In [Apple Developer](https://developer.apple.com/account/resources/identifiers/list):
-1. Create a **Services ID** (e.g. `co.slidepress.app.auth`) — enable Sign in with Apple
-2. Configure **Return URL**: `https://<project-ref>.supabase.co/auth/v1/callback`
-3. Create a **Sign in with Apple** key → upload to Supabase Apple provider settings
-4. Add your App ID (`co.slidepress.app`) under the Services ID configuration
+1. **App ID** `co.slidepress.app` — enable Sign in with Apple
+2. **Services ID** `co.slidepress.app.auth` — for web OAuth only (Return URL: `https://<project-ref>.supabase.co/auth/v1/callback`)
+3. After pulling native Apple changes: `npm run cap:sync` then rebuild in Xcode (adds Sign in with Apple entitlement)
 
 The iOS app shows **Continue with Apple** only in the native shell (App Store requirement when Google is offered).
 

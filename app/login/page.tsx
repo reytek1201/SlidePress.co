@@ -11,6 +11,8 @@ import {
   buildWebOAuthRedirectUrl,
   startNativeProviderAuth,
 } from "@/utils/native-auth-flow";
+import { startNativeAppleAuth } from "@/utils/native-apple-auth";
+import { completeNativeOAuthNavigation } from "@/utils/native-oauth-session";
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_REQUIREMENTS_TEXT,
@@ -169,7 +171,33 @@ function LoginForm() {
   }
 
   async function handleAppleSignIn() {
-    await handleProviderSignIn("apple");
+    setAuthError(null);
+    setAuthMessage(null);
+    setForgotMessage(null);
+    setAppleSubmitting(true);
+
+    const next = resolveNextPath();
+
+    try {
+      if (isIosNative) {
+        const { error } = await startNativeAppleAuth();
+
+        if (error) {
+          setAuthError(error);
+          return;
+        }
+
+        completeNativeOAuthNavigation(next, (path) => {
+          router.replace(path);
+          router.refresh();
+        });
+        return;
+      }
+
+      await handleProviderSignIn("apple");
+    } finally {
+      setAppleSubmitting(false);
+    }
   }
 
   async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
