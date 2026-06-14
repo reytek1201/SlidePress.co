@@ -4,6 +4,7 @@ import {
   normalizeCaptionOutput,
 } from "@/utils/caption-generation";
 import { createClient } from "@/utils/supabase/server";
+import { assertAiRateLimit, isRateLimitError } from "@/utils/rate-limit";
 import type { Campaign, Slide } from "@/types/campaign";
 import type { PlatformCaption } from "@/types/captions";
 import { NextResponse } from "next/server";
@@ -28,6 +29,8 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    assertAiRateLimit(user.id, "generate-captions");
 
     const body = await request.json();
     const parsedInput = RequestSchema.safeParse(body);
@@ -127,6 +130,13 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (isRateLimitError(error)) {
+      return NextResponse.json(
+        { success: false, error: error.message, code: error.code },
+        { status: 429 }
+      );
+    }
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {

@@ -23,6 +23,7 @@ import {
   isUsageLimitError,
   recordSlideRegeneration,
 } from "@/utils/usage-limits";
+import { assertAiRateLimit, isRateLimitError } from "@/utils/rate-limit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -50,6 +51,8 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    assertAiRateLimit(user.id, "regenerate-slide");
 
     const body = await request.json();
     const parsedInput = RequestSchema.safeParse(body);
@@ -289,6 +292,13 @@ export async function POST(request: Request) {
       );
     }
   } catch (error) {
+    if (isRateLimitError(error)) {
+      return NextResponse.json(
+        { success: false, error: error.message, code: error.code },
+        { status: 429 }
+      );
+    }
+
     if (isUsageLimitError(error)) {
       return NextResponse.json(
         { success: false, error: error.message, code: error.code },

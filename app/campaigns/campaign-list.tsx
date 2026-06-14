@@ -34,7 +34,7 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={previewImage}
-                    alt=""
+                    alt={campaign.title ?? "Campaign preview"}
                     className="h-full w-full object-cover sm:max-h-40"
                   />
                 ) : (

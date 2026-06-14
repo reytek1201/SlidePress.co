@@ -82,18 +82,6 @@ export function parseNativeAuthCallback(url: string): NativeAuthCallback | null 
   return null;
 }
 
-/** @deprecated Use parseNativeAuthCallback */
-export function parseNativeOAuthCallback(
-  url: string,
-): { code: string; next: string } | null {
-  const callback = parseNativeAuthCallback(url);
-  if (!callback || callback.kind !== "code") {
-    return null;
-  }
-
-  return { code: callback.code, next: callback.next };
-}
-
 export function nativeDeepLinkToWebCallback(
   deepLink: string,
   webOrigin: string,
@@ -124,11 +112,6 @@ export function isNativeAuthCallbackUrl(url: string): boolean {
   const path = pathPart.startsWith("/") ? pathPart : `/${pathPart}`;
 
   return path.startsWith(NATIVE_OAUTH_CALLBACK_PATH);
-}
-
-/** @deprecated Use isNativeAuthCallbackUrl */
-export function isNativeOAuthCallbackUrl(url: string): boolean {
-  return isNativeAuthCallbackUrl(url);
 }
 
 export function getNativeAuthCallbackKey(callback: NativeAuthCallback): string {

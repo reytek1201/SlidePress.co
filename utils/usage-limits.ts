@@ -59,9 +59,10 @@ export async function getUsageSummary(
   const startOfMonth = getStartOfMonth();
 
   const { count: campaignsThisMonth, error: campaignCountError } = await supabase
-    .from("campaigns")
+    .from("usage_events")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
+    .eq("event_type", "campaign_created")
     .gte("created_at", startOfMonth.toISOString());
 
   if (campaignCountError) {
@@ -150,5 +151,17 @@ export async function recordSlideRegeneration(userId: string): Promise<void> {
 
   if (error) {
     throw new Error("Failed to record slide regeneration");
+  }
+}
+
+export async function recordCampaignCreation(userId: string): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("usage_events").insert({
+    user_id: userId,
+    event_type: "campaign_created",
+  });
+
+  if (error) {
+    throw new Error("Failed to record campaign creation");
   }
 }

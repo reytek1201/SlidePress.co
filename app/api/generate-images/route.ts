@@ -11,6 +11,7 @@ import {
   submitNanoBananaToQueue,
 } from "@/utils/fal";
 import { buildSlideImagePrompt } from "@/utils/slide-image-prompt";
+import { assertAiRateLimit, isRateLimitError } from "@/utils/rate-limit";
 import { createClient } from "@/utils/supabase/server";
 import { getReferenceImageUrls } from "@/types/references";
 import type { Campaign, Slide } from "@/types/campaign";
@@ -38,6 +39,8 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    assertAiRateLimit(user.id, "generate-images");
 
     const body = await request.json();
     const parsedInput = RequestSchema.safeParse(body);
@@ -248,6 +251,13 @@ export async function POST(request: Request) {
       { status: 202 }
     );
   } catch (error) {
+    if (isRateLimitError(error)) {
+      return NextResponse.json(
+        { success: false, error: error.message, code: error.code },
+        { status: 429 }
+      );
+    }
+
     const message =
       error instanceof Error ? error.message : "Unexpected server error";
 

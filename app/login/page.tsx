@@ -447,7 +447,7 @@ function LoginForm() {
                 <button
                   type="button"
                   disabled={authBusy}
-                  onClick={handleSignUp}
+                  onClick={() => void handleSignUp()}
                   className="btn-secondary flex-1"
                 >
                   Sign up

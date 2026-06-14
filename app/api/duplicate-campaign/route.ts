@@ -6,7 +6,9 @@ import {
 import {
   assertCampaignLimit,
   isUsageLimitError,
+  recordCampaignCreation,
 } from "@/utils/usage-limits";
+import { assertAiRateLimit, isRateLimitError } from "@/utils/rate-limit";
 import { createClient } from "@/utils/supabase/server";
 import type { Campaign } from "@/types/campaign";
 import {
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+
+    assertAiRateLimit(user.id, "duplicate-campaign");
 
     const body = await request.json();
     const parsedInput = RequestSchema.safeParse(body);
@@ -162,11 +166,20 @@ export async function POST(request: Request) {
       );
     }
 
+    await recordCampaignCreation(user.id);
+
     return NextResponse.json(
       { success: true, campaignId: campaign.id },
       { status: 201 }
     );
   } catch (error) {
+    if (isRateLimitError(error)) {
+      return NextResponse.json(
+        { success: false, error: error.message, code: error.code },
+        { status: 429 }
+      );
+    }
+
     if (isUsageLimitError(error)) {
       return NextResponse.json(
         { success: false, error: error.message, code: error.code },
