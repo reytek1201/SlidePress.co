@@ -4,6 +4,7 @@ import {
   refreshCampaignImageStatus,
 } from "@/utils/campaign-image-status";
 import {
+  buildFalWebhookUrl,
   getAppBaseUrl,
   isLocalAppUrl,
   runNanoBananaSync,
@@ -179,7 +180,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const webhookUrl = `${appBaseUrl}/api/webhooks/fal`;
+    const webhookUrl = buildFalWebhookUrl(appBaseUrl);
     const submitted: string[] = [];
 
     for (const slide of slidesToGenerate) {

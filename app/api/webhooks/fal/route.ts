@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   extractImageUrlFromWebhook,
+  verifyFalWebhookSecret,
   type FalWebhookPayload,
 } from "@/utils/fal";
 import { NextResponse } from "next/server";
@@ -28,6 +29,13 @@ async function refreshCampaignStatus(campaignId: string) {
 }
 
 export async function POST(request: Request) {
+  if (!verifyFalWebhookSecret(request)) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
+
   try {
     const body = (await request.json()) as FalWebhookPayload;
 

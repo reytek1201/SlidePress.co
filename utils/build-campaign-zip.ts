@@ -2,6 +2,7 @@ import type { Campaign, Slide } from "@/types/campaign";
 import type { PlatformCaption } from "@/types/captions";
 import { formatAllCaptionsForCopy } from "@/types/captions";
 import JSZip from "jszip";
+import { safeFetch } from "@/utils/safe-fetch";
 
 function getImageExtension(imageUrl: string, contentType: string | null): string {
   if (contentType?.includes("png")) return "png";
@@ -50,7 +51,7 @@ export async function buildCampaignZip(
 
   for (const slide of sortedSlides) {
     const imageUrl = slide.image_url!;
-    const response = await fetch(imageUrl);
+    const response = await safeFetch(imageUrl);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch slide ${slide.slide_index + 1} image`);

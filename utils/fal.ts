@@ -31,6 +31,30 @@ export function isLocalAppUrl(baseUrl: string): boolean {
   );
 }
 
+export function getFalWebhookSecret(): string {
+  const secret = process.env.FAL_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error("FAL_WEBHOOK_SECRET is not configured");
+  }
+  return secret;
+}
+
+export function buildFalWebhookUrl(appBaseUrl: string): string {
+  const secret = getFalWebhookSecret();
+  return `${appBaseUrl}/api/webhooks/fal?secret=${encodeURIComponent(secret)}`;
+}
+
+export function verifyFalWebhookSecret(request: Request): boolean {
+  const url = new URL(request.url);
+  const provided = url.searchParams.get("secret");
+  try {
+    const expected = getFalWebhookSecret();
+    return provided === expected;
+  } catch {
+    return false;
+  }
+}
+
 interface FalQueueResponse {
   request_id: string;
 }

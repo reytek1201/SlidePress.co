@@ -3,6 +3,7 @@ import {
   refreshCampaignImageStatus,
 } from "@/utils/campaign-image-status";
 import {
+  buildFalWebhookUrl,
   getAppBaseUrl,
   isLocalAppUrl,
   runNanoBananaSync,
@@ -245,7 +246,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      const webhookUrl = `${appBaseUrl}/api/webhooks/fal`;
+      const webhookUrl = buildFalWebhookUrl(appBaseUrl);
       const requestId = await submitNanoBananaToQueue(
         prompt,
         campaign.aspect_ratio,

@@ -74,7 +74,9 @@ function LoginForm() {
   const nextPath = searchParams.get("next") ?? "/campaigns";
 
   function resolveNextPath(): string {
-    return nextPath.startsWith("/") ? nextPath : "/campaigns";
+    return nextPath.startsWith("/") && !nextPath.startsWith("//")
+      ? nextPath
+      : "/campaigns";
   }
 
   const [email, setEmail] = useState("");

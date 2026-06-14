@@ -9,6 +9,7 @@ import {
   slideNarrativeGuidance,
   type SlideCount,
 } from "@/types/slides";
+import { safeFetch } from "@/utils/safe-fetch";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -23,7 +24,7 @@ function getClient(): GoogleGenAI {
 }
 
 async function fetchImageInlinePart(url: string) {
-  const response = await fetch(url);
+  const response = await safeFetch(url);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch reference image: ${url}`);
