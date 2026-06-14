@@ -21,7 +21,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 function GoogleIcon() {
   return (
@@ -92,7 +92,11 @@ function LoginForm() {
   const isNativeApp = useIsNativeApp();
   const isIosNative = useIsIosNative();
 
+  const hasNavigated = useRef(false);
+
   function authNavigate(path: string) {
+    if (hasNavigated.current) return;
+    hasNavigated.current = true;
     navigateAfterAuth(path, (target) => {
       router.replace(target);
       router.refresh();
@@ -101,6 +105,7 @@ function LoginForm() {
 
   useEffect(() => {
     let active = true;
+    hasNavigated.current = false;
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (active && user) {
@@ -111,10 +116,10 @@ function LoginForm() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (
-        session?.user &&
-        (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")
-      ) {
+      // TOKEN_REFRESHED fires on existing sessions and causes a spurious
+      // redirect when the user is already navigating away. Only act on
+      // an explicit new sign-in.
+      if (session?.user && event === "SIGNED_IN") {
         authNavigate(resolveNextPath());
       }
     });

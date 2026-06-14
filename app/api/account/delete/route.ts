@@ -3,8 +3,31 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // Require the confirmation word in the request body so this endpoint
+    // cannot be triggered by a stolen session or a crafted request alone.
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, error: "Invalid request body" },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      (body as Record<string, unknown>).confirm !== "DELETE"
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Confirmation required" },
+        { status: 400 },
+      );
+    }
+
     const supabase = await createClient();
 
     const {
