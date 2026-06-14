@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/client";
 import BrandLogo from "@/app/components/brand-logo";
+import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_REQUIREMENTS_TEXT,
@@ -58,6 +59,7 @@ function LoginForm() {
   const [forgotSending, setForgotSending] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const isNativeApp = useIsNativeApp();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -196,7 +198,7 @@ function LoginForm() {
   return (
     <div className="min-h-full bg-background text-foreground">
       <header className="page-shell page-header-safe flex items-center justify-between">
-        <BrandLogo href="/" />
+        <BrandLogo href={isNativeApp ? "/login" : "/"} />
       </header>
 
       <main className="page-main flex min-h-[calc(100vh-4rem)] flex-col">
@@ -324,14 +326,16 @@ function LoginForm() {
             </form>
           </section>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            <Link
-              href="/"
-              className="font-medium text-primary underline-offset-2 hover:underline"
-            >
-              Back to home
-            </Link>
-          </p>
+          {isNativeApp === false ? (
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              <Link
+                href="/"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+              >
+                Back to home
+              </Link>
+            </p>
+          ) : null}
         </div>
       </main>
     </div>

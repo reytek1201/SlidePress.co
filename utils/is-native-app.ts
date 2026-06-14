@@ -20,6 +20,12 @@ type NativeWindow = Window & {
   };
 };
 
+export function isNativeAppUserAgent(
+  userAgent: string | null | undefined,
+): boolean {
+  return Boolean(userAgent?.includes(NATIVE_APP_UA_TOKEN));
+}
+
 export function isNativeAppRuntime(): boolean {
   if (typeof window === "undefined") {
     return false;
@@ -27,7 +33,7 @@ export function isNativeAppRuntime(): boolean {
 
   const win = window as NativeWindow;
 
-  if (navigator.userAgent.includes(NATIVE_APP_UA_TOKEN)) {
+  if (isNativeAppUserAgent(navigator.userAgent)) {
     return true;
   }
 

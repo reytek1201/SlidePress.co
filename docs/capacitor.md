@@ -55,6 +55,8 @@ After changing `capacitor.config.ts`, run **`npm run cap:sync`**, then rebuild i
 
 **Top nav in the native app:** the web app hides the mobile top bar when it detects the Capacitor shell (`SlidePressApp/` user agent or `window.WEBVIEW_SERVER_URL`). Deploying to Vercel alone is not enough — you must **rebuild the native app** after `cap:sync` so the shell sends those signals. If you still see the bar in mobile Safari, that is expected (the hide only applies inside the Capacitor app).
 
+**Marketing landing (`/`):** skipped in the native app — unauthenticated users are redirected to `/login` via the `SlidePressApp/` user agent. The marketing page remains the public web entry point.
+
 ---
 
 ## Local web dev (optional)

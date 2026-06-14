@@ -32,7 +32,7 @@ SlidePress is a marketing automation app for creators and small teams who need s
 
 **Mobile:** tap the **+** button to open a native-style **bottom sheet** — slide-up form with scroll, backdrop dismiss, and redirect to workspace on success.
 
-**Public site:** **`/`** is the marketing landing page; **`/login`** for sign in and sign up (email, Google, or create account).
+**Public site:** **`/`** is the marketing landing page (web only); **`/login`** for sign in and sign up (email, Google, or create account). The native app opens at **`/login`** — marketing is skipped.
 
 ### Public site & SEO
 

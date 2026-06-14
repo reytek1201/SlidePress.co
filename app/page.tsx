@@ -1,6 +1,8 @@
 import MarketingLanding from "@/app/components/marketing-landing";
 import { createClient } from "@/utils/supabase/server";
+import { isNativeAppUserAgent } from "@/utils/is-native-app";
 import { buildMarketingMetadata } from "@/utils/site-metadata";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -15,6 +17,11 @@ export default async function HomePage() {
 
   if (user) {
     redirect("/campaigns");
+  }
+
+  const userAgent = (await headers()).get("user-agent");
+  if (isNativeAppUserAgent(userAgent)) {
+    redirect("/login");
   }
 
   return <MarketingLanding />;
