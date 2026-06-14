@@ -8,10 +8,10 @@ export default function CampaignNotFound() {
         This campaign doesn&apos;t exist or you don&apos;t have access to it.
       </p>
       <Link
-        href="/"
+        href="/campaigns"
         className="btn-primary mt-8"
       >
-        Back to home
+        Back to campaigns
       </Link>
     </div>
   );

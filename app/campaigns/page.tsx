@@ -1,6 +1,6 @@
 import CampaignList from "@/app/campaigns/campaign-list";
+import NewCampaignButton from "@/app/components/new-campaign-button";
 import { createClient } from "@/utils/supabase/server";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Campaign } from "@/types/campaign";
 
@@ -35,17 +35,7 @@ export default async function CampaignsPage() {
       <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center text-sm font-medium text-muted-foreground transition hover:text-foreground"
-            >
-              ← New campaign
-            </Link>
-            <div className="mt-6 flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-primary" />
-              <p className="brand-kicker">SlidePress</p>
-            </div>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               My campaigns
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -54,12 +44,7 @@ export default async function CampaignsPage() {
             </p>
           </div>
 
-          <Link
-            href="/"
-            className="btn-primary"
-          >
-            New campaign
-          </Link>
+          <NewCampaignButton />
         </div>
 
         {typedCampaigns.length === 0 ? (
@@ -70,12 +55,7 @@ export default async function CampaignsPage() {
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Create your first campaign to generate slides, copy, and images.
             </p>
-            <Link
-              href="/"
-              className="btn-primary mt-6"
-            >
-              Create campaign
-            </Link>
+            <NewCampaignButton className="mt-6" label="Create campaign" />
           </section>
         ) : (
           <CampaignList campaigns={typedCampaigns} />

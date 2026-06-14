@@ -1,12 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
-import { generateCampaignContent } from "@/utils/gemini";
 import {
   assertSlideCountAllowed,
   normalizeReferencesInput,
   RequestSchema,
 } from "@/utils/campaign-generation";
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
 export async function POST(request: Request) {
   try {
@@ -44,23 +42,17 @@ export async function POST(request: Request) {
 
     assertSlideCountAllowed(slide_count, user.id);
 
-    const generated = await generateCampaignContent(
-      topic,
-      aspect_ratio,
-      slide_count,
-      references
-    );
-
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
       .insert({
         user_id: user.id,
         topic,
-        title: generated.title,
-        target_audience: generated.target_audience,
+        title: null,
+        target_audience: null,
         aspect_ratio,
         slide_count,
-        status: "idle",
+        status: "generating_text",
+        error_message: null,
         product_reference_url: references.product ?? null,
         style_reference_url: references.style ?? null,
         logo_reference_url: references.logo ?? null,
@@ -79,47 +71,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const slidesPayload = generated.slides.map((slide) => ({
-      campaign_id: campaign.id,
-      slide_index: slide.slide_index,
-      text_overlay: slide.text_overlay,
-      voiceover_script: slide.voiceover_script,
-      image_prompt: slide.image_prompt,
-    }));
-
-    const { error: slidesError } = await supabase
-      .from("slides")
-      .insert(slidesPayload);
-
-    if (slidesError) {
-      await supabase.from("campaigns").delete().eq("id", campaign.id);
-
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to persist slides",
-          details: slidesError.message,
-        },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json(
       { success: true, campaignId: campaign.id },
       { status: 201 }
     );
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: error.flatten(),
-        },
-        { status: 400 }
-      );
-    }
-
     const message =
       error instanceof Error ? error.message : "Unexpected server error";
 

@@ -12,16 +12,24 @@ import {
 } from "@/types/captions";
 import {
   formatAspectRatio,
-  STATUS_LABELS,
-  STATUS_STYLES,
 } from "@/utils/campaign-display";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { formatSlidesImageStatus } from "@/utils/campaign-progress";
+import {
+  downloadSlideImage,
+  slideImageFilename,
+} from "@/utils/download-slide";
 import SlideRegenerateControls from "@/app/campaign/[id]/slide-regenerate-controls";
 import SlideOverlayEditor from "@/app/campaign/[id]/slide-overlay-editor";
+import CarouselPreviewModal from "@/app/campaign/[id]/carousel-preview-modal";
+import CampaignGeneratingView from "@/app/campaign/[id]/campaign-generating-view";
+import CampaignNextStepBar from "@/app/campaign/[id]/campaign-next-step-bar";
+import CampaignProgressStrip from "@/app/campaign/[id]/campaign-progress-strip";
+import CampaignTitleEditor from "@/app/campaign/[id]/campaign-title-editor";
 import DeleteCampaignButton from "@/app/components/delete-campaign-button";
 import DuplicateCampaignButton from "@/app/components/duplicate-campaign-button";
+import ScrollToTopButton from "@/app/components/scroll-to-top-button";
 import type { RegenerateFeedbackChipId } from "@/types/regenerate-feedback";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface CampaignWorkspaceProps {
   initialCampaign: Campaign;
@@ -44,6 +52,14 @@ export default function CampaignWorkspace({
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [captionsMessage, setCaptionsMessage] = useState<string | null>(null);
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
+  const [copiedVoiceoverSlideId, setCopiedVoiceoverSlideId] = useState<
+    string | null
+  >(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
+  const [downloadingSlideId, setDownloadingSlideId] = useState<string | null>(
+    null
+  );
   const [regeneratingSlideId, setRegeneratingSlideId] = useState<string | null>(
     null
   );
@@ -54,21 +70,126 @@ export default function CampaignWorkspace({
     Record<string, string>
   >({});
   const [error, setError] = useState<string | null>(null);
+  const [isRetryingText, setIsRetryingText] = useState(false);
+  const textGenerationStarted = useRef(false);
+
+  const isAwaitingTextGeneration =
+    slides.length === 0 &&
+    (campaign.status === "generating_text" || campaign.status === "failed");
 
   const imagesComplete = slides.length > 0 && slides.every((slide) => slide.image_url);
+  const imagesReadyCount = slides.filter((slide) => slide.image_url).length;
+  const slideCount = campaign.slide_count ?? slides.length;
+  const isAnySlideGenerating = slides.some(
+    (slide) => slide.fal_request_id && !slide.image_url
+  );
+  const isGeneratingImages =
+    campaign.status === "generating_images" || isAnySlideGenerating;
   const canGenerateImages =
     !isGenerating &&
     campaign.status !== "generating_images" &&
     !imagesComplete;
   const sortedCaptions = sortCaptionsByPlatform(captions);
   const canGenerateCaptions = slides.length > 0 && !isGeneratingCaptions;
-  const isAnySlideGenerating = slides.some(
-    (slide) => slide.fal_request_id && !slide.image_url
-  );
+
+  const refreshSlides = useCallback(async () => {
+    const { data: refreshedSlides } = await supabase
+      .from("slides")
+      .select("*")
+      .eq("campaign_id", campaign.id)
+      .order("slide_index", { ascending: true });
+
+    if (refreshedSlides) {
+      setSlides(refreshedSlides as Slide[]);
+    }
+  }, [campaign.id, supabase]);
+
+  const refreshCampaign = useCallback(async () => {
+    const { data: refreshedCampaign } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("id", campaign.id)
+      .single();
+
+    if (refreshedCampaign) {
+      setCampaign(refreshedCampaign as Campaign);
+    }
+  }, [campaign.id, supabase]);
+
+  const runTextGeneration = useCallback(async () => {
+    setIsRetryingText(true);
+
+    try {
+      const response = await fetch(
+        `/api/campaigns/${campaign.id}/generate-text`,
+        { method: "POST" }
+      );
+
+      const data = (await response.json()) as {
+        success: boolean;
+        error?: string;
+      };
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error ?? "Campaign generation failed");
+      }
+
+      await Promise.all([refreshSlides(), refreshCampaign()]);
+    } catch (generationError) {
+      await refreshCampaign();
+      setError(
+        generationError instanceof Error
+          ? generationError.message
+          : "Campaign generation failed"
+      );
+    } finally {
+      setIsRetryingText(false);
+    }
+  }, [campaign.id, refreshCampaign, refreshSlides]);
+
+  useEffect(() => {
+    if (campaign.status !== "generating_text" || textGenerationStarted.current) {
+      return;
+    }
+
+    textGenerationStarted.current = true;
+    void runTextGeneration();
+  }, [campaign.status, runTextGeneration]);
+
+  function handleRetryTextGeneration() {
+    setError(null);
+    setCampaign((current) => ({
+      ...current,
+      status: "generating_text",
+      error_message: null,
+    }));
+    void runTextGeneration();
+  }
 
   useEffect(() => {
     const channel = supabase
       .channel(`campaign-${campaign.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "slides",
+          filter: `campaign_id=eq.${campaign.id}`,
+        },
+        (payload) => {
+          const newSlide = payload.new as Slide;
+          setSlides((current) => {
+            if (current.some((slide) => slide.id === newSlide.id)) {
+              return current;
+            }
+
+            return [...current, newSlide].sort(
+              (left, right) => left.slide_index - right.slide_index
+            );
+          });
+        }
+      )
       .on(
         "postgres_changes",
         {
@@ -266,6 +387,43 @@ export default function CampaignWorkspace({
     }
   }
 
+  async function handleCopyVoiceover(slideId: string, script: string) {
+    try {
+      await navigator.clipboard.writeText(script);
+      setCopiedVoiceoverSlideId(slideId);
+      window.setTimeout(() => setCopiedVoiceoverSlideId(null), 2000);
+    } catch {
+      setError("Could not copy to clipboard");
+    }
+  }
+
+  async function handleDownloadSlide(slide: Slide) {
+    if (!slide.image_url) {
+      return;
+    }
+
+    setError(null);
+    setDownloadingSlideId(slide.id);
+
+    try {
+      await downloadSlideImage(
+        slide.image_url,
+        slideImageFilename(slide.slide_index)
+      );
+    } catch {
+      setError("Could not download slide image");
+    } finally {
+      setDownloadingSlideId(null);
+    }
+  }
+
+  function handleOpenPreview(slideIndex = 0) {
+    setPreviewInitialIndex(slideIndex);
+    setPreviewOpen(true);
+  }
+
+  const slidesWithImages = slides.filter((slide) => slide.image_url);
+
   function toggleFeedbackChip(
     slideId: string,
     chipId: RegenerateFeedbackChipId
@@ -368,40 +526,42 @@ export default function CampaignWorkspace({
     }
   }
 
+  if (isAwaitingTextGeneration) {
+    return (
+      <CampaignGeneratingView
+        campaign={campaign}
+        isRetrying={isRetryingText}
+        onRetry={handleRetryTextGeneration}
+      />
+    );
+  }
+
   return (
     <div className="min-h-full bg-background text-foreground">
-      <main className="mx-auto w-full max-w-5xl px-6 py-12 sm:px-10">
-        <Link
-          href="/campaigns"
-          className="inline-flex items-center text-sm font-medium text-muted-foreground transition hover:text-foreground"
-        >
-          ← All campaigns
-        </Link>
-
-        <header className="mt-8 border-b border-border pb-8">
+      <main
+        id="campaign-workspace-top"
+        className="mx-auto w-full max-w-5xl scroll-mt-0 px-6 py-12 sm:px-10"
+      >
+        <header className="border-b border-border pb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="brand-kicker">
                 Campaign workspace
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {campaign.title ?? "Untitled campaign"}
-              </h1>
+              <CampaignTitleEditor
+                campaignId={campaign.id}
+                value={campaign.title ?? "Untitled campaign"}
+                onSaved={(title) =>
+                  setCampaign((current) => ({ ...current, title }))
+                }
+                onError={setError}
+              />
               <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
                 {campaign.topic}
               </p>
             </div>
             <div className="flex flex-wrap items-start gap-3">
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${STATUS_STYLES[campaign.status]}`}
-              >
-                {STATUS_LABELS[campaign.status]}
-              </span>
               <DuplicateCampaignButton campaignId={campaign.id} />
-              <DeleteCampaignButton
-                campaignId={campaign.id}
-                campaignTitle={campaign.title}
-              />
             </div>
           </div>
 
@@ -423,7 +583,15 @@ export default function CampaignWorkspace({
             </div>
           )}
 
-          <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <CampaignProgressStrip
+            slideCount={slideCount}
+            imagesReadyCount={imagesReadyCount}
+            imagesComplete={imagesComplete}
+            isGeneratingImages={isGeneratingImages}
+            captionsCount={captions.length}
+          />
+
+          <dl className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-xl border border-border bg-card/40 p-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Target audience
@@ -446,14 +614,6 @@ export default function CampaignWorkspace({
               </dt>
               <dd className="mt-2 text-sm text-secondary-foreground">
                 {campaign.slide_count ?? slides.length}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-border bg-card/40 p-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Campaign ID
-              </dt>
-              <dd className="mt-2 truncate font-mono text-xs text-muted-foreground">
-                {campaign.id}
               </dd>
             </div>
           </dl>
@@ -504,7 +664,213 @@ export default function CampaignWorkspace({
           )}
         </header>
 
-        <section className="mt-10 rounded-2xl border border-border bg-card/30 p-6 sm:p-8">
+        <CampaignNextStepBar
+          slideCount={slideCount}
+          imagesReadyCount={imagesReadyCount}
+          imagesComplete={imagesComplete}
+          isGeneratingImages={isGeneratingImages}
+          canGenerateImages={canGenerateImages}
+          isStartingImages={isGenerating}
+          captionsCount={captions.length}
+          canGenerateCaptions={canGenerateCaptions}
+          isGeneratingCaptions={isGeneratingCaptions}
+          isExporting={isExporting}
+          copiedAllCaptions={copiedPlatform === "all"}
+          onGenerateImages={handleGenerateImages}
+          onGenerateCaptions={handleGenerateCaptions}
+          onDownloadZip={handleDownloadZip}
+          onCopyAllCaptions={handleCopyAllCaptions}
+        />
+
+        <section id="section-slides" className="mt-10 scroll-mt-36">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Slides</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {formatSlidesImageStatus({
+                  slideCount,
+                  imagesReadyCount,
+                  imagesComplete,
+                  isGeneratingImages,
+                })}
+              </p>
+            </div>
+
+            {slidesWithImages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => handleOpenPreview(0)}
+                className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground"
+              >
+                Preview carousel
+              </button>
+            )}
+          </div>
+
+          {exportMessage && (
+            <div className="mb-6 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
+              {exportMessage}
+            </div>
+          )}
+
+          <div className="grid gap-6">
+            {slides.map((slide) => (
+              <article
+                key={slide.id}
+                className="overflow-hidden rounded-2xl border border-border bg-card/50"
+              >
+                <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                  <h3 className="text-sm font-semibold text-secondary-foreground">
+                    Slide {slide.slide_index + 1}
+                  </h3>
+                  {slide.image_url ? (
+                    <span className="text-xs font-medium text-emerald-400">
+                      Image ready
+                    </span>
+                  ) : slide.fal_request_id ? (
+                    <span className="text-xs font-medium text-amber-300">
+                      Generating…
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Image pending
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  className={
+                    slide.image_url
+                      ? "grid gap-0 lg:grid-cols-[240px_1fr]"
+                      : undefined
+                  }
+                >
+                  {slide.image_url && (
+                    <div
+                      className={`flex flex-col items-center justify-center border-b border-border bg-background p-6 lg:border-b-0 lg:border-r ${
+                        campaign.aspect_ratio === "4:5"
+                          ? "aspect-4/5 lg:aspect-auto lg:min-h-[300px]"
+                          : "aspect-9/16 lg:aspect-auto lg:min-h-[300px]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPreview(slide.slide_index)}
+                        className="group relative max-h-full max-w-full cursor-zoom-in"
+                        aria-label={`Expand slide ${slide.slide_index + 1}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={slide.image_url}
+                          alt={`Slide ${slide.slide_index + 1}`}
+                          className="max-h-full max-w-full rounded-lg object-contain transition group-hover:opacity-95"
+                        />
+                        <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
+                          <span className="rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                            Expand
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPreview(slide.slide_index)}
+                        className="mt-3 hidden text-xs font-medium text-muted-foreground transition hover:text-foreground md:inline-block lg:hidden"
+                      >
+                        Expand image
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-5 p-5 sm:p-6">
+                    <SlideOverlayEditor
+                      slideId={slide.id}
+                      value={slide.text_overlay ?? ""}
+                      disabled={
+                        regeneratingSlideId === slide.id ||
+                        (isAnySlideGenerating && regeneratingSlideId !== slide.id)
+                      }
+                      onSaved={(textOverlay) =>
+                        setSlides((current) =>
+                          current.map((entry) =>
+                            entry.id === slide.id
+                              ? { ...entry, text_overlay: textOverlay }
+                              : entry
+                          )
+                        )
+                      }
+                      onError={setError}
+                    />
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Voiceover script
+                        </p>
+                        {slide.voiceover_script && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopyVoiceover(
+                                slide.id,
+                                slide.voiceover_script ?? ""
+                              )
+                            }
+                            className="text-xs font-medium text-muted-foreground transition hover:text-foreground"
+                          >
+                            {copiedVoiceoverSlideId === slide.id
+                              ? "Copied"
+                              : "Copy"}
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm leading-7 text-secondary-foreground">
+                        {slide.voiceover_script ?? "—"}
+                      </p>
+                    </div>
+
+                    {slide.image_url && (
+                      <button
+                        type="button"
+                        disabled={downloadingSlideId === slide.id}
+                        onClick={() => handleDownloadSlide(slide)}
+                        className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {downloadingSlideId === slide.id
+                          ? "Downloading…"
+                          : "Download image"}
+                      </button>
+                    )}
+
+                    {slide.image_url && (
+                      <SlideRegenerateControls
+                        disabled={
+                          isAnySlideGenerating && regeneratingSlideId !== slide.id
+                        }
+                        isRegenerating={regeneratingSlideId === slide.id}
+                        selectedChipIds={selectedFeedbackBySlide[slide.id] ?? []}
+                        notes={regenerateNotesBySlide[slide.id] ?? ""}
+                        onNotesChange={(value) =>
+                          setRegenerateNotesBySlide((current) => ({
+                            ...current,
+                            [slide.id]: value,
+                          }))
+                        }
+                        onToggleChip={(chipId) =>
+                          toggleFeedbackChip(slide.id, chipId)
+                        }
+                        onRegenerate={() => handleRegenerateSlide(slide.id)}
+                      />
+                    )}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="section-publish"
+          className="mt-10 scroll-mt-36 rounded-2xl border border-border bg-card/30 p-6 sm:p-8"
+        >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Publish</h2>
@@ -515,30 +881,16 @@ export default function CampaignWorkspace({
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              {sortedCaptions.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleCopyAllCaptions}
-                  className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground"
-                >
-                  {copiedPlatform === "all" ? "Copied all" : "Copy all"}
-                </button>
-              )}
-
+            {sortedCaptions.length > 0 && (
               <button
                 type="button"
                 onClick={handleGenerateCaptions}
                 disabled={!canGenerateCaptions}
-                className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isGeneratingCaptions
-                  ? "Generating captions…"
-                  : captions.length > 0
-                    ? "Regenerate captions"
-                    : "Generate captions"}
+                {isGeneratingCaptions ? "Regenerating…" : "Regenerate captions"}
               </button>
-            </div>
+            )}
           </div>
 
           {captionsMessage && (
@@ -551,8 +903,8 @@ export default function CampaignWorkspace({
             {sortedCaptions.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border bg-background/40 px-6 py-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Click Generate captions to create hooks, post copy, and hashtags
-                  tailored to each platform from your slide content.
+                  Use the next step bar to generate hooks, post copy, and
+                  hashtags tailored to each platform.
                 </p>
               </div>
             ) : (
@@ -630,155 +982,27 @@ export default function CampaignWorkspace({
           </div>
         </section>
 
-        <section className="mt-10">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Slides</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {slides.length} slide{slides.length === 1 ? "" : "s"} ·{" "}
-                {imagesComplete
-                  ? "All images ready"
-                  : campaign.status === "generating_images"
-                    ? "Images generating…"
-                    : "Ready for image generation"}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {imagesComplete && (
-                <button
-                  type="button"
-                  onClick={handleDownloadZip}
-                  disabled={isExporting}
-                  className="inline-flex items-center justify-center rounded-xl border border-emerald-700 bg-emerald-950/40 px-5 py-3 text-sm font-semibold text-emerald-200 transition hover:border-emerald-500 hover:bg-emerald-950/60 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isExporting ? "Preparing zip…" : "Download zip"}
-                </button>
-              )}
-
-              {canGenerateImages && (
-                <button
-                  type="button"
-                  onClick={handleGenerateImages}
-                  disabled={isGenerating}
-                  className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isGenerating ? "Starting…" : "Generate images"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {exportMessage && (
-            <div className="mb-6 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
-              {exportMessage}
-            </div>
-          )}
-
-          <div className="grid gap-6">
-            {slides.map((slide) => (
-              <article
-                key={slide.id}
-                className="overflow-hidden rounded-2xl border border-border bg-card/50"
-              >
-                <div className="flex items-center justify-between border-b border-border px-5 py-4">
-                  <h3 className="text-sm font-semibold text-secondary-foreground">
-                    Slide {slide.slide_index + 1}
-                  </h3>
-                  {slide.image_url ? (
-                    <span className="text-xs font-medium text-emerald-400">
-                      Image ready
-                    </span>
-                  ) : slide.fal_request_id ? (
-                    <span className="text-xs font-medium text-amber-300">
-                      Generating…
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Image pending
-                    </span>
-                  )}
-                </div>
-
-                <div
-                  className={
-                    slide.image_url
-                      ? "grid gap-0 lg:grid-cols-[240px_1fr]"
-                      : undefined
-                  }
-                >
-                  {slide.image_url && (
-                    <div
-                      className={`flex items-center justify-center border-b border-border bg-background p-6 lg:border-b-0 lg:border-r ${
-                        campaign.aspect_ratio === "4:5"
-                          ? "aspect-4/5 lg:aspect-auto lg:min-h-[300px]"
-                          : "aspect-9/16 lg:aspect-auto lg:min-h-[300px]"
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={slide.image_url}
-                        alt={`Slide ${slide.slide_index + 1}`}
-                        className="max-h-full max-w-full rounded-lg object-contain"
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-5 p-5 sm:p-6">
-                    <SlideOverlayEditor
-                      slideId={slide.id}
-                      value={slide.text_overlay ?? ""}
-                      disabled={
-                        regeneratingSlideId === slide.id ||
-                        (isAnySlideGenerating && regeneratingSlideId !== slide.id)
-                      }
-                      onSaved={(textOverlay) =>
-                        setSlides((current) =>
-                          current.map((entry) =>
-                            entry.id === slide.id
-                              ? { ...entry, text_overlay: textOverlay }
-                              : entry
-                          )
-                        )
-                      }
-                      onError={setError}
-                    />
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Voiceover script
-                      </p>
-                      <p className="mt-2 text-sm leading-7 text-secondary-foreground">
-                        {slide.voiceover_script ?? "—"}
-                      </p>
-                    </div>
-
-                    {slide.image_url && (
-                      <SlideRegenerateControls
-                        disabled={
-                          isAnySlideGenerating && regeneratingSlideId !== slide.id
-                        }
-                        isRegenerating={regeneratingSlideId === slide.id}
-                        selectedChipIds={selectedFeedbackBySlide[slide.id] ?? []}
-                        notes={regenerateNotesBySlide[slide.id] ?? ""}
-                        onNotesChange={(value) =>
-                          setRegenerateNotesBySlide((current) => ({
-                            ...current,
-                            [slide.id]: value,
-                          }))
-                        }
-                        onToggleChip={(chipId) =>
-                          toggleFeedbackChip(slide.id, chipId)
-                        }
-                        onRegenerate={() => handleRegenerateSlide(slide.id)}
-                      />
-                    )}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+        <section className="mt-16 border-t border-border pt-8">
+          <h2 className="text-sm font-semibold text-foreground">Danger zone</h2>
+          <p className="mt-1 max-w-lg text-sm text-muted-foreground">
+            Permanently delete this campaign and all of its slides. This cannot
+            be undone.
+          </p>
+          <DeleteCampaignButton
+            campaignId={campaign.id}
+            campaignTitle={campaign.title}
+            className="mt-4"
+          />
         </section>
       </main>
+      <ScrollToTopButton />
+      <CarouselPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        slides={slides}
+        aspectRatio={campaign.aspect_ratio}
+        initialSlideIndex={previewInitialIndex}
+      />
     </div>
   );
 }

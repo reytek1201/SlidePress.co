@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppNavLayout } from "@/app/components/app-nav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +18,12 @@ export const metadata: Metadata = {
   description: "Topic to post-ready carousel slides, images, and captions.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +35,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col">
-        {children}
+        <AppNavLayout>{children}</AppNavLayout>
       </body>
     </html>
   );

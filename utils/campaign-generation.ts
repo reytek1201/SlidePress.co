@@ -13,6 +13,12 @@ export const ReferencesInputSchema = z.object({
   logo: z.string().url().optional(),
 });
 
+export const BrandLibraryPutSchema = z.object({
+  product: z.string().url().nullable().optional(),
+  style: z.string().url().nullable().optional(),
+  logo: z.string().url().nullable().optional(),
+});
+
 export const RequestSchema = z.object({
   topic: z.string().trim().min(1, "Topic is required"),
   aspect_ratio: z.enum(["4:5", "9:16"]),

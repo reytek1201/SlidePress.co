@@ -1,0 +1,326 @@
+"use client";
+
+import ReferenceUploadSlot from "@/app/components/reference-upload-slot";
+import { createClient } from "@/utils/supabase/client";
+import {
+  clearBrandLibrary,
+  fetchBrandLibrary,
+  saveBrandLibrary,
+} from "@/utils/brand-library-client";
+import { uploadReferenceImage } from "@/utils/upload-reference";
+import type { BrandLibrary } from "@/types/brand-library";
+import { brandLibraryToReferences } from "@/types/brand-library";
+import type { ReferenceType } from "@/types/references";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+
+interface BrandLibraryEditorProps {
+  user: User;
+}
+
+export default function BrandLibraryEditor({ user }: BrandLibraryEditorProps) {
+  const supabase = createClient();
+
+  const [library, setLibrary] = useState<BrandLibrary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [productFile, setProductFile] = useState<File | null>(null);
+  const [styleFile, setStyleFile] = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [productPreview, setProductPreview] = useState<string | null>(null);
+  const [stylePreview, setStylePreview] = useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [clearedSlots, setClearedSlots] = useState<Set<ReferenceType>>(
+    new Set()
+  );
+
+  const savedReferences = brandLibraryToReferences(library);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const data = await fetchBrandLibrary();
+
+        if (cancelled) {
+          return;
+        }
+
+        setLibrary(data);
+        const refs = brandLibraryToReferences(data);
+        setProductPreview(refs.product ?? null);
+        setStylePreview(refs.style ?? null);
+        setLogoPreview(refs.logo ?? null);
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Failed to load brand library"
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function handleReferenceSelect(type: ReferenceType, file: File | null) {
+    const setFile =
+      type === "product"
+        ? setProductFile
+        : type === "style"
+          ? setStyleFile
+          : setLogoFile;
+    const setPreview =
+      type === "product"
+        ? setProductPreview
+        : type === "style"
+          ? setStylePreview
+          : setLogoPreview;
+
+    setSuccessMessage(null);
+    setFile(file);
+
+    if (file) {
+      setClearedSlots((current) => {
+        const next = new Set(current);
+        next.delete(type);
+        return next;
+      });
+
+      setPreview((current) => {
+        if (current?.startsWith("blob:")) {
+          URL.revokeObjectURL(current);
+        }
+
+        return URL.createObjectURL(file);
+      });
+
+      return;
+    }
+
+    setClearedSlots((current) => {
+      const next = new Set(current);
+      next.add(type);
+      return next;
+    });
+
+    setPreview((current) => {
+      if (current?.startsWith("blob:")) {
+        URL.revokeObjectURL(current);
+      }
+
+      return null;
+    });
+  }
+
+  function getSlotPreview(type: ReferenceType): string | null {
+    const localPreview =
+      type === "product"
+        ? productPreview
+        : type === "style"
+          ? stylePreview
+          : logoPreview;
+
+    if (localPreview) {
+      return localPreview;
+    }
+
+    if (savedReferences[type] && !clearedSlots.has(type)) {
+      return savedReferences[type] ?? null;
+    }
+
+    return null;
+  }
+
+  async function resolveSlot(
+    type: ReferenceType,
+    file: File | null
+  ): Promise<string | null> {
+    if (clearedSlots.has(type)) {
+      return null;
+    }
+
+    if (file) {
+      return uploadReferenceImage(supabase, file, user.id, type);
+    }
+
+    return savedReferences[type] ?? null;
+  }
+
+  async function handleSave() {
+    setError(null);
+    setSuccessMessage(null);
+    setSaving(true);
+
+    try {
+      const product = await resolveSlot("product", productFile);
+      const style = await resolveSlot("style", styleFile);
+      const logo = await resolveSlot("logo", logoFile);
+
+      if (!product && !style && !logo) {
+        await clearBrandLibrary();
+        setLibrary(null);
+        setProductFile(null);
+        setStyleFile(null);
+        setLogoFile(null);
+        setProductPreview(null);
+        setStylePreview(null);
+        setLogoPreview(null);
+        setClearedSlots(new Set());
+        setSuccessMessage("Brand library cleared.");
+        return;
+      }
+
+      const saved = await saveBrandLibrary({ product, style, logo });
+      setLibrary(saved);
+      setProductFile(null);
+      setStyleFile(null);
+      setLogoFile(null);
+      setClearedSlots(new Set());
+
+      const refs = brandLibraryToReferences(saved);
+      setProductPreview(refs.product ?? null);
+      setStylePreview(refs.style ?? null);
+      setLogoPreview(refs.logo ?? null);
+      setSuccessMessage("Brand library saved.");
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Failed to save brand library"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleClearAll() {
+    setError(null);
+    setSuccessMessage(null);
+    setClearing(true);
+
+    try {
+      await clearBrandLibrary();
+      setLibrary(null);
+      setProductFile(null);
+      setStyleFile(null);
+      setLogoFile(null);
+      setProductPreview(null);
+      setStylePreview(null);
+      setLogoPreview(null);
+      setClearedSlots(new Set());
+      setSuccessMessage("Brand library cleared.");
+    } catch (clearError) {
+      setError(
+        clearError instanceof Error
+          ? clearError.message
+          : "Failed to clear brand library"
+      );
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        Loading brand library…
+      </div>
+    );
+  }
+
+  const hasAnyPreview =
+    Boolean(getSlotPreview("product")) ||
+    Boolean(getSlotPreview("style")) ||
+    Boolean(getSlotPreview("logo"));
+
+  return (
+    <div>
+      <p className="text-sm leading-6 text-muted-foreground">
+        Save product, style, and logo references once — they&apos;ll pre-fill
+        when you create new campaigns.
+      </p>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <ReferenceUploadSlot
+          id="settings-product-reference"
+          label="Product"
+          description="Your product, app, or offer to feature."
+          previewUrl={getSlotPreview("product")}
+          disabled={saving || clearing}
+          onFileSelect={(file) => handleReferenceSelect("product", file)}
+        />
+        <ReferenceUploadSlot
+          id="settings-style-reference"
+          label="Style"
+          description="Mood board or carousel style to match."
+          previewUrl={getSlotPreview("style")}
+          disabled={saving || clearing}
+          onFileSelect={(file) => handleReferenceSelect("style", file)}
+        />
+        <ReferenceUploadSlot
+          id="settings-logo-reference"
+          label="Logo"
+          description="Brand mark for consistent placement."
+          previewUrl={getSlotPreview("logo")}
+          disabled={saving || clearing}
+          onFileSelect={(file) => handleReferenceSelect("logo", file)}
+        />
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          disabled={saving || clearing || !hasAnyPreview}
+          onClick={() => void handleSave()}
+          className="btn-primary inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save brand library"}
+        </button>
+
+        {library && (
+          <button
+            type="button"
+            disabled={saving || clearing}
+            onClick={() => void handleClearAll()}
+            className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-2.5 text-sm font-semibold text-muted-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {clearing ? "Clearing…" : "Clear all"}
+          </button>
+        )}
+      </div>
+
+      {successMessage && (
+        <p className="mt-4 text-sm text-primary">{successMessage}</p>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="mt-4 rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200"
+        >
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
