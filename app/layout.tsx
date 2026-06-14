@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppNavLayout } from "@/app/components/app-nav";
+import NativeAuthListener from "@/app/components/native-auth-listener";
 import {
   brandLogoSrc,
   defaultDescription,
@@ -51,6 +52,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full`}
     >
       <body className="flex min-h-full flex-col">
+        <NativeAuthListener />
         <AppNavLayout>{children}</AppNavLayout>
       </body>
     </html>

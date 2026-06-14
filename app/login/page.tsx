@@ -3,14 +3,19 @@
 import { createClient } from "@/utils/supabase/client";
 import BrandLogo from "@/app/components/brand-logo";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
+import { brandLogoSrc } from "@/utils/site-metadata";
+import { isNativeAppRuntime } from "@/utils/is-native-app";
+import { buildNativeOAuthRedirectUrl } from "@/utils/native-oauth";
 import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_REQUIREMENTS_TEXT,
   validateSignUpPassword,
 } from "@/utils/password-validation";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Browser } from "@capacitor/browser";
 
 function GoogleIcon() {
   return (
@@ -81,7 +86,36 @@ function LoginForm() {
     setForgotMessage(null);
     setGoogleSubmitting(true);
 
-    const callbackUrl = `${window.location.origin}/auth/callback`;
+    const next = resolveNextPath();
+
+    if (isNativeAppRuntime()) {
+      const redirectTo = buildNativeOAuthRedirectUrl(next);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        setGoogleSubmitting(false);
+        return;
+      }
+
+      if (data?.url) {
+        await Browser.open({ url: data.url });
+      }
+
+      setGoogleSubmitting(false);
+      return;
+    }
+
+    const callbackUrl = `${window.location.origin}/auth/callback${
+      next !== "/campaigns" ? `?next=${encodeURIComponent(next)}` : ""
+    }`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -197,14 +231,27 @@ function LoginForm() {
 
   return (
     <div className="min-h-full bg-background text-foreground">
-      <header className="page-shell page-header-safe flex items-center justify-between">
+      <header className="page-shell page-header-safe hidden items-center justify-between md:flex">
         <BrandLogo href={isNativeApp ? "/login" : "/"} />
       </header>
 
-      <main className="page-main flex min-h-[calc(100vh-4rem)] flex-col">
+      <main className="page-main flex min-h-[100dvh] flex-col max-md:pt-[calc(env(safe-area-inset-top,0px)+2rem)] md:min-h-[calc(100vh-4rem)]">
         <div className="page-content flex flex-1 flex-col justify-center">
           <header className="mb-8 text-center md:mb-10">
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            <div className="mb-3 flex items-center justify-center gap-3 md:hidden">
+              <Image
+                src={brandLogoSrc}
+                alt="SlidePress"
+                width={36}
+                height={36}
+                className="h-9 w-9 shrink-0 object-contain"
+                priority
+              />
+              <h1 className="text-left text-2xl font-semibold tracking-tight text-foreground">
+                Sign in to SlidePress
+              </h1>
+            </div>
+            <h1 className="hidden text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:block">
               Sign in to SlidePress
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">

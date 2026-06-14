@@ -129,12 +129,46 @@ Platform-specific: `npm run cap:assets:ios` or `npm run cap:assets:android`.
 
 ---
 
+## Google sign-in (native app)
+
+Google blocks OAuth inside embedded WebViews. The native app uses the system browser and a deep link back into the app.
+
+**Flow:**
+1. Tap **Continue with Google** → opens Safari / Chrome Custom Tab
+2. After Google + Supabase auth → redirects to `co.slidepress.app://auth/callback?code=...`
+3. App catches the deep link → loads `https://www.slidepress.co/auth/callback?code=...` in the WebView
+4. Session cookies are set → user lands in the app
+
+### Supabase redirect URLs (required)
+
+In **Supabase → Authentication → URL configuration → Redirect URLs**, add:
+
+```
+co.slidepress.app://auth/callback
+co.slidepress.app://**
+```
+
+Keep the existing web callbacks (`https://www.slidepress.co/auth/callback`, `http://localhost:3000/auth/callback`).
+
+### Native rebuild (required)
+
+Deep link URL schemes are in `ios/App/App/Info.plist` and `android/app/src/main/AndroidManifest.xml`. After pulling these changes:
+
+```bash
+npm run cap:sync
+npm run cap:ios    # clean build in Xcode
+```
+
+Google Cloud Console redirect URI stays **only** the Supabase callback (`https://<project>.supabase.co/auth/v1/callback`) — do not add the app scheme there.
+
+---
+
 ## Phase 5 roadmap
 
 | Step | Status |
 |------|--------|
 | **5.1 Scaffold** | ✅ This setup |
-| **5.2 Auth** | Deep links, Sign in with Apple |
+| **5.2 Auth** | Google OAuth via deep link + system browser ✅; Sign in with Apple (iOS) |
 | **5.3 App shell** | Icons + splash (`npm run cap:assets`), status bar |
 | **5.4 Native affordances** | Share sheet, save to camera roll |
 | **5.5 Beta** | TestFlight, Play internal testing |
