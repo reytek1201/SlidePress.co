@@ -15,7 +15,6 @@
 	},
 	"packageClassList": [
 		"AppPlugin",
-		"CAPBrowserPlugin",
-		"NativeAppleSignInPlugin"
+		"CAPBrowserPlugin"
 	]
 }
