@@ -32,12 +32,18 @@ SlidePress is a marketing automation app for creators and small teams who need s
 
 **Mobile:** tap the **+** button to open a native-style **bottom sheet** — slide-up form with scroll, backdrop dismiss, and redirect to workspace on success.
 
-**Public site:** **`/`** is the marketing landing page; **`/login`** for sign in and sign up.
+**Public site:** **`/`** is the marketing landing page; **`/login`** for sign in and sign up (email, Google, or create account).
+
+### Public site & SEO
+
+- **Marketing landing** at **`/`** — hero, features, workflow; logged-in users redirect to campaigns
+- **SEO** — sitemap, robots.txt, Open Graph / Twitter cards, JSON-LD, custom OG image
+- App routes (`/login`, `/campaigns`, workspace, etc.) use **`noindex`** so search focuses on the landing page
 
 ### App navigation
 
 - **Shared app shell** when signed in — one consistent way to move around
-- **Desktop:** top bar with SlidePress logo, Campaigns, New campaign, **Settings**
+- **Desktop:** top bar with SlidePress **logo**, Campaigns, New campaign, **Settings**
 - **Mobile:** top bar (logo) + **bottom tab bar** with Campaigns, center **+** FAB, and **Settings**
 - **Settings** (`/settings`) — account, brand library, usage summary; sign out lives here
 - **Campaigns list** is browse-only — tap a row to open; no delete/duplicate clutter on the list
@@ -99,8 +105,9 @@ SlidePress is a marketing automation app for creators and small teams who need s
 ### Account & security
 
 - Email sign-in via Supabase Auth
-- **Google sign-in** on **`/login`**
+- **Google sign-in** on **`/login`** — OAuth via Supabase; redirects through **`/auth/callback`**
 - **Strong passwords** on sign up — 8+ characters with uppercase, lowercase, and a number
+- Sign-up respects Supabase settings — auto sign-in when email confirmation is off; confirmation message when it is on
 - **Forgot password** on the sign-in screen
 - **Settings** — email, password reset email, sign out, **account deletion** (Settings → Account deletion)
 - Your campaigns are private to your account (row-level security)
@@ -124,8 +131,10 @@ SlidePress is a marketing automation app for creators and small teams who need s
 ### Design & brand
 
 - **SlidePress** dark UI — zinc background with orange primary actions
+- **Brand logo** in nav, landing, login, favicon, and OG image (`public/brand/logo.png`)
 - Orange gradient CTAs for generate/create actions
 - Semantic greens/ambers/reds for success, progress, and errors
+- Unified **page layout** — shared shell widths for marketing and app pages
 
 ---
 
@@ -157,28 +166,29 @@ Phased delivery for SlidePress. **Mobile today = responsive web** in Safari/Chro
 | **1** | Workspace clarity — progress strip, next-step bar, inline rename, async text generation, app nav |
 | **2** | Publish handoff — carousel preview, copy voiceover, single-slide download |
 | **3** | Brand library + **Settings** (account, brand assets, usage display) |
-| **4 (partial)** | Beta usage limits, mobile workspace polish, unified page layout, **marketing landing at `/`** |
+| **4** | Ship & protect — landing, SEO, usage limits, mobile polish, Google auth, account deletion, prod deploy |
 
-### Phase 4 — Ship & protect (in progress)
+### Phase 4 — Ship & protect ✅ (complete)
 
-- **Mobile web QA** — manual device testing on prod before wider beta invites
-- **Deploy & migrations** — brand library + usage_events on production Supabase
-
-Already shipped in Phase 4:
-
-- **Marketing landing page** — public **`/`** hero; app at **`/login`**, **`/new`**, **`/campaigns`**, etc.
+- **Marketing landing** — public **`/`** hero; app at **`/login`**, **`/new`**, **`/campaigns`**, etc.
 - **SEO** — sitemap, robots, Open Graph / Twitter metadata on **`/`**, JSON-LD, custom OG image, **`noindex`** on app routes
+- **Brand identity** — logo in nav, login, favicon, and social previews
 - **Beta usage limits** — 10 campaigns / month, 30 slide regenerations / month (env-configurable); enforced server-side
-- **Mobile workspace polish** — compact sticky bar, tighter slide cards, denser publish section
+- **Mobile workspace polish** — compact sticky bar, tighter slide cards, denser publish section; bottom nav on phone
+- **Unified page layout** — consistent marketing and app page widths
+- **Google sign-in** — OAuth on **`/login`** with **`/auth/callback`**
+- **Strong passwords** — enforced on email sign up
+- **Account deletion** — Settings → **Account deletion…** (type `DELETE`; Apple App Store requirement)
+- **Production** — deployed on Vercel; Supabase migrations applied (brand library, usage events)
 
-### Phase 5 — Mobile app (Capacitor) 📱
+### Phase 5 — Mobile app (Capacitor) 📱 *(next)*
 
 Wrap the existing SlidePress web app for **App Store** and **Google Play** — one codebase on Vercel, native shells on device.
 
 | Step | Deliverable |
 |------|-------------|
-| **5.1 Scaffold** | Capacitor iOS + Android projects loading production (`slidepress.co`) |
-| **5.2 Auth** | Deep links / universal links for Supabase sign-in and password reset in WebView |
+| **5.1 Scaffold** ✅ | Capacitor iOS + Android loading production (`slidepress.co`) — see `docs/capacitor.md` |
+| **5.2 Auth** | Deep links / universal links for Supabase sign-in (Google, password reset) in WebView; **Sign in with Apple** for iOS App Store |
 | **5.3 App shell** | Icons, splash screen, status bar (SlidePress dark + orange) |
 | **5.4 Native affordances** | Share sheet, save slide images to camera roll |
 | **5.5 Beta distribution** | TestFlight + Play internal testing before public listing |
@@ -186,9 +196,9 @@ Wrap the existing SlidePress web app for **App Store** and **Google Play** — o
 
 **Out of scope for Phase 5:** React Native rewrite, offline-first workspace, in-app Stripe (billing stays web until Phase 6).
 
-**Depends on:** Phase 4 mobile web stable; production deploy current.
+**Depends on:** Phase 4 complete ✅
 
-### Phase 6 — Scale & publish
+### Phase 6 — Scale & publish *(planned)*
 
 - **Usage tiers & billing** — paid plans with higher caps (Stripe)
 - **Video export** — slides → single MP4 for Reels/Shorts/TikTok (Remotion/FFmpeg)

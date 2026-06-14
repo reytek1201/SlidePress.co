@@ -57,6 +57,7 @@ function LoginForm() {
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [forgotSending, setForgotSending] = useState(false);
   const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -255,17 +256,29 @@ function LoginForm() {
                 >
                   Password
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  required
-                  minLength={PASSWORD_MIN_LENGTH}
-                  disabled={authBusy}
-                  autoComplete="current-password"
-                  className="field-input mt-2"
-                />
+                <div className="relative mt-2">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                    minLength={PASSWORD_MIN_LENGTH}
+                    disabled={authBusy}
+                    autoComplete="current-password"
+                    className="field-input pr-16"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    disabled={authBusy}
+                    aria-pressed={showPassword}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-0 px-3 text-sm font-medium text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
                   {PASSWORD_REQUIREMENTS_TEXT} Required for sign up.
                 </p>

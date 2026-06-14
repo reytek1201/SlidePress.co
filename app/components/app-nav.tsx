@@ -2,6 +2,7 @@
 
 import CreateCampaignSheet from "@/app/components/create-campaign-sheet";
 import BrandLogo from "@/app/components/brand-logo";
+import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import {
   CreateSheetProvider,
   useCreateSheet,
@@ -14,6 +15,9 @@ import type { User } from "@supabase/supabase-js";
 
 const MOBILE_NAV_PADDING =
   "pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0";
+
+const MOBILE_NATIVE_TOP_PADDING =
+  "max-md:pt-[env(safe-area-inset-top,0px)]";
 
 function navLinkClass(isActive: boolean): string {
   return isActive
@@ -143,7 +147,11 @@ function DesktopNav({
   );
 }
 
-function MobileTopBar() {
+function MobileTopBar({ hidden = false }: { hidden?: boolean }) {
+  if (hidden) {
+    return null;
+  }
+
   return (
     <header className="border-b border-border bg-card/40 md:hidden">
       <div className="flex items-center px-4 py-3">
@@ -231,8 +239,14 @@ function MobileBottomNav({
 
 function AppNavChrome({ user }: { user: User }) {
   const pathname = usePathname();
+  const isNativeApp = useIsNativeApp();
+  const [mounted, setMounted] = useState(false);
   const { isOpen, openCreateSheet, closeCreateSheet } = useCreateSheet();
   const [formKey, setFormKey] = useState(0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isCampaignsActive =
     pathname === "/campaigns" || pathname.startsWith("/campaign/");
@@ -252,7 +266,7 @@ function AppNavChrome({ user }: { user: User }) {
         isNewCampaignActive={isNewCampaignActive}
         isSettingsActive={isSettingsActive}
       />
-      <MobileTopBar />
+      <MobileTopBar hidden={!mounted || isNativeApp} />
       <MobileBottomNav
         isCampaignsActive={isCampaignsActive}
         isSettingsActive={isSettingsActive}
@@ -271,13 +285,16 @@ function AppNavChrome({ user }: { user: User }) {
 
 function AppNavLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthUser();
+  const isNativeApp = useIsNativeApp();
   const showNav = !loading && Boolean(user);
 
   return (
     <>
       {showNav && <AppNavChrome user={user!} />}
       <div
-        className={`flex min-h-0 flex-1 flex-col ${showNav ? MOBILE_NAV_PADDING : ""}`}
+        className={`flex min-h-0 flex-1 flex-col ${showNav ? MOBILE_NAV_PADDING : ""} ${
+          showNav && isNativeApp ? MOBILE_NATIVE_TOP_PADDING : ""
+        }`}
       >
         {children}
       </div>

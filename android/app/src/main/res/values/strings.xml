@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SlidePress</string>
+    <string name="title_activity_main">SlidePress</string>
+    <string name="package_name">co.slidepress.app</string>
+    <string name="custom_url_scheme">co.slidepress.app</string>
+</resources>
