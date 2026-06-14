@@ -193,8 +193,6 @@ export async function POST(request: Request) {
       .update({ status: "generating_images", error_message: null })
       .eq("id", typedCampaign.id);
 
-    await recordSlideRegeneration(user.id);
-
     const referenceUrls = getReferenceImageUrls({
       product: campaign.product_reference_url,
       style: campaign.style_reference_url,
@@ -221,6 +219,8 @@ export async function POST(request: Request) {
         }
 
         await refreshCampaignImageStatus(supabase, typedCampaign.id);
+        // Record quota only after the image is successfully saved.
+        await recordSlideRegeneration(user.id);
 
         return NextResponse.json(
           {
@@ -262,6 +262,10 @@ export async function POST(request: Request) {
       if (slideUpdateError) {
         throw new Error(slideUpdateError.message);
       }
+
+      // Record quota after the job is successfully queued and the slide
+      // row is updated. Failed submissions do not consume quota.
+      await recordSlideRegeneration(user.id);
 
       return NextResponse.json(
         {

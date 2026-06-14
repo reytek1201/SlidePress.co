@@ -70,6 +70,13 @@ export async function POST(request: Request) {
 
     const typedCampaign = campaign as Campaign;
 
+    if (typedCampaign.user_id !== user.id) {
+      return NextResponse.json(
+        { success: false, error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
     if (typedCampaign.status === "generating_images") {
       return NextResponse.json(
         { success: false, error: "Image generation already in progress" },

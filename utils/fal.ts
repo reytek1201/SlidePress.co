@@ -12,15 +12,21 @@ export function getAppBaseUrl(request: Request): string {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
 
+  // Fallback for local development only. In production NEXT_PUBLIC_APP_URL
+  // is required (validated in instrumentation.ts) because x-forwarded-host
+  // is attacker-controlled and must not be used to build webhook URLs.
   const host =
     request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const protocol = request.headers.get("x-forwarded-proto") ?? "http";
+  const baseUrl = host ? `${protocol}://${host}` : "http://localhost:3000";
 
-  if (host) {
-    return `${protocol}://${host}`;
+  if (!isLocalAppUrl(baseUrl)) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL must be set in production. Add it to your Vercel environment variables.",
+    );
   }
 
-  return "http://localhost:3000";
+  return baseUrl;
 }
 
 export function isLocalAppUrl(baseUrl: string): boolean {
