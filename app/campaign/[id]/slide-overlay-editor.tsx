@@ -30,9 +30,8 @@ export default function SlideOverlayEditor({
   useEffect(() => {
     if (!isEditing) {
       setDraft(value);
-      onDraftChange?.(value);
     }
-  }, [value, isEditing, onDraftChange]);
+  }, [value, isEditing]);
 
   const wordCount = countWords(draft);
   const isValid = draft.trim().length > 0 && wordCount <= 12;
