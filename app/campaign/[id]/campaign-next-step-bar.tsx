@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  CAMPAIGN_NEXT_STEP_BAR_ID,
   getCampaignNextStep,
   scrollToCampaignSection,
-  type CampaignNextStep,
   type CampaignNextStepButton,
   type NextStepAction,
 } from "@/utils/campaign-progress";
@@ -139,17 +139,21 @@ export default function CampaignNextStepBar(props: CampaignNextStepBarProps) {
   const actionDisabled = nextStep.disabled || nextStep.loading;
 
   function handlePrimaryClick() {
-    scrollToCampaignSection(nextStep.scrollTargetId);
-    if (!actionDisabled) {
-      runNextStepAction(nextStep.action, handlers);
+    if (actionDisabled) {
+      return;
     }
+
+    scrollToCampaignSection(nextStep.scrollTargetId);
+    runNextStepAction(nextStep.action, handlers);
   }
 
   function handleSecondaryClick(button: CampaignNextStepButton) {
-    scrollToCampaignSection(secondaryScrollTarget(button.action));
-    if (!button.disabled && !button.loading) {
-      runNextStepAction(button.action, handlers);
+    if (button.disabled || button.loading) {
+      return;
     }
+
+    scrollToCampaignSection(secondaryScrollTarget(button.action));
+    runNextStepAction(button.action, handlers);
   }
 
   const primaryLabel =
@@ -164,7 +168,10 @@ export default function CampaignNextStepBar(props: CampaignNextStepBarProps) {
     : nextStep.description;
 
   return (
-    <div className="sticky top-0 z-40 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 sm:py-2.5 md:top-[4.5rem] md:-mx-10 md:px-10 md:py-3">
+    <div
+      id={CAMPAIGN_NEXT_STEP_BAR_ID}
+      className="sticky top-0 z-40 -mx-4 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6 sm:py-2.5 md:top-[4.5rem] md:-mx-10 md:px-10 md:py-3"
+    >
       <div className="flex flex-col gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3 sm:gap-3 sm:rounded-2xl sm:p-4 md:flex-row md:items-center md:justify-between md:p-5">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-primary sm:text-xs">

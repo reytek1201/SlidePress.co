@@ -122,8 +122,21 @@ const SlideCard = memo(function SlideCard({
     onOpenPreview(slide.slide_index);
   }, [slide.slide_index, onOpenPreview]);
 
+  const showImageSlot =
+    Boolean(slide.image_url) ||
+    Boolean(slide.fal_request_id) ||
+    isAnySlideGenerating;
+
+  const aspectPanelClass =
+    aspectRatio === "4:5"
+      ? "aspect-4/5 max-md:aspect-auto lg:aspect-auto lg:min-h-[300px]"
+      : "aspect-9/16 max-md:aspect-auto lg:aspect-auto lg:min-h-[300px]";
+
   return (
-    <article className="overflow-hidden rounded-xl border border-border bg-card/50 md:rounded-2xl">
+    <article
+      id={`slide-card-${slide.id}`}
+      className="overflow-hidden rounded-xl border border-border bg-card/50 md:rounded-2xl"
+    >
       <div className="flex items-center justify-between border-b border-border px-3 py-2.5 md:px-5 md:py-4">
         <h3 className="text-sm font-semibold text-secondary-foreground">
           Slide {slide.slide_index + 1}
@@ -139,44 +152,59 @@ const SlideCard = memo(function SlideCard({
 
       <div
         className={
-          slide.image_url ? "grid gap-0 lg:grid-cols-[240px_1fr]" : undefined
+          showImageSlot ? "grid gap-0 lg:grid-cols-[240px_1fr]" : undefined
         }
       >
-        {slide.image_url && (
+        {showImageSlot && (
           <div
-            className={`flex max-h-64 flex-col items-center justify-center border-b border-border bg-background p-3 sm:max-h-80 md:max-h-none md:p-6 lg:border-b-0 lg:border-r ${
-              aspectRatio === "4:5"
-                ? "aspect-4/5 max-md:aspect-auto lg:aspect-auto lg:min-h-[300px]"
-                : "aspect-9/16 max-md:aspect-auto lg:aspect-auto lg:min-h-[300px]"
-            }`}
+            className={`flex max-h-64 flex-col items-center justify-center border-b border-border bg-background p-3 sm:max-h-80 md:max-h-none md:p-6 lg:border-b-0 lg:border-r ${aspectPanelClass}`}
           >
-            <button
-              type="button"
-              onClick={handleOpenPreview}
-              className="group relative max-h-full max-w-full cursor-zoom-in"
-              aria-label={`Expand slide ${slide.slide_index + 1}`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={slide.image_url}
-                alt={`Slide ${slide.slide_index + 1}`}
-                loading="lazy"
-                decoding="async"
-                className="max-h-56 max-w-full rounded-lg object-contain transition group-hover:opacity-95 sm:max-h-72 md:max-h-full"
-              />
-              <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
-                <span className="rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
-                  Expand
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenPreview}
-              className="mt-3 hidden text-xs font-medium text-muted-foreground transition hover:text-foreground md:inline-block lg:hidden"
-            >
-              Expand image
-            </button>
+            {slide.image_url ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="group relative max-h-full max-w-full cursor-zoom-in"
+                  aria-label={`Expand slide ${slide.slide_index + 1}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={slide.image_url}
+                    alt={`Slide ${slide.slide_index + 1}`}
+                    loading="lazy"
+                    decoding="async"
+                    className="max-h-56 max-w-full rounded-lg object-contain transition group-hover:opacity-95 sm:max-h-72 md:max-h-full"
+                  />
+                  <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
+                    <span className="rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
+                      Expand
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenPreview}
+                  className="mt-3 hidden text-xs font-medium text-muted-foreground transition hover:text-foreground md:inline-block lg:hidden"
+                >
+                  Expand image
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+                {slide.fal_request_id ? (
+                  <>
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span className="text-xs text-muted-foreground">
+                      Generating image…
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Waiting to generate
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
 

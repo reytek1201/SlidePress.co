@@ -273,9 +273,28 @@ export function getCampaignNextStep(options: {
   };
 }
 
-export function scrollToCampaignSection(sectionId: string) {
+export const CAMPAIGN_NEXT_STEP_BAR_ID = "campaign-next-step-bar";
+
+export function scrollToCampaignSection(
+  sectionId: string,
+  options?: { behavior?: ScrollBehavior },
+) {
   document.getElementById(sectionId)?.scrollIntoView({
-    behavior: "smooth",
+    behavior: options?.behavior ?? "smooth",
+    block: "start",
+  });
+}
+
+export function scrollToSlideCard(slideId: string) {
+  document.getElementById(`slide-card-${slideId}`)?.scrollIntoView({
+    behavior: "auto",
+    block: "nearest",
+  });
+}
+
+export function scrollToCampaignNextStep() {
+  document.getElementById(CAMPAIGN_NEXT_STEP_BAR_ID)?.scrollIntoView({
+    behavior: "auto",
     block: "start",
   });
 }

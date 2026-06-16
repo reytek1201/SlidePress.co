@@ -13,7 +13,11 @@ import {
 import {
   formatAspectRatio,
 } from "@/utils/campaign-display";
-import { formatSlidesImageStatus } from "@/utils/campaign-progress";
+import {
+  formatSlidesImageStatus,
+  scrollToCampaignNextStep,
+  scrollToSlideCard,
+} from "@/utils/campaign-progress";
 import SlideCard from "@/app/campaign/[id]/slide-card";
 import CarouselPreviewModal from "@/app/campaign/[id]/carousel-preview-modal";
 import CampaignGeneratingView from "@/app/campaign/[id]/campaign-generating-view";
@@ -31,6 +35,9 @@ import {
   shareCampaignZip,
 } from "@/utils/native-slide-export";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+const USER_SCROLL_COOLDOWN_MS = 3000;
+const SLIDE_UPDATE_DEBOUNCE_MS = 150;
 
 interface CampaignWorkspaceProps {
   initialCampaign: Campaign;
@@ -51,6 +58,9 @@ export default function CampaignWorkspace({
   const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [imagesCompleteMessage, setImagesCompleteMessage] = useState<string | null>(
+    null
+  );
   const [captionsMessage, setCaptionsMessage] = useState<string | null>(null);
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -68,6 +78,14 @@ export default function CampaignWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [isRetryingText, setIsRetryingText] = useState(false);
   const textGenerationStarted = useRef(false);
+  const prevSlidesRef = useRef(initialSlides);
+  const prevImagesCompleteRef = useRef(
+    initialSlides.length > 0 && initialSlides.every((slide) => slide.image_url)
+  );
+  const lastUserScrollAtRef = useRef(0);
+  const isGeneratingImagesRef = useRef(false);
+  const pendingSlideUpdatesRef = useRef<Map<string, Slide>>(new Map());
+  const slideFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isAwaitingTextGeneration =
     slides.length === 0 &&
@@ -87,6 +105,68 @@ export default function CampaignWorkspace({
     !imagesComplete;
   const sortedCaptions = sortCaptionsByPlatform(captions);
   const canGenerateCaptions = slides.length > 0 && !isGeneratingCaptions;
+
+  useEffect(() => {
+    isGeneratingImagesRef.current = isGeneratingImages;
+  }, [isGeneratingImages]);
+
+  useEffect(() => {
+    function markUserScrolled() {
+      lastUserScrollAtRef.current = Date.now();
+    }
+
+    window.addEventListener("scroll", markUserScrolled, { passive: true });
+    window.addEventListener("wheel", markUserScrolled, { passive: true });
+    window.addEventListener("touchmove", markUserScrolled, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", markUserScrolled);
+      window.removeEventListener("wheel", markUserScrolled);
+      window.removeEventListener("touchmove", markUserScrolled);
+    };
+  }, []);
+
+  useEffect(() => {
+    const prev = prevSlidesRef.current;
+    prevSlidesRef.current = slides;
+
+    let newestReadySlide: Slide | null = null;
+
+    for (const slide of slides) {
+      const prevSlide = prev.find((entry) => entry.id === slide.id);
+      if (slide.image_url && !prevSlide?.image_url) {
+        newestReadySlide = slide;
+      }
+    }
+
+    if (newestReadySlide && isGeneratingImages) {
+      const allCompleteNow = slides.every((slide) => slide.image_url);
+
+      if (!allCompleteNow) {
+        const userScrolledRecently =
+          Date.now() - lastUserScrollAtRef.current < USER_SCROLL_COOLDOWN_MS;
+
+        if (!userScrolledRecently) {
+          requestAnimationFrame(() => scrollToSlideCard(newestReadySlide!.id));
+        }
+      }
+    }
+  }, [slides, isGeneratingImages]);
+
+  useEffect(() => {
+    if (imagesComplete && !prevImagesCompleteRef.current) {
+      setImagesCompleteMessage(
+        "All slides are ready — generate captions or save to Photos."
+      );
+      requestAnimationFrame(() => scrollToCampaignNextStep());
+    }
+
+    if (!imagesComplete) {
+      setImagesCompleteMessage(null);
+    }
+
+    prevImagesCompleteRef.current = imagesComplete;
+  }, [imagesComplete]);
 
   const refreshSlides = useCallback(async () => {
     const { data: refreshedSlides } = await supabase
@@ -163,6 +243,32 @@ export default function CampaignWorkspace({
   }
 
   useEffect(() => {
+    function flushPendingSlideUpdates() {
+      slideFlushTimerRef.current = null;
+      const updates = pendingSlideUpdatesRef.current;
+
+      if (updates.size === 0) {
+        return;
+      }
+
+      pendingSlideUpdatesRef.current = new Map();
+
+      setSlides((current) =>
+        current.map((slide) => updates.get(slide.id) ?? slide)
+      );
+    }
+
+    function scheduleSlideFlush() {
+      if (slideFlushTimerRef.current !== null) {
+        return;
+      }
+
+      slideFlushTimerRef.current = setTimeout(
+        flushPendingSlideUpdates,
+        SLIDE_UPDATE_DEBOUNCE_MS
+      );
+    }
+
     const channel = supabase
       .channel(`campaign-${campaign.id}`)
       .on(
@@ -196,6 +302,13 @@ export default function CampaignWorkspace({
         },
         (payload) => {
           const updatedSlide = payload.new as Slide;
+
+          if (isGeneratingImagesRef.current) {
+            pendingSlideUpdatesRef.current.set(updatedSlide.id, updatedSlide);
+            scheduleSlideFlush();
+            return;
+          }
+
           setSlides((current) =>
             current.map((slide) =>
               slide.id === updatedSlide.id ? updatedSlide : slide
@@ -218,6 +331,12 @@ export default function CampaignWorkspace({
       .subscribe();
 
     return () => {
+      if (slideFlushTimerRef.current !== null) {
+        clearTimeout(slideFlushTimerRef.current);
+        slideFlushTimerRef.current = null;
+      }
+
+      pendingSlideUpdatesRef.current = new Map();
       supabase.removeChannel(channel);
     };
   }, [campaign.id, supabase]);
@@ -680,7 +799,7 @@ export default function CampaignWorkspace({
           onSaveAllToPhotos={handleSaveAllToPhotos}
         />
 
-        <section id="section-slides" className="mt-8 scroll-mt-32 md:mt-10 md:scroll-mt-48">
+        <section id="section-slides" className="mt-8 scroll-mt-28 md:mt-10 md:scroll-mt-40">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3 md:mb-6 md:gap-4">
             <div>
               <h2 className="text-lg font-semibold text-foreground md:text-xl">Slides</h2>
@@ -704,6 +823,12 @@ export default function CampaignWorkspace({
               </button>
             )}
           </div>
+
+          {imagesCompleteMessage && (
+            <div className="mb-6 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
+              {imagesCompleteMessage}
+            </div>
+          )}
 
           {exportMessage && (
             <div className="mb-6 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
@@ -731,7 +856,7 @@ export default function CampaignWorkspace({
 
         <section
           id="section-publish"
-          className="mt-8 scroll-mt-32 rounded-xl border border-border bg-card/30 p-4 sm:mt-10 sm:scroll-mt-36 sm:rounded-2xl sm:p-6 md:scroll-mt-48 md:p-8"
+          className="mt-8 scroll-mt-28 rounded-xl border border-border bg-card/30 p-4 sm:mt-10 sm:scroll-mt-36 sm:rounded-2xl sm:p-6 md:scroll-mt-40 md:p-8"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div>
