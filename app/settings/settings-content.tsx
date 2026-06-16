@@ -1,10 +1,12 @@
 "use client";
 
 import BrandLibraryEditor from "@/app/components/brand-library-editor";
+import BiometricSettings from "@/app/components/biometric-settings";
 import DeleteAccountSection from "@/app/components/delete-account-section";
 import PasswordResetForm from "@/app/components/password-reset-form";
 import PushTestSection from "@/app/components/push-test-section";
 import { createClient } from "@/utils/supabase/client";
+import { clearBiometricSession } from "@/utils/biometric-session";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
 import { buildNativeOAuthRedirectUrl } from "@/utils/native-oauth";
 import type { UsageSummary } from "@/types/usage";
@@ -163,6 +165,7 @@ export default function SettingsContent({ user }: SettingsContentProps) {
 
   async function handleSignOut() {
     setSigningOut(true);
+    clearBiometricSession();
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();
@@ -240,6 +243,13 @@ export default function SettingsContent({ user }: SettingsContentProps) {
 
           <SettingsSection title="Brand library">
             <BrandLibraryEditor user={user} />
+          </SettingsSection>
+
+          <SettingsSection
+            title="Security"
+            description="Control how the app is locked when you leave it."
+          >
+            <BiometricSettings />
           </SettingsSection>
 
           <PushTestSection />

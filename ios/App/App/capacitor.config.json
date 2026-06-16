@@ -20,13 +20,13 @@
 		}
 	},
 	"packageClassList": [
+		"BiometricAuthNative",
 		"MediaPlugin",
 		"AppPlugin",
 		"CAPBrowserPlugin",
 		"FilesystemPlugin",
 		"PushNotificationsPlugin",
 		"SharePlugin",
-		"StatusBarPlugin",
-		"NativeAppleSignInPlugin"
+		"StatusBarPlugin"
 	]
 }
