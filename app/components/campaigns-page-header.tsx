@@ -32,7 +32,7 @@ export default function CampaignsPageHeader({
         </div>
 
         {hasMultipleBrands ? (
-          <BrandSwitcher compact className="w-full max-w-md" />
+          <BrandSwitcher className="max-w-md" />
         ) : null}
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -47,8 +47,8 @@ export default function CampaignsPageHeader({
                 href={`/settings/brands/${activeBrandId}`}
                 className="whitespace-nowrap font-medium text-primary underline-offset-2 hover:underline"
               >
-                <span className="sm:hidden">Manage</span>
-                <span className="hidden sm:inline">Manage brand</span>
+                <span className="sm:hidden">Edit brand</span>
+                <span className="hidden sm:inline">Edit brand kit</span>
               </Link>
             </>
           ) : null}

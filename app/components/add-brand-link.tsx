@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const BRANDS_LIST_HREF = "/settings/brands?list=1";
+const BRANDS_LIST_HREF = "/settings/brands";
 
 interface AddBrandLinkProps {
   label?: string;
@@ -48,20 +48,5 @@ export function AddBrandBanner({
       Working on more than one business or client?{" "}
       <AddBrandLink label={label} />
     </p>
-  );
-}
-
-export function AddBrandFooter({
-  label = "Add another brand",
-}: {
-  label?: string;
-}) {
-  return (
-    <div className="mt-8 border-t border-border pt-6">
-      <p className="text-sm text-muted-foreground">
-        Working on more than one business or client?{" "}
-        <AddBrandLink label={label} />
-      </p>
-    </div>
   );
 }

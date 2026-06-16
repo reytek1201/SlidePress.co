@@ -6,12 +6,14 @@ import { formatAspectRatio } from "@/utils/campaign-display";
 
 interface CampaignGeneratingViewProps {
   campaign: Campaign;
+  brandName?: string | null;
   isRetrying: boolean;
   onRetry: () => void;
 }
 
 export default function CampaignGeneratingView({
   campaign,
+  brandName = null,
   isRetrying,
   onRetry,
 }: CampaignGeneratingViewProps) {
@@ -21,7 +23,11 @@ export default function CampaignGeneratingView({
   return (
     <div className="min-h-full bg-background text-foreground">
       <main className="page-main flex min-h-[60vh] flex-col">
-        <CampaignBackLink className="mb-8" />
+        <CampaignBackLink
+          className="mb-8"
+          brandId={campaign.brand_id}
+          brandName={brandName}
+        />
         <div className="flex flex-1 flex-col items-center justify-center">
           <div className="page-content">
             {isFailed ? (

@@ -2,6 +2,7 @@
 
 import CreateCampaignSheet from "@/app/components/create-campaign-sheet";
 import BrandLogo from "@/app/components/brand-logo";
+import CampaignsNavLink from "@/app/components/campaigns-nav-link";
 import { ActiveBrandProvider } from "@/app/components/active-brand-provider";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import {
@@ -127,14 +128,14 @@ function DesktopNav({
       <div className="page-shell flex items-center justify-between gap-4 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-8">
           <BrandLogo
-            href="/campaigns"
+            preserveActiveBrand
             className="flex shrink-0 items-center gap-2 transition hover:opacity-90"
           />
 
           <nav className="flex items-center gap-1" aria-label="Main navigation">
-            <Link href="/campaigns" className={navLinkClass(isCampaignsActive)}>
+            <CampaignsNavLink className={navLinkClass(isCampaignsActive)}>
               Campaigns
-            </Link>
+            </CampaignsNavLink>
             <Link href="/new" className={navLinkClass(isNewCampaignActive)}>
               New campaign
             </Link>
@@ -157,7 +158,7 @@ function MobileTopBar({ hidden = false }: { hidden?: boolean }) {
     <header className="border-b border-border bg-card/40 md:hidden">
       <div className="flex items-center px-4 py-3">
         <BrandLogo
-          href="/campaigns"
+          preserveActiveBrand
           className="flex items-center gap-2 transition active:opacity-80"
         />
       </div>
@@ -187,8 +188,7 @@ function MobileBottomNav({
       aria-label="Main navigation"
     >
       <div className="mx-auto grid max-w-lg grid-cols-3 px-2 pb-2 pt-3">
-        <Link
-          href="/campaigns"
+        <CampaignsNavLink
           className={`flex flex-col items-center gap-1 transition active:opacity-80 ${
             campaignsActive ? "text-primary" : "text-muted-foreground"
           }`}
@@ -197,7 +197,7 @@ function MobileBottomNav({
             <CampaignsIcon active={campaignsActive} />
           </span>
           <span className="text-[10px] font-medium leading-none">Campaigns</span>
-        </Link>
+        </CampaignsNavLink>
 
         <button
           type="button"

@@ -469,7 +469,7 @@ export default function CreateCampaignForm({
                   href={`/settings/brands/${activeBrand.id}`}
                   className="font-medium text-primary underline-offset-2 hover:underline"
                 >
-                  Manage brand
+                  Manage brand kit
                 </Link>
               </>
             ) : null}

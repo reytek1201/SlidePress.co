@@ -39,7 +39,7 @@ export default function BrandLibraryPanel({
           }
           className="text-xs font-medium text-primary underline-offset-2 hover:underline"
         >
-          Manage
+          Edit kit
         </Link>
       </div>
 

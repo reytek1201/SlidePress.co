@@ -56,13 +56,28 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
 
   const slides = slidesResult.data;
   const captions = captionsResult.data;
+  const typedCampaign = campaign as Campaign;
+
+  let brandName: string | null = null;
+
+  if (typedCampaign.brand_id) {
+    const { data: brand } = await supabase
+      .from("brands")
+      .select("name")
+      .eq("id", typedCampaign.brand_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    brandName = brand?.name ?? null;
+  }
 
   return (
     <CampaignWorkspace
-      initialCampaign={campaign as Campaign}
+      initialCampaign={typedCampaign}
       initialSlides={(slides ?? []) as Slide[]}
       initialCaptions={(captions ?? []) as PlatformCaption[]}
       userId={user.id}
+      brandName={brandName}
     />
   );
 }

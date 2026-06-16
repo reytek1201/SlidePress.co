@@ -2,8 +2,9 @@
 
 import BrandLibraryEditor from "@/app/components/brand-library-editor";
 import BrandsManager from "@/app/components/brands-manager";
-import { AddBrandBanner, AddBrandFooter } from "@/app/components/add-brand-link";
+import { AddBrandBanner } from "@/app/components/add-brand-link";
 import { fetchBrands } from "@/utils/brands-client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { Brand } from "@/types/brand";
@@ -64,7 +65,14 @@ export default function BrandsSettingsDesktop({
       <div className="space-y-4">
         <AddBrandBanner />
         <BrandLibraryEditor user={user} brandId={brands[0].id} hideBrandName />
-        <AddBrandFooter />
+        <p className="text-sm text-muted-foreground">
+          <Link
+            href="/settings/brands"
+            className="font-medium text-primary underline-offset-2 hover:underline"
+          >
+            View all brands
+          </Link>
+        </p>
       </div>
     );
   }

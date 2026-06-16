@@ -1,5 +1,5 @@
 import BrandLibraryEditor from "@/app/components/brand-library-editor";
-import { AddBrandBanner, AddBrandFooter } from "@/app/components/add-brand-link";
+import { AddBrandBanner } from "@/app/components/add-brand-link";
 import SettingsSubpageShell from "@/app/settings/settings-subpage-shell";
 import { listUserBrands } from "@/utils/brands-server";
 import { createClient } from "@/utils/supabase/server";
@@ -39,12 +39,11 @@ export default async function BrandDetailPage({ params }: BrandDetailPageProps) 
     <SettingsSubpageShell
       title={brand.name}
       description="Reference images and products for this brand."
-      backHref={brands.length > 1 ? "/settings/brands" : "/settings"}
-      backLabel={brands.length > 1 ? "Brands" : "Settings"}
+      backHref="/settings/brands"
+      backLabel="Brands"
     >
       <AddBrandBanner />
       <BrandLibraryEditor user={user} brandId={brand.id} hideBrandName />
-      <AddBrandFooter />
     </SettingsSubpageShell>
   );
 }

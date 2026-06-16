@@ -56,6 +56,7 @@ interface CampaignWorkspaceProps {
   initialSlides: Slide[];
   initialCaptions: PlatformCaption[];
   userId: string;
+  brandName?: string | null;
 }
 
 export default function CampaignWorkspace({
@@ -63,6 +64,7 @@ export default function CampaignWorkspace({
   initialSlides,
   initialCaptions,
   userId,
+  brandName = null,
 }: CampaignWorkspaceProps) {
   const supabase = createClient();
   const [campaign, setCampaign] = useState(initialCampaign);
@@ -729,6 +731,7 @@ export default function CampaignWorkspace({
     return (
       <CampaignGeneratingView
         campaign={campaign}
+        brandName={brandName}
         isRetrying={isRetryingText}
         onRetry={handleRetryTextGeneration}
       />
@@ -742,7 +745,11 @@ export default function CampaignWorkspace({
         className="page-main scroll-mt-0"
       >
         <div className="md:hidden">
-          <CampaignBackLink className="mb-3" />
+          <CampaignBackLink
+            className="mb-3"
+            brandId={campaign.brand_id}
+            brandName={brandName}
+          />
           <CampaignMobileTabs active={mobileTab} onChange={setMobileTab} />
 
           {(campaign.error_message || error) && (
@@ -768,7 +775,11 @@ export default function CampaignWorkspace({
         </div>
 
         <header className="hidden border-b border-border pb-6 md:block md:pb-8">
-          <CampaignBackLink className="mb-4" />
+          <CampaignBackLink
+            className="mb-4"
+            brandId={campaign.brand_id}
+            brandName={brandName}
+          />
           <div className="flex flex-wrap items-start justify-between gap-3 md:gap-4">
             <div>
               <p className="brand-kicker">
