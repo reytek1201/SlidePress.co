@@ -11,8 +11,10 @@ import {
 } from "@/utils/biometric-auth";
 import {
   isBiometricLockEnabled,
-  setBiometricLockEnabled,
+  enableBiometricLock,
+  disableBiometricLock,
 } from "@/utils/biometric-session";
+import { createClient } from "@/utils/supabase/client";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,6 +26,8 @@ interface BiometryState {
 
 export default function BiometricSettings() {
   const isNativeApp = useIsNativeApp();
+  const supabase = createClient();
+
   const [biometry, setBiometry] = useState<BiometryState>({
     available: false,
     type: BiometryType.none,
@@ -77,25 +81,34 @@ export default function BiometricSettings() {
 
     setError(null);
     setSuccessMessage(null);
+    setBusy(true);
 
+    // --- DISABLING ---
     if (enabled) {
-      setBiometricLockEnabled(false);
+      const { error: disableError } = await disableBiometricLock(supabase);
+      setBusy(false);
+
+      if (disableError) {
+        setError(disableError);
+        return;
+      }
+
       setEnabled(false);
       setSuccessMessage(`${label} unlock disabled.`);
       return;
     }
 
-    setBusy(true);
-
+    // --- ENABLING ---
+    // Step 1: run a live biometric challenge to confirm the user can pass it.
     const { success, errorCode } = await authenticate({
       reason: `Confirm your identity to enable ${label} unlock for SlidePress.`,
       cancelTitle: "Cancel",
       allowDeviceCredential: false,
     });
 
-    setBusy(false);
-
     if (!success) {
+      setBusy(false);
+
       if (errorCode !== BiometryErrorType.userCancel) {
         setError(biometryErrorMessage(errorCode ?? BiometryErrorType.none));
       }
@@ -103,9 +116,19 @@ export default function BiometricSettings() {
       return;
     }
 
-    setBiometricLockEnabled(true);
+    // Step 2: save the refresh token to the Keychain.
+    const { error: enableError } = await enableBiometricLock(supabase);
+    setBusy(false);
+
+    if (enableError) {
+      setError(enableError);
+      return;
+    }
+
     setEnabled(true);
-    setSuccessMessage(`${label} unlock enabled. The app will prompt you on next open.`);
+    setSuccessMessage(
+      `${label} unlock enabled. The app will require ${label} each time you open it.`,
+    );
   }
 
   return (

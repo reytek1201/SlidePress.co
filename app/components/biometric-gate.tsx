@@ -9,23 +9,30 @@ import {
   BiometryType,
   BiometryErrorType,
 } from "@/utils/biometric-auth";
-import { isBiometricLockEnabled } from "@/utils/biometric-session";
+import {
+  isBiometricLockEnabled,
+  lockSession,
+  restoreSessionFromKeychain,
+} from "@/utils/biometric-session";
+import { createClient } from "@/utils/supabase/client";
 import { App } from "@capacitor/app";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /**
  * How long (ms) the app can be in the background before we re-lock it.
- * 30 s feels generous but matches most banking/auth apps.
+ * 30 s matches most banking / authentication apps.
  */
 const BACKGROUND_GRACE_MS = 30_000;
 
 type GateStatus =
-  | "checking"   // client not yet determined
-  | "idle"       // not native or biometrics disabled — no gate
-  | "locked"     // locked, will auto-prompt shortly
-  | "prompting"  // biometric dialog is open
-  | "error"      // auth failed (non-cancel); show message + retry button
-  | "unlocked";  // authenticated; fade overlay out then remove
+  | "checking"    // client not yet determined
+  | "idle"        // not native or biometrics disabled — no gate
+  | "locked"      // locked, will auto-prompt shortly
+  | "prompting"   // biometric dialog is open
+  | "restoring"   // biometric passed; restoring Supabase session from Keychain
+  | "error"       // unrecoverable error; show message + retry button
+  | "unlocked";   // session restored; fade overlay out then unmount
 
 interface LockState {
   status: GateStatus;
@@ -122,6 +129,9 @@ function BiometryIcon({
 // ---------------------------------------------------------------------------
 
 export default function BiometricGate() {
+  const router = useRouter();
+  const supabase = createClient();
+
   const [state, setState] = useState<LockState>({
     status: "checking",
     errorMessage: null,
@@ -134,48 +144,76 @@ export default function BiometricGate() {
   // Whether the overlay should be visually fading out (for exit animation).
   const [fadingOut, setFadingOut] = useState(false);
 
-  const triggerUnlock = useCallback(async (biometryType: BiometryType) => {
-    setState((s) => ({ ...s, status: "prompting", errorMessage: null }));
+  /**
+   * Dismiss the overlay with a fade and refresh the page so server components
+   * pick up the restored session cookies.
+   */
+  const dismissAndRefresh = useCallback(() => {
+    setState((s) => ({ ...s, status: "unlocked" }));
+    setFadingOut(true);
 
-    const label = biometryLabel(biometryType);
-    const { success, errorCode } = await authenticate({
-      reason: `Unlock SlidePress with ${label}.`,
-      cancelTitle: "Use Passcode",
-      allowDeviceCredential: true,
-    });
+    setTimeout(() => {
+      setState((s) => ({ ...s, status: "idle" }));
+      setFadingOut(false);
+      // Trigger a server re-render so protected pages see the restored session.
+      router.refresh();
+    }, 500);
+  }, [router]);
 
-    if (success) {
-      setState((s) => ({ ...s, status: "unlocked" }));
-      setFadingOut(true);
+  const triggerUnlock = useCallback(
+    async (biometryType: BiometryType) => {
+      setState((s) => ({ ...s, status: "prompting", errorMessage: null }));
 
-      // Remove overlay from DOM after the CSS transition finishes.
-      setTimeout(() => {
+      const label = biometryLabel(biometryType);
+      const { success, errorCode } = await authenticate({
+        reason: `Unlock SlidePress with ${label}.`,
+        cancelTitle: "Use Passcode",
+        allowDeviceCredential: true,
+      });
+
+      if (!success) {
+        // User cancelled → stay locked but don't show an error message.
+        if (
+          errorCode === BiometryErrorType.userCancel ||
+          errorCode === BiometryErrorType.systemCancel ||
+          errorCode === BiometryErrorType.appCancel
+        ) {
+          setState((s) => ({ ...s, status: "locked", errorMessage: null }));
+          return;
+        }
+
+        // Real biometric error → show message + retry button.
+        setState((s) => ({
+          ...s,
+          status: "error",
+          errorMessage: biometryErrorMessage(
+            errorCode ?? BiometryErrorType.none,
+          ),
+        }));
+        return;
+      }
+
+      // Biometric passed — restore the Supabase session from Keychain.
+      setState((s) => ({ ...s, status: "restoring" }));
+
+      const { error: restoreError } = await restoreSessionFromKeychain(supabase);
+
+      if (restoreError) {
+        // Token expired or missing — force the user back to login.
         setState((s) => ({ ...s, status: "idle" }));
         setFadingOut(false);
-      }, 500);
+        router.replace("/login?reason=session_expired");
+        return;
+      }
 
-      return;
-    }
+      dismissAndRefresh();
+    },
+    // supabase client is stable (singleton); router is stable in Next.js 13+.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dismissAndRefresh],
+  );
 
-    // User cancelled → stay locked but don't show an error message.
-    if (
-      errorCode === BiometryErrorType.userCancel ||
-      errorCode === BiometryErrorType.systemCancel ||
-      errorCode === BiometryErrorType.appCancel
-    ) {
-      setState((s) => ({ ...s, status: "locked", errorMessage: null }));
-      return;
-    }
-
-    // Real error → show message + retry button.
-    setState((s) => ({
-      ...s,
-      status: "error",
-      errorMessage: biometryErrorMessage(errorCode ?? BiometryErrorType.none),
-    }));
-  }, []);
-
-  // Initialise on mount.
+  // Initialise on mount — decide whether to show the gate.
   useLayoutEffect(() => {
     if (!isBiometricSupported()) {
       setState((s) => ({ ...s, status: "idle" }));
@@ -195,8 +233,7 @@ export default function BiometricGate() {
       if (cancelled) return;
 
       if (!info.isAvailable) {
-        // Biometrics enrolled setting is on but hardware unavailable (e.g.
-        // enrolled state changed). Fall through without a gate.
+        // Enrolled setting is on but hardware unavailable — fall through.
         setState((s) => ({ ...s, status: "idle" }));
         return;
       }
@@ -207,7 +244,7 @@ export default function BiometricGate() {
         biometryType: info.biometryType,
       }));
 
-      // Slight delay so the lock screen is painted before the OS dialog opens.
+      // Small delay so the overlay is painted before the OS dialog opens.
       setTimeout(() => {
         if (!cancelled) {
           void triggerUnlock(info.biometryType);
@@ -216,65 +253,67 @@ export default function BiometricGate() {
     }
 
     void init();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // App state change listener: re-lock after backgrounded for > grace period.
+  // App state change listener: lock session + re-show gate after grace period.
   useEffect(() => {
     if (!isBiometricSupported()) return;
     if (!isBiometricLockEnabled()) return;
 
-    const listenerPromise = App.addListener("appStateChange", ({ isActive }) => {
-      if (!isActive) {
-        // App went to background; record the time.
-        backgroundedAtRef.current = Date.now();
-        return;
-      }
-
-      // App came back to foreground.
-      const backgroundedAt = backgroundedAtRef.current;
-      backgroundedAtRef.current = null;
-
-      if (backgroundedAt === null) return;
-
-      const elapsed = Date.now() - backgroundedAt;
-      if (elapsed < BACKGROUND_GRACE_MS) return;
-
-      // Grace period expired — re-lock.
-      setState((prev) => {
-        // Already locked/prompting: don't reset error state unnecessarily.
-        if (prev.status === "locked" || prev.status === "prompting") {
-          return prev;
+    const listenerPromise = App.addListener(
+      "appStateChange",
+      ({ isActive }) => {
+        if (!isActive) {
+          backgroundedAtRef.current = Date.now();
+          return;
         }
 
-        return { ...prev, status: "locked", errorMessage: null };
-      });
+        const backgroundedAt = backgroundedAtRef.current;
+        backgroundedAtRef.current = null;
 
-      // Re-check biometry type in case it changed (edge case).
-      checkBiometry()
-        .then((info) => {
-          if (info.isAvailable) {
-            void triggerUnlock(info.biometryType);
+        if (backgroundedAt === null) return;
+
+        const elapsed = Date.now() - backgroundedAt;
+        if (elapsed < BACKGROUND_GRACE_MS) return;
+
+        // Grace period expired: snapshot the latest token into Keychain and
+        // clear the local session so tokens are not at rest in plain storage.
+        void lockSession(supabase);
+
+        // Re-lock the gate.
+        setState((prev) => {
+          if (prev.status === "locked" || prev.status === "prompting") {
+            return prev;
           }
-        })
-        .catch(() => {});
-    });
+
+          return { ...prev, status: "locked", errorMessage: null };
+        });
+
+        checkBiometry()
+          .then((info) => {
+            if (info.isAvailable) {
+              void triggerUnlock(info.biometryType);
+            }
+          })
+          .catch(() => {});
+      },
+    );
 
     return () => {
       void listenerPromise.then((l) => l.remove());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerUnlock]);
 
   const { status, errorMessage, biometryType } = state;
 
-  // Nothing to render when gate is not active.
   if (status === "idle") return null;
 
-  // During 'checking' on web: render nothing (useLayoutEffect sets idle immediately).
-  // On native, 'checking' is extremely brief before useLayoutEffect fires.
-  const isVisible = status !== "checking" && !fadingOut;
-
+  const isProcessing = status === "prompting" || status === "restoring";
   const label = biometryLabel(biometryType);
 
   return (
@@ -283,7 +322,10 @@ export default function BiometricGate() {
       className={`fixed inset-0 z-100 flex flex-col items-center justify-between bg-[#09090b] px-6 transition-opacity duration-500 ${
         fadingOut || status === "checking" ? "opacity-0" : "opacity-100"
       }`}
-      style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+      style={{
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
     >
       {/* App name */}
       <div className="mt-16 flex flex-col items-center gap-3">
@@ -297,7 +339,7 @@ export default function BiometricGate() {
       <div className="flex flex-col items-center gap-6">
         <div
           className={`flex h-24 w-24 items-center justify-center rounded-full border border-zinc-700/60 bg-zinc-800/60 ${
-            status === "prompting" ? "animate-pulse" : ""
+            isProcessing ? "animate-pulse" : ""
           }`}
         >
           <BiometryIcon
@@ -308,6 +350,10 @@ export default function BiometricGate() {
 
         {status === "prompting" && (
           <p className="text-sm text-zinc-400">Waiting for {label}…</p>
+        )}
+
+        {status === "restoring" && (
+          <p className="text-sm text-zinc-400">Restoring session…</p>
         )}
 
         {(status === "locked" || status === "error") && (
@@ -332,7 +378,9 @@ export default function BiometricGate() {
 
       {/* Bottom hint */}
       <p className="mb-6 text-xs text-zinc-600">
-        {isVisible ? `Unlock with ${label} to continue` : ""}
+        {status === "locked" || status === "error"
+          ? `Unlock with ${label} to continue`
+          : ""}
       </p>
     </div>
   );

@@ -27,6 +27,7 @@
 		"FilesystemPlugin",
 		"PushNotificationsPlugin",
 		"SharePlugin",
-		"StatusBarPlugin"
+		"StatusBarPlugin",
+		"SecureStoragePlugin"
 	]
 }

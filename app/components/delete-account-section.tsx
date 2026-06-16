@@ -39,7 +39,7 @@ export default function DeleteAccountSection() {
         throw new Error(data.error ?? "Failed to delete account");
       }
 
-      clearBiometricSession();
+      await clearBiometricSession();
       await supabase.auth.signOut();
       router.push("/");
       router.refresh();

@@ -165,7 +165,7 @@ export default function SettingsContent({ user }: SettingsContentProps) {
 
   async function handleSignOut() {
     setSigningOut(true);
-    clearBiometricSession();
+    await clearBiometricSession();
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();
