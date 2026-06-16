@@ -10,7 +10,7 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 const MOBILE_NAV_PADDING =
@@ -122,7 +122,7 @@ function DesktopNav({
   isSettingsActive: boolean;
 }) {
   return (
-    <header className="hidden border-b border-border bg-card/40 md:block">
+    <header className="sticky top-0 z-50 hidden border-b border-border bg-card/40 backdrop-blur-md md:block">
       <div className="page-shell flex items-center justify-between gap-4 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-8">
           <BrandLogo
@@ -243,11 +243,20 @@ function AppNavChrome({ user }: { user: User }) {
   const { isOpen, openCreateSheet, closeCreateSheet } = useCreateSheet();
   const [formKey, setFormKey] = useState(0);
 
-  const isCampaignsActive =
-    pathname === "/campaigns" || pathname.startsWith("/campaign/");
+  const isCampaignsActive = pathname === "/campaigns";
   const isNewCampaignActive = pathname === "/new";
   const isSettingsActive = pathname === "/settings";
   const isCreateActive = isOpen;
+  const previousPathname = useRef(pathname);
+
+  useEffect(() => {
+    if (previousPathname.current === pathname) {
+      return;
+    }
+
+    previousPathname.current = pathname;
+    closeCreateSheet();
+  }, [pathname, closeCreateSheet]);
 
   function handleOpenCreate() {
     setFormKey((current) => current + 1);

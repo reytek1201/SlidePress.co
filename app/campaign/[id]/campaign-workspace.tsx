@@ -25,6 +25,7 @@ import CampaignGeneratingView from "@/app/campaign/[id]/campaign-generating-view
 import CampaignNextStepBar from "@/app/campaign/[id]/campaign-next-step-bar";
 import CampaignProgressStrip from "@/app/campaign/[id]/campaign-progress-strip";
 import CampaignTitleEditor from "@/app/campaign/[id]/campaign-title-editor";
+import CampaignBackLink from "@/app/components/campaign-back-link";
 import DeleteCampaignButton from "@/app/components/delete-campaign-button";
 import DuplicateCampaignButton from "@/app/components/duplicate-campaign-button";
 import ScrollToTopButton from "@/app/components/scroll-to-top-button";
@@ -562,6 +563,7 @@ export default function CampaignWorkspace({
         className="page-main scroll-mt-0"
       >
         <header className="border-b border-border pb-6 md:pb-8">
+          <CampaignBackLink className="mb-4" />
           <div className="flex flex-wrap items-start justify-between gap-3 md:gap-4">
             <div>
               <p className="brand-kicker">
@@ -701,7 +703,7 @@ export default function CampaignWorkspace({
           onCopyAllCaptions={handleCopyAllCaptions}
         />
 
-        <section id="section-slides" className="mt-8 scroll-mt-32 md:mt-10 md:scroll-mt-36">
+        <section id="section-slides" className="mt-8 scroll-mt-32 md:mt-10 md:scroll-mt-48">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3 md:mb-6 md:gap-4">
             <div>
               <h2 className="text-lg font-semibold text-foreground md:text-xl">Slides</h2>
@@ -899,7 +901,7 @@ export default function CampaignWorkspace({
 
         <section
           id="section-publish"
-          className="mt-8 scroll-mt-32 rounded-xl border border-border bg-card/30 p-4 sm:mt-10 sm:scroll-mt-36 sm:rounded-2xl sm:p-6 md:p-8"
+          className="mt-8 scroll-mt-32 rounded-xl border border-border bg-card/30 p-4 sm:mt-10 sm:scroll-mt-36 sm:rounded-2xl sm:p-6 md:scroll-mt-48 md:p-8"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
             <div>

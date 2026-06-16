@@ -53,29 +53,24 @@ export default function CreateCampaignSheet({
     router.push(`/campaign/${campaignId}`);
   }
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <div
-      className={`fixed inset-0 z-[60] md:hidden ${
-        open ? "pointer-events-auto" : "pointer-events-none"
-      }`}
-      aria-hidden={!open}
-    >
+    <div className="fixed inset-0 z-[60] md:hidden" aria-hidden={false}>
       <button
         type="button"
         aria-label="Close create campaign sheet"
         onClick={onClose}
-        className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ${
-          open ? "opacity-100" : "opacity-0"
-        }`}
+        className="absolute inset-0 bg-black/60 opacity-100 transition-opacity duration-300"
       />
 
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-campaign-sheet-title"
-        className={`absolute inset-x-0 bottom-0 flex max-h-[92vh] flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-300 ease-out ${
-          open ? "translate-y-0" : "translate-y-full"
-        }`}
+        className="absolute inset-x-0 bottom-0 flex max-h-[92vh] translate-y-0 flex-col rounded-t-2xl border-t border-border bg-card shadow-2xl transition-transform duration-300 ease-out"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="flex shrink-0 flex-col items-center border-b border-border px-4 pb-3 pt-3">
