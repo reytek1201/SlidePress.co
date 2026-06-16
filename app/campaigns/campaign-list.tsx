@@ -35,6 +35,8 @@ export default function CampaignList({ campaigns }: CampaignListProps) {
                   <img
                     src={previewImage}
                     alt={campaign.title ?? "Campaign preview"}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover sm:max-h-40"
                   />
                 ) : (

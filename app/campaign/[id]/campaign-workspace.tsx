@@ -14,12 +14,7 @@ import {
   formatAspectRatio,
 } from "@/utils/campaign-display";
 import { formatSlidesImageStatus } from "@/utils/campaign-progress";
-import {
-  downloadSlideImage,
-  slideImageFilename,
-} from "@/utils/download-slide";
-import SlideRegenerateControls from "@/app/campaign/[id]/slide-regenerate-controls";
-import SlideOverlayEditor from "@/app/campaign/[id]/slide-overlay-editor";
+import SlideCard from "@/app/campaign/[id]/slide-card";
 import CarouselPreviewModal from "@/app/campaign/[id]/carousel-preview-modal";
 import CampaignGeneratingView from "@/app/campaign/[id]/campaign-generating-view";
 import CampaignNextStepBar from "@/app/campaign/[id]/campaign-next-step-bar";
@@ -30,11 +25,8 @@ import DeleteCampaignButton from "@/app/components/delete-campaign-button";
 import DuplicateCampaignButton from "@/app/components/duplicate-campaign-button";
 import ScrollToTopButton from "@/app/components/scroll-to-top-button";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
-import type { RegenerateFeedbackChipId } from "@/types/regenerate-feedback";
 import {
   saveAllSlidesToPhotos,
-  saveSlideImageToPhotos,
-  shareSlideImage,
 } from "@/utils/native-slide-export";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -59,17 +51,8 @@ export default function CampaignWorkspace({
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [captionsMessage, setCaptionsMessage] = useState<string | null>(null);
   const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
-  const [copiedVoiceoverSlideId, setCopiedVoiceoverSlideId] = useState<
-    string | null
-  >(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
-  const [downloadingSlideId, setDownloadingSlideId] = useState<string | null>(
-    null
-  );
-  const [savingSlideId, setSavingSlideId] = useState<string | null>(null);
-  const [savedSlideId, setSavedSlideId] = useState<string | null>(null);
-  const [sharingSlideId, setSharingSlideId] = useState<string | null>(null);
   const [isSavingAllPhotos, setIsSavingAllPhotos] = useState(false);
   const [savedAllPhotos, setSavedAllPhotos] = useState(false);
   const [saveAllPhotosProgress, setSaveAllPhotosProgress] = useState<{
@@ -80,15 +63,6 @@ export default function CampaignWorkspace({
   const [regeneratingSlideId, setRegeneratingSlideId] = useState<string | null>(
     null
   );
-  const [selectedFeedbackBySlide, setSelectedFeedbackBySlide] = useState<
-    Record<string, RegenerateFeedbackChipId[]>
-  >({});
-  const [regenerateNotesBySlide, setRegenerateNotesBySlide] = useState<
-    Record<string, string>
-  >({});
-  const [headlineDraftBySlide, setHeadlineDraftBySlide] = useState<
-    Record<string, string>
-  >({});
   const [error, setError] = useState<string | null>(null);
   const [isRetryingText, setIsRetryingText] = useState(false);
   const textGenerationStarted = useRef(false);
@@ -115,7 +89,7 @@ export default function CampaignWorkspace({
   const refreshSlides = useCallback(async () => {
     const { data: refreshedSlides } = await supabase
       .from("slides")
-      .select("*")
+      .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_url, fal_request_id, created_at, updated_at")
       .eq("campaign_id", campaign.id)
       .order("slide_index", { ascending: true });
 
@@ -270,7 +244,7 @@ export default function CampaignWorkspace({
       if (data.mode === "sync") {
         const { data: refreshedSlides } = await supabase
           .from("slides")
-          .select("*")
+          .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_url, fal_request_id, created_at, updated_at")
           .eq("campaign_id", campaign.id)
           .order("slide_index", { ascending: true });
 
@@ -407,79 +381,6 @@ export default function CampaignWorkspace({
     }
   }
 
-  async function handleCopyVoiceover(slideId: string, script: string) {
-    try {
-      await navigator.clipboard.writeText(script);
-      setCopiedVoiceoverSlideId(slideId);
-      window.setTimeout(() => setCopiedVoiceoverSlideId(null), 2000);
-    } catch {
-      setError("Could not copy to clipboard");
-    }
-  }
-
-  async function handleDownloadSlide(slide: Slide) {
-    if (!slide.image_url) {
-      return;
-    }
-
-    setError(null);
-    setDownloadingSlideId(slide.id);
-
-    try {
-      await downloadSlideImage(
-        slide.image_url,
-        slideImageFilename(slide.slide_index)
-      );
-    } catch {
-      setError("Could not download slide image");
-    } finally {
-      setDownloadingSlideId(null);
-    }
-  }
-
-  async function handleSaveSlideToPhotos(slide: Slide) {
-    if (!slide.image_url) {
-      return;
-    }
-
-    setError(null);
-    setSavingSlideId(slide.id);
-
-    try {
-      await saveSlideImageToPhotos(
-        slide.image_url,
-        slideImageFilename(slide.slide_index)
-      );
-      setSavedSlideId(slide.id);
-      window.setTimeout(() => setSavedSlideId(null), 2500);
-    } catch {
-      setError("Could not save slide to Photos");
-    } finally {
-      setSavingSlideId(null);
-    }
-  }
-
-  async function handleShareSlide(slide: Slide) {
-    if (!slide.image_url) {
-      return;
-    }
-
-    setError(null);
-    setSharingSlideId(slide.id);
-
-    try {
-      await shareSlideImage(
-        slide.image_url,
-        slideImageFilename(slide.slide_index),
-        `Slide ${slide.slide_index + 1}`
-      );
-    } catch {
-      setError("Could not share slide image");
-    } finally {
-      setSharingSlideId(null);
-    }
-  }
-
   async function handleSaveAllToPhotos() {
     setError(null);
     setExportMessage(null);
@@ -516,58 +417,26 @@ export default function CampaignWorkspace({
     }
   }
 
-  function handleOpenPreview(slideIndex = 0) {
+  const handleOpenPreview = useCallback((slideIndex = 0) => {
     setPreviewInitialIndex(slideIndex);
     setPreviewOpen(true);
-  }
+  }, []);
 
   const slidesWithImages = slides.filter((slide) => slide.image_url);
 
-  function toggleFeedbackChip(
-    slideId: string,
-    chipId: RegenerateFeedbackChipId
-  ) {
-    setSelectedFeedbackBySlide((current) => {
-      const selected = current[slideId] ?? [];
-
-      if (chipId === "try_again") {
-        return {
-          ...current,
-          [slideId]: selected.includes("try_again") ? [] : ["try_again"],
-        };
-      }
-
-      const withoutTryAgain = selected.filter((id) => id !== "try_again");
-      const next = withoutTryAgain.includes(chipId)
-        ? withoutTryAgain.filter((id) => id !== chipId)
-        : [...withoutTryAgain, chipId];
-
-      return {
-        ...current,
-        [slideId]: next,
-      };
-    });
-  }
-
-  async function handleRegenerateSlide(slideId: string) {
+  const handleRegenerateSlide = useCallback(async (slideId: string) => {
     setError(null);
     setRegeneratingSlideId(slideId);
 
     try {
       const slide = slides.find((entry) => entry.id === slideId);
-      const feedback = selectedFeedbackBySlide[slideId] ?? [];
-      const notes = regenerateNotesBySlide[slideId]?.trim();
-      const draftHeadline = headlineDraftBySlide[slideId]?.trim();
-      const textOverlay =
-        draftHeadline || slide?.text_overlay?.trim() || undefined;
+      const textOverlay = slide?.text_overlay?.trim() || undefined;
 
       const response = await fetch("/api/regenerate-slide", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slideId,
-          feedback,
-          notes: notes || undefined,
           text_overlay: textOverlay,
         }),
       });
@@ -589,19 +458,10 @@ export default function CampaignWorkspace({
                 ...slide,
                 image_url: null,
                 fal_request_id: null,
-                ...(textOverlay ? { text_overlay: textOverlay } : {}),
               }
             : slide
         )
       );
-
-      if (textOverlay) {
-        setHeadlineDraftBySlide((current) => {
-          const next = { ...current };
-          delete next[slideId];
-          return next;
-        });
-      }
 
       setCampaign((current) => ({
         ...current,
@@ -639,7 +499,15 @@ export default function CampaignWorkspace({
     } finally {
       setRegeneratingSlideId(null);
     }
-  }
+  }, [campaign.id, slides, supabase]);
+
+  const handleSlideUpdated = useCallback((slideId: string, patch: Partial<Slide>) => {
+    setSlides((current) =>
+      current.map((slide) =>
+        slide.id === slideId ? { ...slide, ...patch } : slide
+      )
+    );
+  }, []);
 
   if (isAwaitingTextGeneration) {
     return (
@@ -836,192 +704,18 @@ export default function CampaignWorkspace({
 
           <div className="grid gap-4 md:gap-6">
             {slides.map((slide) => (
-              <article
+              <SlideCard
                 key={slide.id}
-                className="overflow-hidden rounded-xl border border-border bg-card/50 md:rounded-2xl"
-              >
-                <div className="flex items-center justify-between border-b border-border px-3 py-2.5 md:px-5 md:py-4">
-                  <h3 className="text-sm font-semibold text-secondary-foreground">
-                    Slide {slide.slide_index + 1}
-                  </h3>
-                  {slide.image_url ? (
-                    <span className="text-xs font-medium text-emerald-400">
-                      Image ready
-                    </span>
-                  ) : slide.fal_request_id ? (
-                    <span className="text-xs font-medium text-amber-300">
-                      Generating…
-                    </span>
-                  ) : (
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Image pending
-                    </span>
-                  )}
-                </div>
-
-                <div
-                  className={
-                    slide.image_url
-                      ? "grid gap-0 lg:grid-cols-[240px_1fr]"
-                      : undefined
-                  }
-                >
-                  {slide.image_url && (
-                    <div
-                      className={`flex max-h-64 flex-col items-center justify-center border-b border-border bg-background p-3 sm:max-h-80 md:max-h-none md:p-6 lg:border-b-0 lg:border-r ${
-                        campaign.aspect_ratio === "4:5"
-                          ? "aspect-4/5 max-md:aspect-auto lg:aspect-auto lg:min-h-[300px]"
-                          : "aspect-9/16 max-md:aspect-auto lg:aspect-auto lg:min-h-[300px]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPreview(slide.slide_index)}
-                        className="group relative max-h-full max-w-full cursor-zoom-in"
-                        aria-label={`Expand slide ${slide.slide_index + 1}`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={slide.image_url}
-                          alt={`Slide ${slide.slide_index + 1}`}
-                          className="max-h-56 max-w-full rounded-lg object-contain transition group-hover:opacity-95 sm:max-h-72 md:max-h-full"
-                        />
-                        <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
-                          <span className="rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
-                            Expand
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenPreview(slide.slide_index)}
-                        className="mt-3 hidden text-xs font-medium text-muted-foreground transition hover:text-foreground md:inline-block lg:hidden"
-                      >
-                        Expand image
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="space-y-4 p-3 sm:space-y-5 sm:p-4 md:p-6">
-                    <SlideOverlayEditor
-                      slideId={slide.id}
-                      value={slide.text_overlay ?? ""}
-                      disabled={
-                        regeneratingSlideId === slide.id ||
-                        (isAnySlideGenerating && regeneratingSlideId !== slide.id)
-                      }
-                      onDraftChange={(textOverlay) =>
-                        setHeadlineDraftBySlide((current) => ({
-                          ...current,
-                          [slide.id]: textOverlay,
-                        }))
-                      }
-                      onSaved={(textOverlay) => {
-                        setHeadlineDraftBySlide((current) => {
-                          const next = { ...current };
-                          delete next[slide.id];
-                          return next;
-                        });
-                        setSlides((current) =>
-                          current.map((entry) =>
-                            entry.id === slide.id
-                              ? { ...entry, text_overlay: textOverlay }
-                              : entry
-                          )
-                        );
-                      }}
-                      onError={setError}
-                    />
-                    <div>
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Voiceover script
-                        </p>
-                        {slide.voiceover_script && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleCopyVoiceover(
-                                slide.id,
-                                slide.voiceover_script ?? ""
-                              )
-                            }
-                            className="text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                          >
-                            {copiedVoiceoverSlideId === slide.id
-                              ? "Copied"
-                              : "Copy"}
-                          </button>
-                        )}
-                      </div>
-                      <p className="mt-1.5 text-sm leading-6 text-secondary-foreground md:mt-2 md:leading-7">
-                        {slide.voiceover_script ?? "—"}
-                      </p>
-                    </div>
-
-                    {slide.image_url && (
-                      <div className="flex flex-wrap gap-2">
-                        {isNativeApp === true ? (
-                          <>
-                            <button
-                              type="button"
-                              disabled={savingSlideId === slide.id}
-                              onClick={() => handleSaveSlideToPhotos(slide)}
-                              className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2.5"
-                            >
-                              {savingSlideId === slide.id
-                                ? "Saving…"
-                                : savedSlideId === slide.id
-                                  ? "Saved"
-                                  : "Save to Photos"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={sharingSlideId === slide.id}
-                              onClick={() => handleShareSlide(slide)}
-                              className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2.5"
-                            >
-                              {sharingSlideId === slide.id ? "Sharing…" : "Share"}
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={downloadingSlideId === slide.id}
-                            onClick={() => handleDownloadSlide(slide)}
-                            className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2.5"
-                          >
-                            {downloadingSlideId === slide.id
-                              ? "Downloading…"
-                              : "Download image"}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {slide.image_url && (
-                      <SlideRegenerateControls
-                        disabled={
-                          isAnySlideGenerating && regeneratingSlideId !== slide.id
-                        }
-                        isRegenerating={regeneratingSlideId === slide.id}
-                        selectedChipIds={selectedFeedbackBySlide[slide.id] ?? []}
-                        notes={regenerateNotesBySlide[slide.id] ?? ""}
-                        onNotesChange={(value) =>
-                          setRegenerateNotesBySlide((current) => ({
-                            ...current,
-                            [slide.id]: value,
-                          }))
-                        }
-                        onToggleChip={(chipId) =>
-                          toggleFeedbackChip(slide.id, chipId)
-                        }
-                        onRegenerate={() => handleRegenerateSlide(slide.id)}
-                      />
-                    )}
-                  </div>
-                </div>
-              </article>
+                slide={slide}
+                aspectRatio={campaign.aspect_ratio}
+                isNativeApp={isNativeApp === true}
+                isAnySlideGenerating={isAnySlideGenerating}
+                isRegenerating={regeneratingSlideId === slide.id}
+                onOpenPreview={handleOpenPreview}
+                onSlideUpdated={handleSlideUpdated}
+                onRegenerate={handleRegenerateSlide}
+                onError={setError}
+              />
             ))}
           </div>
         </section>
@@ -1155,13 +849,15 @@ export default function CampaignWorkspace({
         </section>
       </main>
       <ScrollToTopButton />
-      <CarouselPreviewModal
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        slides={slides}
-        aspectRatio={campaign.aspect_ratio}
-        initialSlideIndex={previewInitialIndex}
-      />
+      {previewOpen && (
+        <CarouselPreviewModal
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          slides={slides}
+          aspectRatio={campaign.aspect_ratio}
+          initialSlideIndex={previewInitialIndex}
+        />
+      )}
     </div>
   );
 }

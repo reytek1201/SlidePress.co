@@ -37,21 +37,25 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
     notFound();
   }
 
-  const { data: slides, error: slidesError } = await supabase
-    .from("slides")
-    .select("*")
-    .eq("campaign_id", id)
-    .order("slide_index", { ascending: true });
+  const [slidesResult, captionsResult] = await Promise.all([
+    supabase
+      .from("slides")
+      .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_url, fal_request_id, created_at, updated_at")
+      .eq("campaign_id", id)
+      .order("slide_index", { ascending: true }),
+    supabase
+      .from("platform_captions")
+      .select("*")
+      .eq("campaign_id", id)
+      .order("platform", { ascending: true }),
+  ]);
 
-  if (slidesError) {
+  if (slidesResult.error) {
     notFound();
   }
 
-  const { data: captions } = await supabase
-    .from("platform_captions")
-    .select("*")
-    .eq("campaign_id", id)
-    .order("platform", { ascending: true });
+  const slides = slidesResult.data;
+  const captions = captionsResult.data;
 
   return (
     <CampaignWorkspace

@@ -252,6 +252,7 @@ export default function CarouselPreviewModal({
               <img
                 src={activeSlide.image_url}
                 alt={`Slide ${activeSlide.slide_index + 1}`}
+                decoding="async"
                 className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain md:max-h-[78vh]"
               />
             </div>

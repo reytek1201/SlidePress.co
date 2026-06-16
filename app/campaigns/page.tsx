@@ -28,8 +28,9 @@ export default async function CampaignsPage() {
 
   const { data: campaigns, error } = await supabase
     .from("campaigns")
-    .select("*, slides(slide_index, image_url)")
-    .order("created_at", { ascending: false });
+    .select("id, title, topic, aspect_ratio, slide_count, status, created_at, slides(slide_index, image_url)")
+    .order("created_at", { ascending: false })
+    .limit(50);
 
   if (error) {
     throw new Error(error.message);

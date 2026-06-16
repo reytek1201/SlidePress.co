@@ -151,20 +151,30 @@ export async function saveAllSlidesToPhotos(
 
   onProgress?.(0, totalCount);
 
-  for (const slide of slidesWithImages) {
-    if (!slide.image_url) {
-      continue;
-    }
+  // Save up to 3 images concurrently to stay within iOS memory limits
+  const CONCURRENCY = 3;
 
-    try {
-      await saveSlideImageToPhotos(
-        slide.image_url,
-        slideImageFilename(slide.slide_index),
-        albumIdentifier,
-      );
-      savedCount += 1;
-    } catch {
-      failedCount += 1;
+  for (let i = 0; i < slidesWithImages.length; i += CONCURRENCY) {
+    const batch = slidesWithImages.slice(i, i + CONCURRENCY);
+
+    const results = await Promise.allSettled(
+      batch
+        .filter((slide) => slide.image_url)
+        .map((slide) =>
+          saveSlideImageToPhotos(
+            slide.image_url!,
+            slideImageFilename(slide.slide_index),
+            albumIdentifier,
+          ),
+        ),
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        savedCount += 1;
+      } else {
+        failedCount += 1;
+      }
     }
 
     onProgress?.(savedCount, totalCount);

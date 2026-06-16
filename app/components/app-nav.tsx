@@ -122,7 +122,7 @@ function DesktopNav({
   isSettingsActive: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-50 hidden border-b border-border bg-card/40 backdrop-blur-md md:block">
+    <header className="sticky top-0 z-50 hidden border-b border-border bg-card md:block">
       <div className="page-shell flex items-center justify-between gap-4 py-4">
         <div className="flex min-w-0 flex-1 items-center gap-8">
           <BrandLogo
@@ -181,7 +181,7 @@ function MobileBottomNav({
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card/95 backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Main navigation"
     >
