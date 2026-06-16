@@ -47,7 +47,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // Convert the APNs device token into an FCM registration token so Capacitor
     // push notifications work end-to-end on iOS when using Firebase Cloud Messaging.
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        Messaging.messaging().apnsToken = deviceToken
+        #if DEBUG
+        Messaging.messaging().setAPNSToken(deviceToken, type: .sandbox)
+        #else
+        Messaging.messaging().setAPNSToken(deviceToken, type: .prod)
+        #endif
         Messaging.messaging().token { token, error in
             if let error = error {
                 NotificationCenter.default.post(
