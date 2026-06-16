@@ -24,6 +24,7 @@
 		"MediaPlugin",
 		"AppPlugin",
 		"CAPBrowserPlugin",
+		"CAPCameraPlugin",
 		"FilesystemPlugin",
 		"PushNotificationsPlugin",
 		"SharePlugin",

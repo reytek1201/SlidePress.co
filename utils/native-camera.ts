@@ -1,4 +1,5 @@
 import { Camera } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
 
 export type CameraSource = "camera" | "photos";
@@ -30,12 +31,16 @@ export async function captureReferencePhoto(
       editable: "in-app",
     });
 
-    if (!result.webPath) {
+    const path =
+      result.webPath ??
+      (result.uri ? Capacitor.convertFileSrc(result.uri) : null);
+
+    if (!path) {
       return null;
     }
 
     const mimeType = "image/jpeg";
-    const blob = await webPathToBlob(result.webPath, mimeType);
+    const blob = await webPathToBlob(path, mimeType);
     return { blob, mimeType, filename: "photo.jpg" };
   }
 
@@ -46,12 +51,16 @@ export async function captureReferencePhoto(
 
   const first = result.results[0];
 
-  if (!first?.webPath) {
+  const galleryPath =
+    first?.webPath ??
+    (first?.uri ? Capacitor.convertFileSrc(first.uri) : null);
+
+  if (!galleryPath) {
     return null;
   }
 
   const mimeType = "image/jpeg";
-  const blob = await webPathToBlob(first.webPath, mimeType);
+  const blob = await webPathToBlob(galleryPath, mimeType);
   return { blob, mimeType, filename: "photo.jpg" };
 }
 
@@ -68,11 +77,15 @@ export async function captureProductPhotoForVision(): Promise<{
     correctOrientation: true,
   });
 
-  if (!result.webPath) {
+  const path =
+    result.webPath ??
+    (result.uri ? Capacitor.convertFileSrc(result.uri) : null);
+
+  if (!path) {
     return null;
   }
 
-  const blob = await webPathToBlob(result.webPath, "image/jpeg");
+  const blob = await webPathToBlob(path, "image/jpeg");
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

@@ -65,17 +65,23 @@ export default function ReferenceUploadSlot({
   const isNativeApp = useIsNativeApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [capturing, setCapturing] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   async function handleCamera() {
     if (disabled || capturing) return;
+    setCaptureError(null);
     setCapturing(true);
     try {
       const result = await captureReferencePhoto("camera");
       if (result) {
         onFileSelect(blobToFile(result.blob, result.filename));
       }
-    } catch {
-      // user cancelled — no-op
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      // Ignore intentional user cancellations
+      if (!msg.toLowerCase().includes("cancel") && !msg.toLowerCase().includes("dismiss")) {
+        setCaptureError("Could not save photo. Try again.");
+      }
     } finally {
       setCapturing(false);
     }
@@ -83,6 +89,7 @@ export default function ReferenceUploadSlot({
 
   async function handlePhotos() {
     if (disabled || capturing) return;
+    setCaptureError(null);
 
     if (isNativeApp) {
       setCapturing(true);
@@ -91,8 +98,11 @@ export default function ReferenceUploadSlot({
         if (result) {
           onFileSelect(blobToFile(result.blob, result.filename));
         }
-      } catch {
-        // user cancelled — no-op
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "";
+        if (!msg.toLowerCase().includes("cancel") && !msg.toLowerCase().includes("dismiss")) {
+          setCaptureError("Could not load photo. Try again.");
+        }
       } finally {
         setCapturing(false);
       }
@@ -131,6 +141,10 @@ export default function ReferenceUploadSlot({
           </span>
         )}
       </div>
+
+      {captureError && (
+        <p className="mt-2 text-xs text-red-400">{captureError}</p>
+      )}
 
       <div className="mt-3 flex gap-2">
         {isNativeApp ? (
