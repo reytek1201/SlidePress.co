@@ -1,8 +1,8 @@
-import SettingsContent from "@/app/settings/settings-content";
+import SettingsDesktop from "@/app/settings/settings-desktop";
+import SettingsHub from "@/app/settings/settings-hub";
 import { createClient } from "@/utils/supabase/server";
 import { appRobots } from "@/utils/site-metadata";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,7 +10,17 @@ export const metadata: Metadata = {
   robots: appRobots,
 };
 
-export default async function SettingsPage() {
+interface SettingsPageProps {
+  searchParams: Promise<{ reset?: string }>;
+}
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
+  const params = await searchParams;
+
+  if (params.reset === "1") {
+    redirect("/settings/account?reset=1");
+  }
+
   const supabase = await createClient();
 
   const {
@@ -22,14 +32,13 @@ export default async function SettingsPage() {
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-full items-center justify-center bg-background text-muted-foreground">
-          Loading…
-        </div>
-      }
-    >
-      <SettingsContent user={user} />
-    </Suspense>
+    <>
+      <div className="md:hidden">
+        <SettingsHub user={user} />
+      </div>
+      <div className="hidden md:block">
+        <SettingsDesktop user={user} />
+      </div>
+    </>
   );
 }

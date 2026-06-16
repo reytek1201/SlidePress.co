@@ -294,8 +294,8 @@ function LoginForm() {
     setForgotSending(true);
 
     const redirectTo = isNativeAppRuntime()
-      ? buildNativeOAuthRedirectUrl("/settings?reset=1")
-      : `${window.location.origin}/settings?reset=1`;
+      ? buildNativeOAuthRedirectUrl("/settings/account?reset=1")
+      : `${window.location.origin}/settings/account?reset=1`;
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       email.trim(),

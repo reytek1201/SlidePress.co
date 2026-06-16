@@ -245,7 +245,7 @@ function AppNavChrome({ user }: { user: User }) {
 
   const isCampaignsActive = pathname === "/campaigns";
   const isNewCampaignActive = pathname === "/new";
-  const isSettingsActive = pathname === "/settings";
+  const isSettingsActive = pathname.startsWith("/settings");
   const isCreateActive = isOpen;
   const previousPathname = useRef(pathname);
 

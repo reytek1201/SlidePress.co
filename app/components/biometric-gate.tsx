@@ -142,8 +142,23 @@ export default function BiometricGate() {
   // Timestamp (Date.now()) when the app was backgrounded. null = in foreground.
   const backgroundedAtRef = useRef<number | null>(null);
 
+  // Prevents overlapping resume-lock / unlock sequences.
+  const resumeHandlingRef = useRef(false);
+  const unlockInProgressRef = useRef(false);
+
   // Whether the overlay should be visually fading out (for exit animation).
   const [fadingOut, setFadingOut] = useState(false);
+
+  /** Keep the Keychain vault aligned with the live Supabase refresh token. */
+  const syncKeychainFromSession = useCallback(async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.refresh_token) {
+      await storeRefreshToken(session.refresh_token);
+    }
+  }, [supabase]);
 
   /**
    * Dismiss the overlay with a fade and refresh the page so server components
@@ -163,51 +178,62 @@ export default function BiometricGate() {
 
   const triggerUnlock = useCallback(
     async (biometryType: BiometryType) => {
-      setState((s) => ({ ...s, status: "prompting", errorMessage: null }));
+      if (unlockInProgressRef.current) {
+        return;
+      }
 
-      const label = biometryLabel(biometryType);
-      const { success, errorCode } = await authenticate({
-        reason: `Unlock SlidePress with ${label}.`,
-        cancelTitle: "Use Passcode",
-        allowDeviceCredential: true,
-      });
+      unlockInProgressRef.current = true;
 
-      if (!success) {
-        // User cancelled → stay locked but don't show an error message.
-        if (
-          errorCode === BiometryErrorType.userCancel ||
-          errorCode === BiometryErrorType.systemCancel ||
-          errorCode === BiometryErrorType.appCancel
-        ) {
-          setState((s) => ({ ...s, status: "locked", errorMessage: null }));
+      try {
+        setState((s) => ({ ...s, status: "prompting", errorMessage: null }));
+
+        const label = biometryLabel(biometryType);
+        const { success, errorCode } = await authenticate({
+          reason: `Unlock SlidePress with ${label}.`,
+          cancelTitle: "Use Passcode",
+          allowDeviceCredential: true,
+        });
+
+        if (!success) {
+          // User cancelled → stay locked but don't show an error message.
+          if (
+            errorCode === BiometryErrorType.userCancel ||
+            errorCode === BiometryErrorType.systemCancel ||
+            errorCode === BiometryErrorType.appCancel
+          ) {
+            setState((s) => ({ ...s, status: "locked", errorMessage: null }));
+            return;
+          }
+
+          // Real biometric error → show message + retry button.
+          setState((s) => ({
+            ...s,
+            status: "error",
+            errorMessage: biometryErrorMessage(
+              errorCode ?? BiometryErrorType.none,
+            ),
+          }));
           return;
         }
 
-        // Real biometric error → show message + retry button.
-        setState((s) => ({
-          ...s,
-          status: "error",
-          errorMessage: biometryErrorMessage(
-            errorCode ?? BiometryErrorType.none,
-          ),
-        }));
-        return;
+        // Biometric passed — restore the Supabase session from Keychain.
+        setState((s) => ({ ...s, status: "restoring" }));
+
+        const { error: restoreError } =
+          await restoreSessionFromKeychain(supabase);
+
+        if (restoreError) {
+          // Token expired or missing — force the user back to login.
+          setState((s) => ({ ...s, status: "idle" }));
+          setFadingOut(false);
+          router.replace("/login?reason=session_expired");
+          return;
+        }
+
+        dismissAndRefresh();
+      } finally {
+        unlockInProgressRef.current = false;
       }
-
-      // Biometric passed — restore the Supabase session from Keychain.
-      setState((s) => ({ ...s, status: "restoring" }));
-
-      const { error: restoreError } = await restoreSessionFromKeychain(supabase);
-
-      if (restoreError) {
-        // Token expired or missing — force the user back to login.
-        setState((s) => ({ ...s, status: "idle" }));
-        setFadingOut(false);
-        router.replace("/login?reason=session_expired");
-        return;
-      }
-
-      dismissAndRefresh();
     },
     // supabase client is stable (singleton); router is stable in Next.js 13+.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -245,6 +271,10 @@ export default function BiometricGate() {
         biometryType: info.biometryType,
       }));
 
+      // Sync Keychain with any live session before unlock (covers cold start
+      // when the app was killed without a resume lock cycle).
+      await syncKeychainFromSession();
+
       // Small delay so the overlay is painted before the OS dialog opens.
       setTimeout(() => {
         if (!cancelled) {
@@ -281,26 +311,35 @@ export default function BiometricGate() {
         const elapsed = Date.now() - backgroundedAt;
         if (elapsed < BACKGROUND_GRACE_MS) return;
 
-        // Grace period expired: snapshot the latest token into Keychain and
-        // clear the local session so tokens are not at rest in plain storage.
-        void lockSession(supabase);
+        if (resumeHandlingRef.current) return;
 
-        // Re-lock the gate.
-        setState((prev) => {
-          if (prev.status === "locked" || prev.status === "prompting") {
-            return prev;
-          }
+        resumeHandlingRef.current = true;
 
-          return { ...prev, status: "locked", errorMessage: null };
-        });
+        void (async () => {
+          try {
+            // Re-lock the gate before clearing the session.
+            setState((prev) => ({
+              ...prev,
+              status: "locked",
+              errorMessage: null,
+            }));
 
-        checkBiometry()
-          .then((info) => {
+            // Must finish before biometric unlock so restore never races
+            // ahead of signOut or reads a stale Keychain entry.
+            await lockSession(supabase);
+
+            const info = await checkBiometry();
             if (info.isAvailable) {
-              void triggerUnlock(info.biometryType);
+              setState((prev) => ({
+                ...prev,
+                biometryType: info.biometryType,
+              }));
+              await triggerUnlock(info.biometryType);
             }
-          })
-          .catch(() => {});
+          } finally {
+            resumeHandlingRef.current = false;
+          }
+        })();
       },
     );
 
@@ -310,21 +349,20 @@ export default function BiometricGate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerUnlock]);
 
-  // Re-stash refresh token whenever the user signs in while biometric lock is
-  // enabled. This handles the session-expired re-login path: the old Keychain
-  // token was cleared, but the preference is still "enabled", so we need to
-  // repopulate the vault with the new token automatically.
+  // Keep the Keychain vault current whenever Supabase rotates the refresh token
+  // or the user signs in again (covers foreground use before background-lock).
   useEffect(() => {
     if (!isBiometricSupported()) return;
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event !== "SIGNED_IN") return;
       if (!isBiometricLockEnabled()) return;
       if (!session?.refresh_token) return;
 
-      void storeRefreshToken(session.refresh_token);
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        void storeRefreshToken(session.refresh_token);
+      }
     });
 
     return () => {

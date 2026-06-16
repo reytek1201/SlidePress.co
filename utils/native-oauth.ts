@@ -68,7 +68,7 @@ export function parseNativeAuthCallback(url: string): NativeAuthCallback | null 
   if (accessToken && refreshToken) {
     const authType = params.get("type");
     const defaultNext =
-      authType === "recovery" ? "/settings?reset=1" : "/campaigns";
+      authType === "recovery" ? "/settings/account?reset=1" : "/campaigns";
 
     return {
       kind: "tokens",

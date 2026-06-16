@@ -3,7 +3,7 @@
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import { useState } from "react";
 
-export default function PushTestSection() {
+export default function PushTestSection({ embedded = false }: { embedded?: boolean }) {
   const isNativeApp = useIsNativeApp();
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -63,13 +63,22 @@ export default function PushTestSection() {
     }
   }
 
-  return (
-    <section className="rounded-2xl border border-amber-900/40 bg-amber-950/20 p-6 sm:p-8">
-      <h2 className="text-lg font-semibold text-foreground">Push test (dev)</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Send a test notification to this device without generating images.
-        Background the app after tapping send.
-      </p>
+  const inner = (
+    <>
+      {!embedded ? (
+        <>
+          <h2 className="text-lg font-semibold text-foreground">Push test (dev)</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Send a test notification to this device without generating images.
+            Background the app after tapping send.
+          </p>
+        </>
+      ) : (
+        <p className="text-sm leading-6 text-muted-foreground">
+          Send a test notification to this device without generating images.
+          Background the app after tapping send.
+        </p>
+      )}
 
       <button
         type="button"
@@ -92,6 +101,16 @@ export default function PushTestSection() {
           {error}
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return inner;
+  }
+
+  return (
+    <section className="rounded-2xl border border-amber-900/40 bg-amber-950/20 p-6 sm:p-8">
+      {inner}
     </section>
   );
 }
