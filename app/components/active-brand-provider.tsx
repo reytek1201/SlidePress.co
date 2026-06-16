@@ -89,6 +89,49 @@ export function ActiveBrandProvider({
   }, [activeBrandId, searchParams]);
 
   useEffect(() => {
+    if (pathname !== "/campaigns" || loading || brands.length === 0) {
+      return;
+    }
+
+    const urlBrandId = searchParams.get("brand");
+    const storedBrandId = getStoredActiveBrandId();
+    const preferredId =
+      urlBrandId ??
+      storedBrandId ??
+      brands.find((brand) => brand.is_default)?.id ??
+      brands[0]?.id;
+
+    if (!preferredId) {
+      return;
+    }
+
+    const isValid = brands.some((brand) => brand.id === preferredId);
+
+    if (!isValid) {
+      return;
+    }
+
+    if (urlBrandId !== preferredId) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("brand", preferredId);
+      router.replace(`/campaigns?${params.toString()}`);
+      return;
+    }
+
+    if (activeBrandId !== preferredId) {
+      setActiveBrandIdState(preferredId);
+      setStoredActiveBrandId(preferredId);
+    }
+  }, [
+    activeBrandId,
+    brands,
+    loading,
+    pathname,
+    router,
+    searchParams,
+  ]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function load() {

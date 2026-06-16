@@ -455,6 +455,27 @@ export default function CreateCampaignForm({
             : "rounded-2xl border border-border bg-card/60 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8"
         }
       >
+        {activeBrand ? (
+          <p className="text-sm text-muted-foreground">
+            Creating for{" "}
+            <span className="font-medium text-foreground">
+              {activeBrand.name}
+            </span>
+            {(activeBrandContext?.brands.length ?? 0) > 1 ? (
+              <>
+                {" "}
+                ·{" "}
+                <Link
+                  href={`/settings/brands/${activeBrand.id}`}
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Manage brand
+                </Link>
+              </>
+            ) : null}
+          </p>
+        ) : null}
+
         <label
           htmlFor={topicId}
           className="block text-sm font-medium text-secondary-foreground"

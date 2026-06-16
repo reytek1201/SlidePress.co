@@ -1,6 +1,6 @@
 "use client";
 
-import BrandLibraryEditor from "@/app/components/brand-library-editor";
+import BrandsSettingsDesktop from "@/app/components/brands-settings-desktop";
 import BiometricSettings from "@/app/components/biometric-settings";
 import PasswordResetForm from "@/app/components/password-reset-form";
 import PushSettings from "@/app/components/push-settings";
@@ -45,8 +45,11 @@ export default function SettingsDesktop({
 
             <AccountSettings user={user} showSignOut variant="card" />
 
-            <SettingsSection title="Brand library">
-              <BrandLibraryEditor user={user} />
+            <SettingsSection
+              title="Brands"
+              description="Reference images, products, and workspaces for your campaigns."
+            >
+              <BrandsSettingsDesktop user={user} />
             </SettingsSection>
 
             <SettingsSection

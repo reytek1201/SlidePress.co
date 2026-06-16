@@ -1,5 +1,5 @@
 import CampaignList from "@/app/campaigns/campaign-list";
-import BrandSwitcher from "@/app/components/brand-switcher";
+import CampaignsPageHeader from "@/app/components/campaigns-page-header";
 import NewCampaignButton from "@/app/components/new-campaign-button";
 import { listUserBrands } from "@/utils/brands-server";
 import { createClient } from "@/utils/supabase/server";
@@ -59,29 +59,16 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
   }
 
   const typedCampaigns = (campaigns ?? []) as CampaignWithSlides[];
+  const hasMultipleBrands = brands.length > 1;
 
   return (
     <div className="min-h-full bg-background text-foreground">
       <main className="page-main">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {activeBrand ? activeBrand.name : "My campaigns"}
-              </h1>
-              <BrandSwitcher />
-            </div>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {typedCampaigns.length} campaign
-              {typedCampaigns.length === 1 ? "" : "s"}
-              {activeBrand && brands.length > 1
-                ? ` in ${activeBrand.name}`
-                : ""}
-            </p>
-          </div>
-
-          <NewCampaignButton />
-        </div>
+        <CampaignsPageHeader
+          campaignCount={typedCampaigns.length}
+          hasMultipleBrands={hasMultipleBrands}
+          activeBrandId={activeBrand?.id ?? null}
+        />
 
         {typedCampaigns.length === 0 ? (
           <section className="mt-12 rounded-2xl border border-border bg-card/50 p-10 text-center">
@@ -94,7 +81,9 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
             <NewCampaignButton className="mt-6" label="Create campaign" />
           </section>
         ) : (
-          <CampaignList campaigns={typedCampaigns} />
+          <div className="mt-8">
+            <CampaignList campaigns={typedCampaigns} />
+          </div>
         )}
       </main>
     </div>

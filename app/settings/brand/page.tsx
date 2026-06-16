@@ -1,23 +1,14 @@
-import BrandLibraryEditor from "@/app/components/brand-library-editor";
-import SettingsSubpageShell from "@/app/settings/settings-subpage-shell";
 import { listUserBrands } from "@/utils/brands-server";
 import { createClient } from "@/utils/supabase/server";
-import { appRobots } from "@/utils/site-metadata";
 import { redirect } from "next/navigation";
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Brand kit",
-  robots: appRobots,
-};
-
-interface BrandSettingsPageProps {
+interface LegacyBrandPageProps {
   searchParams: Promise<{ brand?: string }>;
 }
 
-export default async function BrandSettingsPage({
+export default async function LegacyBrandSettingsPage({
   searchParams,
-}: BrandSettingsPageProps) {
+}: LegacyBrandPageProps) {
   const supabase = await createClient();
 
   const {
@@ -30,18 +21,14 @@ export default async function BrandSettingsPage({
 
   const { brand: brandParam } = await searchParams;
   const brands = await listUserBrands(supabase, user.id);
-  const activeBrand =
-    brands.find((brand) => brand.id === brandParam) ??
-    brands.find((brand) => brand.is_default) ??
-    brands[0] ??
-    null;
+  const brandId =
+    brandParam ??
+    brands.find((brand) => brand.is_default)?.id ??
+    brands[0]?.id;
 
-  return (
-    <SettingsSubpageShell
-      title="Brand kit"
-      description="Reference images used across your campaigns."
-    >
-      <BrandLibraryEditor user={user} brandId={activeBrand?.id} />
-    </SettingsSubpageShell>
-  );
+  if (brandId) {
+    redirect(`/settings/brands/${brandId}`);
+  }
+
+  redirect("/settings/brands");
 }

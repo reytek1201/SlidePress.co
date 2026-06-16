@@ -34,10 +34,12 @@ export default function BrandLibraryPanel({
           </p>
         </div>
         <Link
-          href={brand ? `/settings/brand?brand=${brand.id}` : "/settings/brand"}
+          href={
+            brand ? `/settings/brands/${brand.id}` : "/settings/brands"
+          }
           className="text-xs font-medium text-primary underline-offset-2 hover:underline"
         >
-          Manage in settings
+          Manage
         </Link>
       </div>
 

@@ -10,25 +10,30 @@ import { uploadReferenceImage } from "@/utils/upload-reference";
 import type { Brand } from "@/types/brand";
 import { brandToReferences } from "@/types/brand";
 import type { ReferenceType } from "@/types/references";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 interface BrandLibraryEditorProps {
   user: User;
   brandId?: string;
+  hideBrandName?: boolean;
 }
 
 export default function BrandLibraryEditor({
   user,
   brandId: brandIdProp,
+  hideBrandName = false,
 }: BrandLibraryEditorProps) {
   const supabase = createClient();
+  const router = useRouter();
   const isNativeApp = useIsNativeApp();
   const activeBrandContext = useActiveBrandOptional();
   const resolvedBrandId =
     brandIdProp ?? activeBrandContext?.activeBrand?.id ?? null;
 
   const [brand, setBrand] = useState<Brand | null>(null);
+  const [brandName, setBrandName] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -67,6 +72,7 @@ export default function BrandLibraryEditor({
         }
 
         setBrand(data);
+        setBrandName(data?.name ?? "");
         const refs = brandToReferences(data);
         setProductPreview(refs.product ?? null);
         setStylePreview(refs.style ?? null);
@@ -177,16 +183,34 @@ export default function BrandLibraryEditor({
     return savedReferences[type] ?? null;
   }
 
-  async function persistBrand(product: string | null, style: string | null, logo: string | null) {
+  async function persistBrand(
+    product: string | null,
+    style: string | null,
+    logo: string | null,
+    name?: string,
+  ) {
     if (!resolvedBrandId) {
       throw new Error("No brand selected");
     }
 
-    return updateBrand(resolvedBrandId, {
+    const payload: {
+      product?: string | null;
+      style?: string | null;
+      logo?: string | null;
+      name?: string;
+    } = {
       product,
       style,
       logo,
-    });
+    };
+
+    const trimmedName = name?.trim();
+
+    if (trimmedName && trimmedName.length > 0) {
+      payload.name = trimmedName;
+    }
+
+    return updateBrand(resolvedBrandId, payload);
   }
 
   async function handleSave() {
@@ -199,8 +223,20 @@ export default function BrandLibraryEditor({
       const style = await resolveSlot("style", styleFile);
       const logo = await resolveSlot("logo", logoFile);
 
-      const saved = await persistBrand(product, style, logo);
+      const trimmedName = brandName.trim();
+
+      if (!trimmedName) {
+        throw new Error("Brand name is required");
+      }
+
+      const saved = await persistBrand(
+        product,
+        style,
+        logo,
+        trimmedName !== brand?.name ? trimmedName : undefined,
+      );
       setBrand(saved);
+      setBrandName(saved.name);
       setProductFile(null);
       setStyleFile(null);
       setLogoFile(null);
@@ -212,6 +248,7 @@ export default function BrandLibraryEditor({
       setLogoPreview(refs.logo ?? null);
       setSuccessMessage("Brand kit saved.");
       void activeBrandContext?.refreshBrands();
+      router.refresh();
     } catch (saveError) {
       setError(
         saveError instanceof Error
@@ -272,13 +309,35 @@ export default function BrandLibraryEditor({
     Boolean(getSlotPreview("product")) ||
     Boolean(getSlotPreview("style")) ||
     Boolean(getSlotPreview("logo"));
+  const trimmedBrandName = brandName.trim();
+  const nameChanged = Boolean(brand && trimmedBrandName !== brand.name);
+  const canSave =
+    trimmedBrandName.length > 0 && (hasAnyPreview || nameChanged);
 
   return (
     <div>
-      {brand ? (
-        <p className="text-sm font-medium text-foreground">{brand.name}</p>
-      ) : null}
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+      <div className="space-y-2">
+        <label
+          htmlFor="brand-name"
+          className="block text-sm font-medium text-secondary-foreground"
+        >
+          Brand name
+        </label>
+        <input
+          id="brand-name"
+          type="text"
+          value={brandName}
+          onChange={(event) => {
+            setSuccessMessage(null);
+            setBrandName(event.target.value);
+          }}
+          placeholder="e.g. Acme Skincare"
+          disabled={saving || clearing}
+          className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
+        />
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-muted-foreground">
         Save product, style, and logo references for this brand — they&apos;ll
         pre-fill when you create new campaigns.
         {isNativeApp ? (
@@ -326,11 +385,11 @@ export default function BrandLibraryEditor({
       <div className="mt-6 flex flex-wrap gap-3">
         <button
           type="button"
-          disabled={saving || clearing || !hasAnyPreview}
+          disabled={saving || clearing || !canSave}
           onClick={() => void handleSave()}
           className="btn-primary inline-flex items-center justify-center rounded-xl px-5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? "Saving…" : "Save brand kit"}
+          {saving ? "Saving…" : "Save changes"}
         </button>
 
         {brand ? (

@@ -5,12 +5,16 @@ import SettingsBackLink from "@/app/settings/settings-back-link";
 interface SettingsSubpageShellProps {
   title: string;
   description?: string;
+  backHref?: string;
+  backLabel?: string;
   children: React.ReactNode;
 }
 
 export default function SettingsSubpageShell({
   title,
   description,
+  backHref,
+  backLabel,
   children,
 }: SettingsSubpageShellProps) {
   return (
@@ -18,7 +22,7 @@ export default function SettingsSubpageShell({
       <main className="page-main">
         <div className="page-content">
           <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-md md:hidden">
-            <SettingsBackLink />
+            <SettingsBackLink href={backHref} label={backLabel} />
           </div>
 
           <div>

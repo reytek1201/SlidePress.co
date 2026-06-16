@@ -3,7 +3,13 @@
 import { useActiveBrandOptional } from "@/app/components/active-brand-provider";
 import Link from "next/link";
 
-export default function BrandSwitcher({ compact = false }: { compact?: boolean }) {
+export default function BrandSwitcher({
+  compact = false,
+  className = "",
+}: {
+  compact?: boolean;
+  className?: string;
+}) {
   const context = useActiveBrandOptional();
 
   if (!context || context.loading || context.brands.length <= 1) {
@@ -16,8 +22,8 @@ export default function BrandSwitcher({ compact = false }: { compact?: boolean }
     <div
       className={
         compact
-          ? "flex min-w-0 items-center gap-2"
-          : "flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background/60 px-2 py-1"
+          ? `flex min-w-0 items-center gap-2 ${className}`
+          : `flex min-w-0 items-center gap-2 rounded-lg border border-border bg-background/60 px-2 py-1 ${className}`
       }
     >
       <label htmlFor="brand-switcher" className="sr-only">
@@ -27,7 +33,11 @@ export default function BrandSwitcher({ compact = false }: { compact?: boolean }
         id="brand-switcher"
         value={activeBrand?.id ?? ""}
         onChange={(event) => setActiveBrandId(event.target.value)}
-        className="max-w-[10rem] truncate rounded-md border-0 bg-transparent py-1 pl-1 pr-6 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-ring/30 sm:max-w-[12rem]"
+        className={
+          compact
+            ? "w-full min-w-0 truncate rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-ring/30"
+            : "max-w-[10rem] truncate rounded-md border-0 bg-transparent py-1 pl-1 pr-6 text-sm font-medium text-foreground outline-none focus:ring-2 focus:ring-ring/30 sm:max-w-[12rem]"
+        }
       >
         {brands.map((brand) => (
           <option key={brand.id} value={brand.id}>
@@ -38,7 +48,11 @@ export default function BrandSwitcher({ compact = false }: { compact?: boolean }
       </select>
       {!compact ? (
         <Link
-          href="/settings/brands"
+          href={
+            activeBrand
+              ? `/settings/brands/${activeBrand.id}`
+              : "/settings/brands"
+          }
           className="shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
         >
           Manage

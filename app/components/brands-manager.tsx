@@ -28,7 +28,7 @@ export default function BrandsManager() {
       setName("");
       await refreshBrands();
       setActiveBrandId(brand.id);
-      router.push(`/settings/brand?brand=${brand.id}`);
+      router.push(`/settings/brands/${brand.id}`);
     } catch (createError) {
       setError(
         createError instanceof Error
@@ -61,54 +61,16 @@ export default function BrandsManager() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm leading-6 text-muted-foreground">
-        Each brand has its own reference images and campaigns. Switch brands
-        from the campaigns screen or the menu above.
-      </p>
-
-      <div className="overflow-hidden rounded-xl border border-border bg-card/40 divide-y divide-border">
-        {brands.map((brand) => (
-          <div
-            key={brand.id}
-            className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground">{brand.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {brand.is_default ? "Default brand" : "Additional brand"}
-                {activeBrand?.id === brand.id ? " · Active" : ""}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/settings/brand?brand=${brand.id}`}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-secondary-foreground transition hover:bg-secondary/60"
-              >
-                Edit kit
-              </Link>
-              {!brand.is_default ? (
-                <button
-                  type="button"
-                  disabled={deletingId === brand.id}
-                  onClick={() => void handleDelete(brand.id)}
-                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/10 disabled:opacity-60"
-                >
-                  {deletingId === brand.id ? "Deleting…" : "Delete"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={(event) => void handleCreate(event)} className="space-y-3">
+      <form onSubmit={(event) => void handleCreate(event)} className="space-y-3 rounded-xl border border-border bg-card/40 p-4">
         <label
           htmlFor="new-brand-name"
           className="block text-sm font-medium text-secondary-foreground"
         >
           Add brand
         </label>
+        <p className="text-xs leading-5 text-muted-foreground">
+          Each brand has its own reference images, products, and campaigns.
+        </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
             id="new-brand-name"
@@ -128,6 +90,42 @@ export default function BrandsManager() {
           </button>
         </div>
       </form>
+
+      <div className="overflow-hidden rounded-xl border border-border bg-card/40 divide-y divide-border">
+        {brands.map((brand) => (
+          <div
+            key={brand.id}
+            className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{brand.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {brand.is_default ? "Default brand" : "Additional brand"}
+                {activeBrand?.id === brand.id ? " · Active" : ""}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/settings/brands/${brand.id}`}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-secondary-foreground transition hover:bg-secondary/60"
+              >
+                Open
+              </Link>
+              {!brand.is_default ? (
+                <button
+                  type="button"
+                  disabled={deletingId === brand.id}
+                  onClick={() => void handleDelete(brand.id)}
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-red-400 transition hover:bg-red-500/10 disabled:opacity-60"
+                >
+                  {deletingId === brand.id ? "Deleting…" : "Delete"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {error ? (
         <p className="text-sm text-red-400" role="alert">

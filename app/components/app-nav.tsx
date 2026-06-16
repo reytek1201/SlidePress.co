@@ -2,7 +2,6 @@
 
 import CreateCampaignSheet from "@/app/components/create-campaign-sheet";
 import BrandLogo from "@/app/components/brand-logo";
-import BrandSwitcher from "@/app/components/brand-switcher";
 import { ActiveBrandProvider } from "@/app/components/active-brand-provider";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import {
@@ -144,8 +143,6 @@ function DesktopNav({
             </Link>
           </nav>
         </div>
-
-        <BrandSwitcher />
       </div>
     </header>
   );
