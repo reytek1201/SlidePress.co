@@ -1,5 +1,6 @@
 import LegalPage from "@/app/components/legal-page";
 import { buildMarketingMetadata, getSiteUrl } from "@/utils/site-metadata";
+import { resolveLegalBackTarget } from "@/utils/legal-back-target";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,11 +11,22 @@ export const metadata: Metadata = {
 const LAST_UPDATED = "June 16, 2026";
 const CONTACT_EMAIL = "hello@slidepress.co";
 
-export default function PrivacyPage() {
+interface PrivacyPageProps {
+  searchParams: Promise<{ from?: string }>;
+}
+
+export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
+  const params = await searchParams;
+  const back = resolveLegalBackTarget(params.from);
   const siteUrl = getSiteUrl();
 
   return (
-    <LegalPage title="Privacy Policy" lastUpdated={LAST_UPDATED}>
+    <LegalPage
+      title="Privacy Policy"
+      lastUpdated={LAST_UPDATED}
+      backHref={back.href}
+      backLabel={back.label}
+    >
       <p>
         SlidePress (&quot;we&quot;, &quot;us&quot;) operates the SlidePress web
         app and native iOS/Android apps at{" "}

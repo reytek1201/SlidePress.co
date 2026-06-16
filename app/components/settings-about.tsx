@@ -1,7 +1,13 @@
 "use client";
 
 import { useAppVersion } from "@/app/hooks/use-app-version";
-import Link from "next/link";
+import {
+  LegalIcon,
+  SettingsListExternalRow,
+  SettingsListGroup,
+  SettingsSectionLabel,
+} from "@/app/settings/settings-list";
+import { legalPageHref } from "@/utils/legal-back-target";
 
 interface SettingsAboutContentProps {
   variant?: "card" | "plain";
@@ -46,28 +52,20 @@ export default function SettingsAboutContent({
         </dl>
       ) : null}
 
-      <nav
-        aria-label="Legal"
-        className="mt-8 space-y-1 border-t border-border pt-6"
-      >
-        <Link
-          href="/privacy"
-          className="flex items-center justify-between gap-4 py-3 text-sm font-medium text-foreground transition active:opacity-80"
-        >
-          Privacy Policy
-          <span aria-hidden className="text-muted-foreground/70">
-            ›
-          </span>
-        </Link>
-        <Link
-          href="/terms"
-          className="flex items-center justify-between gap-4 py-3 text-sm font-medium text-foreground transition active:opacity-80"
-        >
-          Terms of Service
-          <span aria-hidden className="text-muted-foreground/70">
-            ›
-          </span>
-        </Link>
+      <nav aria-label="Legal" className="mt-8 space-y-2">
+        <SettingsSectionLabel>Legal</SettingsSectionLabel>
+        <SettingsListGroup>
+          <SettingsListExternalRow
+            href={legalPageHref("/privacy", "about")}
+            label="Privacy Policy"
+            icon={<LegalIcon />}
+          />
+          <SettingsListExternalRow
+            href={legalPageHref("/terms", "about")}
+            label="Terms of Service"
+            icon={<LegalIcon />}
+          />
+        </SettingsListGroup>
       </nav>
     </>
   );

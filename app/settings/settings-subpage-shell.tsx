@@ -17,8 +17,8 @@ export default function SettingsSubpageShell({
     <div className="min-h-full bg-background text-foreground">
       <main className="page-main">
         <div className="page-content">
-          <div className="md:hidden">
-            <SettingsBackLink className="mb-4" />
+          <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-border/50 bg-background/90 px-4 py-3 backdrop-blur-md md:hidden">
+            <SettingsBackLink />
           </div>
 
           <div>

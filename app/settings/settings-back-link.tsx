@@ -1,13 +1,39 @@
 import Link from "next/link";
 
-export default function SettingsBackLink({ className = "" }: { className?: string }) {
+function ChevronLeftIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+export default function SettingsBackLink({
+  className = "",
+  href = "/settings",
+  label = "Settings",
+}: {
+  className?: string;
+  href?: string;
+  label?: string;
+}) {
   return (
     <Link
-      href="/settings"
-      className={`inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition hover:text-foreground ${className}`}
+      href={href}
+      className={`inline-flex items-center gap-0.5 text-sm font-medium text-primary transition active:opacity-70 ${className}`}
     >
-      <span aria-hidden>←</span>
-      Settings
+      <ChevronLeftIcon />
+      {label}
     </Link>
   );
 }

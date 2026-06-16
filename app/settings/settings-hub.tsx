@@ -1,56 +1,36 @@
 "use client";
 
 import {
+  AboutIcon,
+  AccountIcon,
+  BrandIcon,
+  DevIcon,
+  NotificationsIcon,
+  SecurityIcon,
+  SettingsListGroup,
+  SettingsListRow,
+  SettingsSectionLabel,
+  UsageIcon,
+} from "@/app/settings/settings-list";
+import { useUsageSummary } from "@/app/settings/usage-settings";
+import {
   checkBiometry,
   biometryLabel,
   isBiometricSupported,
 } from "@/utils/biometric-auth";
-import { isBiometricLockEnabled } from "@/utils/biometric-session";
-import { clearBiometricSession } from "@/utils/biometric-session";
-import { useUsageSummary } from "@/app/settings/usage-settings";
-import { createClient } from "@/utils/supabase/client";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { isPushNotificationsEnabled } from "@/utils/push-preferences";
+import {
+  clearBiometricSession,
+  isBiometricLockEnabled,
+} from "@/utils/biometric-session";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
+import { isPushNotificationsEnabled } from "@/utils/push-preferences";
+import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
 interface SettingsHubProps {
   user: User;
-}
-
-function SettingsListRow({
-  href,
-  label,
-  value,
-}: {
-  href: string;
-  label: string;
-  value?: string | null;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center justify-between gap-4 px-4 py-3.5 transition active:bg-secondary/40"
-    >
-      <span className="text-sm font-medium text-foreground">{label}</span>
-      <span className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
-        {value ? <span className="max-w-[10rem] truncate">{value}</span> : null}
-        <span aria-hidden className="text-muted-foreground/70">
-          ›
-        </span>
-      </span>
-    </Link>
-  );
-}
-
-function SettingsListGroup({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card/50 divide-y divide-border">
-      {children}
-    </div>
-  );
 }
 
 export default function SettingsHub({ user }: SettingsHubProps) {
@@ -101,10 +81,7 @@ export default function SettingsHub({ user }: SettingsHubProps) {
     router.refresh();
   }
 
-  const usageTrailing = usage
-    ? `${usage.remaining.campaigns} left`
-    : null;
-
+  const usageTrailing = usage ? `${usage.remaining.campaigns} left` : null;
   const showDevLink = process.env.NEXT_PUBLIC_ALLOW_PUSH_TEST === "true";
 
   return (
@@ -115,53 +92,85 @@ export default function SettingsHub({ user }: SettingsHubProps) {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Settings
             </h1>
-            <p className="mt-1 truncate text-sm text-muted-foreground">
+            <p className="mt-2 truncate text-sm text-muted-foreground">
               {user.email}
             </p>
             {usage ? (
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <span className="mt-2 inline-flex rounded-full bg-secondary/60 px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
                 {usage.planLabel}
-              </p>
+              </span>
             ) : null}
           </div>
 
-          <div className="mt-8 space-y-4">
-            <SettingsListGroup>
-              <SettingsListRow href="/settings/account" label="Account" />
-              <SettingsListRow href="/settings/brand" label="Brand library" />
-              <SettingsListRow
-                href="/settings/security"
-                label="Security"
-                value={securityLabel}
-              />
-              {showNotificationsLink ? (
+          <div className="mt-8 space-y-6">
+            <div className="space-y-2">
+              <SettingsSectionLabel>Account</SettingsSectionLabel>
+              <SettingsListGroup>
                 <SettingsListRow
-                  href="/settings/notifications"
-                  label="Notifications"
-                  value={notificationsLabel}
+                  href="/settings/account"
+                  label="Account"
+                  icon={<AccountIcon />}
                 />
-              ) : null}
-              <SettingsListRow
-                href="/settings/usage"
-                label="Usage"
-                value={usageTrailing}
-              />
-              <SettingsListRow href="/settings/about" label="About" />
-              {showDevLink ? (
-                <SettingsListRow href="/settings/dev" label="Push test (dev)" />
-              ) : null}
-            </SettingsListGroup>
+                <SettingsListRow
+                  href="/settings/brand"
+                  label="Brand library"
+                  icon={<BrandIcon />}
+                />
+              </SettingsListGroup>
+            </div>
 
-            <SettingsListGroup>
-              <button
-                type="button"
-                disabled={signingOut}
-                onClick={() => void handleSignOut()}
-                className="flex w-full items-center px-4 py-3.5 text-left text-sm font-medium text-red-400 transition active:bg-secondary/40 disabled:opacity-60"
-              >
-                {signingOut ? "Signing out…" : "Sign out"}
-              </button>
-            </SettingsListGroup>
+            <div className="space-y-2">
+              <SettingsSectionLabel>App</SettingsSectionLabel>
+              <SettingsListGroup>
+                <SettingsListRow
+                  href="/settings/security"
+                  label="Security"
+                  value={securityLabel}
+                  icon={<SecurityIcon />}
+                />
+                {showNotificationsLink ? (
+                  <SettingsListRow
+                    href="/settings/notifications"
+                    label="Notifications"
+                    value={notificationsLabel}
+                    icon={<NotificationsIcon />}
+                  />
+                ) : null}
+                <SettingsListRow
+                  href="/settings/usage"
+                  label="Usage"
+                  value={usageTrailing}
+                  icon={<UsageIcon />}
+                />
+              </SettingsListGroup>
+            </div>
+
+            <div className="space-y-2">
+              <SettingsSectionLabel>About</SettingsSectionLabel>
+              <SettingsListGroup>
+                <SettingsListRow
+                  href="/settings/about"
+                  label="About"
+                  icon={<AboutIcon />}
+                />
+                {showDevLink ? (
+                  <SettingsListRow
+                    href="/settings/dev"
+                    label="Push test (dev)"
+                    icon={<DevIcon />}
+                  />
+                ) : null}
+              </SettingsListGroup>
+            </div>
+
+            <button
+              type="button"
+              disabled={signingOut}
+              onClick={() => void handleSignOut()}
+              className="w-full py-3 text-center text-sm font-medium text-red-400 transition active:opacity-70 disabled:opacity-60"
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </button>
           </div>
         </div>
       </main>

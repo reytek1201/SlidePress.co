@@ -7,6 +7,7 @@ import { useIsIosNative } from "@/app/hooks/use-is-ios-native";
 import { brandLogoSrc } from "@/utils/site-metadata";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
 import { buildNativeOAuthRedirectUrl } from "@/utils/native-oauth";
+import { legalPageHref } from "@/utils/legal-back-target";
 import {
   buildWebOAuthRedirectUrl,
   startNativeProviderAuth,
@@ -484,13 +485,16 @@ function LoginForm() {
 
           <p className="mt-8 text-center text-xs leading-5 text-muted-foreground">
             <Link
-              href="/privacy"
+              href={legalPageHref("/privacy", "login")}
               className="underline-offset-2 hover:underline"
             >
               Privacy
             </Link>
             {" · "}
-            <Link href="/terms" className="underline-offset-2 hover:underline">
+            <Link
+              href={legalPageHref("/terms", "login")}
+              className="underline-offset-2 hover:underline"
+            >
               Terms
             </Link>
           </p>
