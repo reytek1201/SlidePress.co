@@ -156,6 +156,18 @@ export default function MarketingLanding() {
         <footer className="border-t border-border">
           <div className="page-shell py-8 text-center text-xs text-muted-foreground">
             <p>SlidePress — slidepress.co</p>
+            <p className="mt-2">
+              <Link
+                href="/privacy"
+                className="underline-offset-2 hover:underline"
+              >
+                Privacy
+              </Link>
+              {" · "}
+              <Link href="/terms" className="underline-offset-2 hover:underline">
+                Terms
+              </Link>
+            </p>
           </div>
         </footer>
       </main>

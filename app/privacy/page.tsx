@@ -1,0 +1,143 @@
+import LegalPage from "@/app/components/legal-page";
+import { buildMarketingMetadata, getSiteUrl } from "@/utils/site-metadata";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  ...buildMarketingMetadata("/privacy"),
+  title: "Privacy Policy",
+};
+
+const LAST_UPDATED = "June 16, 2026";
+const CONTACT_EMAIL = "hello@slidepress.co";
+
+export default function PrivacyPage() {
+  const siteUrl = getSiteUrl();
+
+  return (
+    <LegalPage title="Privacy Policy" lastUpdated={LAST_UPDATED}>
+      <p>
+        SlidePress (&quot;we&quot;, &quot;us&quot;) operates the SlidePress web
+        app and native iOS/Android apps at{" "}
+        <a href={siteUrl} className="text-primary underline-offset-2 hover:underline">
+          {siteUrl.replace(/^https?:\/\//, "")}
+        </a>
+        . This policy explains what we collect, why, and your choices.
+      </p>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">
+          What we collect
+        </h2>
+        <ul className="mt-3 list-disc space-y-2 pl-5">
+          <li>
+            <strong className="text-foreground">Account information</strong> —
+            email address and authentication data when you sign up or sign in
+            (email/password, Google, or Apple). Managed by Supabase Auth.
+          </li>
+          <li>
+            <strong className="text-foreground">Campaign content</strong> —
+            topics, slide copy, generated images, platform captions, and
+            reference images you upload for campaigns or your brand library.
+          </li>
+          <li>
+            <strong className="text-foreground">Usage data</strong> — campaign
+            counts and slide regeneration counts to enforce beta plan limits.
+          </li>
+          <li>
+            <strong className="text-foreground">Device tokens (optional)</strong>{" "}
+            — if you use the native app and allow notifications, we store a
+            push token to notify you when slide images finish generating.
+          </li>
+          <li>
+            <strong className="text-foreground">Biometric unlock (optional)</strong>{" "}
+            — if you enable Face ID / fingerprint unlock in the native app, your
+            session refresh token is stored in the device Keychain or Android
+            Keystore. Biometric data never leaves your device; we do not receive
+            it.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">
+          How we use your data
+        </h2>
+        <ul className="mt-3 list-disc space-y-2 pl-5">
+          <li>Provide and secure your account.</li>
+          <li>Generate slide copy, images, and captions you request.</li>
+          <li>Enforce usage limits and improve reliability.</li>
+          <li>Send optional push notifications in the native app.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">
+          Service providers
+        </h2>
+        <p className="mt-3">
+          We use trusted processors to run SlidePress, including Supabase
+          (database and auth), Vercel (hosting), Google Gemini (slide text),
+          Fal.ai (image generation), and Firebase Cloud Messaging (push
+          delivery, when enabled). They process data only to provide the
+          service.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">
+          Data retention & deletion
+        </h2>
+        <p className="mt-3">
+          We keep your data while your account is active. You can delete your
+          account anytime in Settings → Account → Account deletion. Deletion
+          removes your campaigns, brand library, usage history, and sign-in
+          access.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">Your rights</h2>
+        <p className="mt-3">
+          Depending on where you live, you may have rights to access, correct,
+          or delete your personal data. Contact us at{" "}
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            {CONTACT_EMAIL}
+          </a>{" "}
+          for requests.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">Children</h2>
+        <p className="mt-3">
+          SlidePress is not directed at children under 13. We do not knowingly
+          collect data from children.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">Changes</h2>
+        <p className="mt-3">
+          We may update this policy. We will revise the date at the top when we
+          do. Continued use after changes means you accept the updated policy.
+        </p>
+      </section>
+
+      <section>
+        <h2 className="text-base font-semibold text-foreground">Contact</h2>
+        <p className="mt-3">
+          Questions about privacy:{" "}
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="text-primary underline-offset-2 hover:underline"
+          >
+            {CONTACT_EMAIL}
+          </a>
+        </p>
+      </section>
+    </LegalPage>
+  );
+}

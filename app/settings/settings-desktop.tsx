@@ -3,7 +3,9 @@
 import BrandLibraryEditor from "@/app/components/brand-library-editor";
 import BiometricSettings from "@/app/components/biometric-settings";
 import PasswordResetForm from "@/app/components/password-reset-form";
+import PushSettings from "@/app/components/push-settings";
 import PushTestSection from "@/app/components/push-test-section";
+import SettingsAboutContent from "@/app/components/settings-about";
 import AccountSettings from "@/app/settings/account-settings";
 import SettingsSection from "@/app/settings/settings-section";
 import UsageSettings from "@/app/settings/usage-settings";
@@ -54,9 +56,18 @@ export default function SettingsDesktop({
               <BiometricSettings />
             </SettingsSection>
 
+            <SettingsSection
+              title="Notifications"
+              description="Choose when SlidePress can alert you on this device."
+            >
+              <PushSettings />
+            </SettingsSection>
+
             <PushTestSection />
 
             <UsageSettings variant="card" />
+
+            <SettingsAboutContent variant="card" />
           </div>
         </div>
       </main>

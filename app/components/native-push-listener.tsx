@@ -2,6 +2,14 @@
 
 import { createClient } from "@/utils/supabase/client";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
+import {
+  dispatchPushRegistrationFailed,
+  getStoredPushDeviceToken,
+  isPushNotificationsEnabled,
+  PUSH_PREFERENCE_CHANGED_EVENT,
+  setPushNotificationsEnabled,
+  setStoredPushDeviceToken,
+} from "@/utils/push-preferences";
 import { Capacitor } from "@capacitor/core";
 import {
   PushNotifications,
@@ -55,8 +63,24 @@ export default function NativePushListener() {
     }
 
     let active = true;
+    registeredToken.current = getStoredPushDeviceToken();
+
+    async function teardownRegistration() {
+      const token = registeredToken.current ?? getStoredPushDeviceToken();
+
+      if (token) {
+        await unregisterPushToken(token);
+      }
+
+      registeredToken.current = null;
+      setStoredPushDeviceToken(null);
+    }
 
     async function setupPushNotifications() {
+      if (!isPushNotificationsEnabled()) {
+        return;
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -65,27 +89,52 @@ export default function NativePushListener() {
         return;
       }
 
-      const permission = await PushNotifications.requestPermissions();
+      const permission = await PushNotifications.checkPermissions();
 
-      if (!active || permission.receive !== "granted") {
+      if (!active) {
+        return;
+      }
+
+      const receivePermission =
+        permission.receive === "granted"
+          ? permission
+          : await PushNotifications.requestPermissions();
+
+      if (!active || receivePermission.receive !== "granted") {
+        setPushNotificationsEnabled(false);
+        dispatchPushRegistrationFailed(
+          receivePermission.receive === "denied" ? "denied" : "not_granted",
+        );
         return;
       }
 
       await PushNotifications.register();
     }
 
+    function handlePreferenceChanged() {
+      if (!isPushNotificationsEnabled()) {
+        void teardownRegistration();
+        return;
+      }
+
+      void setupPushNotifications();
+    }
+
     const registrationListener = PushNotifications.addListener(
       "registration",
       (token: Token) => {
         registeredToken.current = token.value;
+        setStoredPushDeviceToken(token.value);
         void registerPushToken(token.value);
       },
     );
 
     const registrationErrorListener = PushNotifications.addListener(
       "registrationError",
-      (error) => {
-        console.error("Push registration failed:", error);
+      (registrationError) => {
+        console.error("Push registration failed:", registrationError);
+        setPushNotificationsEnabled(false);
+        dispatchPushRegistrationFailed("registration_error");
       },
     );
 
@@ -100,24 +149,36 @@ export default function NativePushListener() {
       },
     );
 
-    void setupPushNotifications();
+    window.addEventListener(
+      PUSH_PREFERENCE_CHANGED_EVENT,
+      handlePreferenceChanged,
+    );
+
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      if (active && user && isPushNotificationsEnabled()) {
+        void setupPushNotifications();
+      }
+    });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user && registeredToken.current) {
-        void unregisterPushToken(registeredToken.current);
-        registeredToken.current = null;
+      if (!session?.user) {
+        void teardownRegistration();
         return;
       }
 
-      if (session?.user) {
+      if (isPushNotificationsEnabled()) {
         void setupPushNotifications();
       }
     });
 
     return () => {
       active = false;
+      window.removeEventListener(
+        PUSH_PREFERENCE_CHANGED_EVENT,
+        handlePreferenceChanged,
+      );
       void registrationListener.then((listener) => listener.remove());
       void registrationErrorListener.then((listener) => listener.remove());
       void actionListener.then((listener) => listener.remove());

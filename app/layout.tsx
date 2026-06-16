@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AppNavLayout } from "@/app/components/app-nav";
 import BiometricGate from "@/app/components/biometric-gate";
 import NativeAuthListener from "@/app/components/native-auth-listener";
+import NativeConnectivity from "@/app/components/native-connectivity";
 import NativePushListener from "@/app/components/native-push-listener";
 import NativeShell from "@/app/components/native-shell";
 import {
@@ -58,6 +59,7 @@ export default function RootLayout({
         <NativeAuthListener />
         <NativePushListener />
         <NativeShell />
+        <NativeConnectivity />
         <BiometricGate />
         <AppNavLayout>{children}</AppNavLayout>
       </body>

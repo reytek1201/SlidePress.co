@@ -191,9 +191,20 @@ Wrap the existing SlidePress web app for **App Store** and **Google Play** — o
 | **5.1 Scaffold** ✅ | Capacitor iOS + Android loading production (`slidepress.co`) — see `docs/capacitor.md` |
 | **5.2 Auth** ✅ | Google + Apple OAuth (deep link), password reset deep links |
 | **5.3 App shell** | Icons + splash (`npm run cap:assets`) ✅, status bar (SlidePress dark + orange) ✅ |
-| **5.4 Native affordances** | Share sheet + Save to Photos (per slide, carousel, and **Save all to Photos** in next step bar) |
-| **5.5 Beta distribution** | TestFlight + Play internal testing before public listing |
-| **5.6 Push notifications** | FCM alert when all campaign images finish (native app, background/closed) ✅ |
+| **5.4 Native affordances** | Share sheet + Save to Photos (per slide, carousel, and **Save all to Photos** in next step bar) ✅ |
+| **5.5 Beta distribution** | TestFlight + Play internal testing — see `docs/beta-release.md` 🚧 |
+| **5.6 Push notifications** | Opt-in alerts when all campaign images finish (APNs on iOS, FCM on Android; native app, background/closed) ✅ |
+
+**Mobile UX (native + responsive web):**
+
+| Deliverable | Status |
+|-------------|--------|
+| Tabbed campaign workspace (Slides / Publish / Details) | ✅ |
+| Filmstrip + inline generation feedback | ✅ |
+| Mobile settings hub + sub-pages | ✅ |
+| Face ID / biometric app unlock + Keychain session | ✅ |
+| Offline connectivity screen (native) | ✅ |
+| Privacy + Terms pages + Settings → About | ✅ |
 
 **Out of scope for Phase 5:** React Native rewrite, offline-first workspace, in-app Stripe (billing stays web until Phase 6).
 

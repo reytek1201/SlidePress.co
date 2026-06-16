@@ -481,6 +481,19 @@ function LoginForm() {
               </Link>
             </p>
           ) : null}
+
+          <p className="mt-8 text-center text-xs leading-5 text-muted-foreground">
+            <Link
+              href="/privacy"
+              className="underline-offset-2 hover:underline"
+            >
+              Privacy
+            </Link>
+            {" · "}
+            <Link href="/terms" className="underline-offset-2 hover:underline">
+              Terms
+            </Link>
+          </p>
         </div>
       </main>
     </div>

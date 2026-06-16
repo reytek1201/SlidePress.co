@@ -221,7 +221,7 @@ The iOS app shows **Continue with Apple** only in the native shell (App Store re
 | **5.2 Auth** | Google + Apple OAuth via deep link ✅; password reset deep links ✅ |
 | **5.3 App shell** | Icons + splash (`npm run cap:assets`) ✅, status bar (SlidePress dark + orange) ✅ |
 | **5.4 Native affordances** | Share sheet + Save to Photos (per slide, carousel, and **Save all to Photos** in next step bar) ✅ |
-| **5.5 Beta** | TestFlight, Play internal testing |
+| **5.5 Beta** | TestFlight, Play internal testing — see `docs/beta-release.md` |
 | **5.6 Push** | FCM push when all campaign images finish generating ✅ |
 
 See `docs/client-features.md` for full product roadmap.
@@ -230,25 +230,47 @@ See `docs/client-features.md` for full product roadmap.
 
 Notify users in the **native app** when every slide image in a campaign is ready (app in background or closed).
 
-**Client:** `@capacitor/push-notifications` registers device tokens after sign-in (`NativePushListener`). Tapping the notification opens the campaign workspace.
+**Client:** Users opt in under **Settings → Notifications**. `NativePushListener` registers the device token only after opt-in and sign-in. Tapping a notification opens the campaign workspace.
 
-**Server:** When a campaign transitions to `completed`, `maybeSendCampaignImagesReadyPush` sends one FCM message per registered device (deduped via `campaigns.images_ready_notified_at`).
+**Server:** When a campaign transitions to `completed`, `maybeSendCampaignImagesReadyPush` sends one push per registered device (deduped via `campaigns.images_ready_notified_at`):
+
+- **iOS** — direct **APNs** (`apns2`) using the Capacitor APNs device token
+- **Android** — **FCM** HTTP v1 using the FCM registration token
 
 **Required (production push):**
 
+**Android (FCM)**
+
 1. Create a [Firebase](https://console.firebase.google.com/) project.
 2. Add an **Android** app with package `co.slidepress.app` → download `google-services.json` → place in `android/app/` (gitignored; see `google-services.json.example`).
-3. Add an **iOS** app with bundle `co.slidepress.app` → download `GoogleService-Info.plist` → place in `ios/App/` (gitignored; see `GoogleService-Info.plist.example`) → upload **APNs key**.
-4. Create a **service account** with Firebase Cloud Messaging API access.
-5. Set `FCM_SERVICE_ACCOUNT_JSON` on Vercel (base64-encoded service account JSON) **or** `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`.
+3. Create a **service account** with Firebase Cloud Messaging API access.
+4. Set `FCM_SERVICE_ACCOUNT_JSON` on Vercel (base64-encoded service account JSON) **or** `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`.
 
-**iOS Xcode:** Enable **Push Notifications** capability on the App target, then rebuild.
+**iOS (APNs)**
 
-**Android:** Ensure `google-services.json` is present before release builds.
+1. In [Apple Developer](https://developer.apple.com/account/resources/authkeys/list) → create an **APNs Auth Key** (.p8).
+2. In Xcode → App target → **Signing & Capabilities** → enable **Push Notifications** (and use `aps-environment` = `production` for App Store / TestFlight release builds).
+3. Set on Vercel:
+   - `APNS_KEY_ID` — Key ID from the .p8 key
+   - `APNS_TEAM_ID` — Apple Team ID
+   - `APNS_PRIVATE_KEY` — contents of the .p8 file (use `\n` for newlines in env vars)
+   - `APNS_BUNDLE_ID` — `co.slidepress.app` (optional; this is the default)
+   - `APNS_USE_SANDBOX` — `true` for Xcode debug builds against the sandbox APNs host; omit or `false` for TestFlight / App Store
 
 **Database:** Run migration `20260616000001_push_device_tokens.sql` (table `push_device_tokens`, column `campaigns.images_ready_notified_at`).
 
-Push is **optional** — if FCM env vars are unset, the app still works; notifications are simply skipped server-side.
+Push is **optional** — if neither FCM nor APNs env vars are set, the app still works; notifications are simply skipped server-side.
+
+### Beta release (Phase 5.5)
+
+See **`docs/beta-release.md`** for the full TestFlight and Play internal testing checklist (version numbers, signing, store URLs, tester instructions).
+
+**In-app beta affordances:**
+
+- **Settings → About** — app version, build number, beta notice, links to Privacy / Terms
+- **`/privacy`** and **`/terms`** — public policy pages (required store URLs)
+- **Native connectivity overlay** — “Can’t reach SlidePress” with retry when offline or server unreachable
+- **`GET /api/health`** — liveness probe used by the native shell
 
 ### Push test (development)
 
@@ -256,7 +278,7 @@ To test push **without generating images**:
 
 1. Set `NEXT_PUBLIC_ALLOW_PUSH_TEST=true` on Vercel (or in `.env.local` for local dev).
 2. Redeploy.
-3. Open the **native app** → **Settings** → **Send test push**.
+3. Open the **native app** → **Settings** → **Notifications** (enable alerts) → **Push test (dev)** if available.
 4. Background the app to see the notification banner.
 
 Remove or disable `NEXT_PUBLIC_ALLOW_PUSH_TEST` when you are done testing.

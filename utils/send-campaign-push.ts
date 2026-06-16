@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getFirebaseServiceAccount, isFcmConfigured } from "@/utils/fcm-config";
+import { sendApnsToDevice } from "@/utils/send-apns";
+import { isPushConfigured } from "@/utils/push-config";
 import { GoogleAuth } from "google-auth-library";
 
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
@@ -116,11 +118,11 @@ export async function sendPushToUser(
   notification: { title: string; body: string },
   data: PushDataPayload = {},
 ): Promise<SendPushToUserResult> {
-  if (!isFcmConfigured()) {
+  if (!isPushConfigured()) {
     return {
       sent: 0,
       failed: 0,
-      errors: ["FCM is not configured on the server"],
+      errors: ["Push is not configured on the server"],
       staleTokenIds: [],
     };
   }
@@ -129,7 +131,7 @@ export async function sendPushToUser(
 
   const { data: tokens, error: tokensError } = await supabase
     .from("push_device_tokens")
-    .select("id, token")
+    .select("id, token, platform")
     .eq("user_id", userId);
 
   if (tokensError) {
@@ -157,7 +159,10 @@ export async function sendPushToUser(
 
   await Promise.all(
     tokens.map(async (entry) => {
-      const result = await sendFcmToDevice(entry.token, notification, data);
+      const result =
+        entry.platform === "ios"
+          ? await sendApnsToDevice(entry.token, notification, data)
+          : await sendFcmToDevice(entry.token, notification, data);
 
       if (result.ok) {
         sent += 1;
@@ -170,11 +175,14 @@ export async function sendPushToUser(
         errors.push(result.error);
       }
 
-      if (
-        result.error?.includes("NOT_FOUND") ||
-        result.error?.includes("UNREGISTERED") ||
-        result.error?.includes("INVALID_ARGUMENT")
-      ) {
+      const stale =
+        entry.platform === "ios"
+          ? "stale" in result && result.stale === true
+          : result.error?.includes("NOT_FOUND") ||
+            result.error?.includes("UNREGISTERED") ||
+            result.error?.includes("INVALID_ARGUMENT");
+
+      if (stale) {
         staleTokenIds.push(entry.id);
       }
     }),
@@ -206,7 +214,7 @@ export async function sendTestPushToUser(
 export async function maybeSendCampaignImagesReadyPush(
   campaignId: string,
 ): Promise<void> {
-  if (!isFcmConfigured()) {
+  if (!isPushConfigured()) {
     return;
   }
 

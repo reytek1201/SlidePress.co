@@ -11,6 +11,8 @@ import { useUsageSummary } from "@/app/settings/usage-settings";
 import { createClient } from "@/utils/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { isPushNotificationsEnabled } from "@/utils/push-preferences";
+import { isNativeAppRuntime } from "@/utils/is-native-app";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
@@ -57,7 +59,11 @@ export default function SettingsHub({ user }: SettingsHubProps) {
   const { usage } = useUsageSummary();
 
   const [securityLabel, setSecurityLabel] = useState<string | null>(null);
+  const [notificationsLabel, setNotificationsLabel] = useState<string | null>(
+    null,
+  );
   const [signingOut, setSigningOut] = useState(false);
+  const showNotificationsLink = isNativeAppRuntime();
 
   useEffect(() => {
     if (!isBiometricSupported() || !isBiometricLockEnabled()) {
@@ -78,6 +84,14 @@ export default function SettingsHub({ user }: SettingsHubProps) {
       }
     });
   }, []);
+
+  useEffect(() => {
+    if (!showNotificationsLink) {
+      return;
+    }
+
+    setNotificationsLabel(isPushNotificationsEnabled() ? "On" : "Off");
+  }, [showNotificationsLink]);
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -120,11 +134,19 @@ export default function SettingsHub({ user }: SettingsHubProps) {
                 label="Security"
                 value={securityLabel}
               />
+              {showNotificationsLink ? (
+                <SettingsListRow
+                  href="/settings/notifications"
+                  label="Notifications"
+                  value={notificationsLabel}
+                />
+              ) : null}
               <SettingsListRow
                 href="/settings/usage"
                 label="Usage"
                 value={usageTrailing}
               />
+              <SettingsListRow href="/settings/about" label="About" />
               {showDevLink ? (
                 <SettingsListRow href="/settings/dev" label="Push test (dev)" />
               ) : null}
