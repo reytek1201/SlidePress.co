@@ -133,6 +133,13 @@ function LoginForm() {
   useEffect(() => {
     if (searchParams.get("error") === "auth_callback_error") {
       setAuthError("Sign-in was cancelled or failed. Try again.");
+      return;
+    }
+
+    if (searchParams.get("reason") === "session_expired") {
+      setAuthError(
+        "Your session expired. Sign in again to continue — your data is safe.",
+      );
     }
   }, [searchParams]);
 

@@ -1,5 +1,7 @@
 import { createClient } from "@/utils/supabase/client";
 import { createNativeAuthClient } from "@/utils/supabase/native-auth-client";
+import { isBiometricLockEnabled } from "@/utils/biometric-session";
+import { storeRefreshToken } from "@/utils/secure-token-store";
 import type { NativeAuthCallback } from "@/utils/native-oauth";
 import { Capacitor } from "@capacitor/core";
 
@@ -51,6 +53,13 @@ async function syncBrowserSession(tokens: {
 
   if (userError || !user) {
     return { error: userError?.message ?? "Session was not established." };
+  }
+
+  // Re-stash the new refresh token if biometric lock is enabled. This keeps
+  // the Keychain vault current after an OAuth sign-in (covers the
+  // session-expired re-login path and routine token rotation).
+  if (isBiometricLockEnabled()) {
+    void storeRefreshToken(tokens.refresh_token);
   }
 
   return { error: null };

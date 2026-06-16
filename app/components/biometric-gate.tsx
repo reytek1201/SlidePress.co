@@ -14,6 +14,7 @@ import {
   lockSession,
   restoreSessionFromKeychain,
 } from "@/utils/biometric-session";
+import { storeRefreshToken } from "@/utils/secure-token-store";
 import { createClient } from "@/utils/supabase/client";
 import { App } from "@capacitor/app";
 import { useRouter } from "next/navigation";
@@ -308,6 +309,29 @@ export default function BiometricGate() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerUnlock]);
+
+  // Re-stash refresh token whenever the user signs in while biometric lock is
+  // enabled. This handles the session-expired re-login path: the old Keychain
+  // token was cleared, but the preference is still "enabled", so we need to
+  // repopulate the vault with the new token automatically.
+  useEffect(() => {
+    if (!isBiometricSupported()) return;
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN") return;
+      if (!isBiometricLockEnabled()) return;
+      if (!session?.refresh_token) return;
+
+      void storeRefreshToken(session.refresh_token);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { status, errorMessage, biometryType } = state;
 
