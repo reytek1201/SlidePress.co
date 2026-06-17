@@ -1,8 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
+import { getAppBaseUrl } from "@/utils/fal";
+import { advanceVideoExportIfReady } from "@/utils/advance-video-export";
 import { NextResponse } from "next/server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -24,7 +26,7 @@ export async function GET(
     const { data: exportRow, error: exportError } = await supabase
       .from("exports")
       .select(
-        "id, campaign_id, export_type, status, output_url, error_message, created_at, updated_at",
+        "id, campaign_id, export_type, status, output_url, error_message, fal_request_id, metadata, created_at, updated_at",
       )
       .eq("id", id)
       .single();
@@ -47,6 +49,31 @@ export async function GET(
         { success: false, error: "Forbidden" },
         { status: 403 },
       );
+    }
+
+    // If still processing, check Fal's queue directly and advance the pipeline
+    // if the job has completed — this makes video export work even when webhook
+    // delivery fails (wrong NEXT_PUBLIC_APP_URL, deployment protection, etc.).
+    if (exportRow.status === "processing" && exportRow.export_type === "video") {
+      try {
+        await advanceVideoExportIfReady(exportRow, getAppBaseUrl(request));
+      } catch {
+        // Non-fatal: if polling Fal fails we just return current DB status and
+        // the client will retry on the next poll.
+      }
+
+      // Re-read so we return the latest status after any advancement.
+      const { data: refreshed } = await supabase
+        .from("exports")
+        .select("status, output_url, error_message")
+        .eq("id", id)
+        .single();
+
+      if (refreshed) {
+        exportRow.status = refreshed.status;
+        exportRow.output_url = refreshed.output_url;
+        exportRow.error_message = refreshed.error_message;
+      }
     }
 
     return NextResponse.json({

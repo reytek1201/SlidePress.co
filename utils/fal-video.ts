@@ -141,6 +141,48 @@ export function extractVideoUrlFromWebhook(
   return body.payload?.video?.url ?? null;
 }
 
+interface FalQueueStatusResponse {
+  status: "IN_QUEUE" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+}
+
+interface FalVideoResultResponse {
+  video?: { url?: string };
+}
+
+export async function isFalQueueCompleted(
+  model: string,
+  requestId: string,
+): Promise<boolean> {
+  try {
+    const response = await fetch(
+      `https://queue.fal.run/${model}/requests/${requestId}/status`,
+      { headers: { Authorization: `Key ${getFalKey()}` } },
+    );
+    if (!response.ok) return false;
+    const data = (await response.json()) as FalQueueStatusResponse;
+    return data.status === "COMPLETED";
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchFalVideoUrl(
+  model: string,
+  requestId: string,
+): Promise<string | null> {
+  try {
+    const response = await fetch(
+      `https://queue.fal.run/${model}/requests/${requestId}`,
+      { headers: { Authorization: `Key ${getFalKey()}` } },
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as FalVideoResultResponse;
+    return data.video?.url ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function parseVideoExportMetadata(
   value: unknown,
 ): VideoExportMetadata | null {
