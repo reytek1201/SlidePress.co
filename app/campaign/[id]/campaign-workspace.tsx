@@ -51,6 +51,11 @@ import {
   TTS_EXPORT_SUCCESS_DISCLOSURE,
   TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE,
 } from "@/utils/tts/disclosure-copy";
+import {
+  VIDEO_EXPORT_POLL_TIMEOUT_MS,
+  mapPipelineStageToUiStage,
+  type VideoExportUiStage,
+} from "@/utils/video-export-stages";
 
 const USER_SCROLL_COOLDOWN_MS = 3000;
 const SLIDE_UPDATE_DEBOUNCE_MS = 150;
@@ -85,6 +90,8 @@ export default function CampaignWorkspace({
   const [audioExportMessage, setAudioExportMessage] = useState<string | null>(null);
   const [videoExportMessage, setVideoExportMessage] = useState<string | null>(null);
   const [videoExportError, setVideoExportError] = useState<string | null>(null);
+  const [videoExportStage, setVideoExportStage] =
+    useState<VideoExportUiStage>("preparing");
   const [captionsMessage, setCaptionsMessage] = useState<string | null>(null);
   const [justFinishedSlide, setJustFinishedSlide] = useState<{
     slideIndex: number;
@@ -579,11 +586,13 @@ export default function CampaignWorkspace({
     }
   }
 
-  async function pollVideoExport(exportId: string): Promise<string> {
-    const timeoutMs = 5 * 60_000;
+  async function pollVideoExport(
+    exportId: string,
+    onStageChange: (stage: VideoExportUiStage) => void,
+  ): Promise<string> {
     const startedAt = Date.now();
 
-    while (Date.now() - startedAt < timeoutMs) {
+    while (Date.now() - startedAt < VIDEO_EXPORT_POLL_TIMEOUT_MS) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const response = await fetch(`/api/exports/${exportId}`);
@@ -591,6 +600,7 @@ export default function CampaignWorkspace({
         success?: boolean;
         export?: {
           status?: string;
+          stage?: string | null;
           outputUrl?: string | null;
           errorMessage?: string | null;
         };
@@ -599,6 +609,10 @@ export default function CampaignWorkspace({
 
       if (!response.ok || !data.success || !data.export) {
         throw new Error(data.error ?? "Failed to check video export status");
+      }
+
+      if (data.export.stage) {
+        onStageChange(mapPipelineStageToUiStage(data.export.stage));
       }
 
       if (data.export.status === "completed" && data.export.outputUrl) {
@@ -610,7 +624,9 @@ export default function CampaignWorkspace({
       }
     }
 
-    throw new Error("Video export timed out. Try again in a few minutes.");
+    throw new Error(
+      "Video export is taking longer than expected. Try again in a few minutes.",
+    );
   }
 
   function getCampaignVideoFilename(): string {
@@ -629,6 +645,7 @@ export default function CampaignWorkspace({
     setError(null);
     setVideoExportMessage(null);
     setVideoExportError(null);
+    setVideoExportStage("preparing");
     setIsExportingVideo(true);
 
     try {
@@ -651,7 +668,10 @@ export default function CampaignWorkspace({
         throw new Error(data.error ?? "Video export failed");
       }
 
-      const outputUrl = await pollVideoExport(data.exportId);
+      setVideoExportStage("images_to_video");
+
+      const outputUrl = await pollVideoExport(data.exportId, setVideoExportStage);
+      setVideoExportStage("downloading");
       const filename = getCampaignVideoFilename();
       const videoResponse = await fetch(outputUrl);
 
@@ -1316,8 +1336,12 @@ export default function CampaignWorkspace({
         campaignTopic={campaign.topic}
         aspectRatio={campaign.aspect_ratio}
         slideCount={slides.length}
+        stage={videoExportStage}
         error={videoExportError}
-        onDismiss={() => setVideoExportError(null)}
+        onDismiss={() => {
+          setVideoExportError(null);
+          setVideoExportStage("preparing");
+        }}
       />
     </div>
   );

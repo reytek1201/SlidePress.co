@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { getAppBaseUrl } from "@/utils/fal";
 import { advanceVideoExportIfReady } from "@/utils/advance-video-export";
+import { parseVideoExportMetadata } from "@/utils/fal-video";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -65,7 +66,7 @@ export async function GET(
       // Re-read so we return the latest status after any advancement.
       const { data: refreshed } = await supabase
         .from("exports")
-        .select("status, output_url, error_message")
+        .select("status, output_url, error_message, metadata")
         .eq("id", id)
         .single();
 
@@ -73,8 +74,11 @@ export async function GET(
         exportRow.status = refreshed.status;
         exportRow.output_url = refreshed.output_url;
         exportRow.error_message = refreshed.error_message;
+        exportRow.metadata = refreshed.metadata;
       }
     }
+
+    const metadata = parseVideoExportMetadata(exportRow.metadata);
 
     return NextResponse.json({
       success: true,
@@ -83,6 +87,7 @@ export async function GET(
         campaignId: exportRow.campaign_id,
         exportType: exportRow.export_type,
         status: exportRow.status,
+        stage: metadata?.stage ?? null,
         outputUrl: exportRow.output_url,
         errorMessage: exportRow.error_message,
         createdAt: exportRow.created_at,

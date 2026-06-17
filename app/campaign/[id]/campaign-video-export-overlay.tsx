@@ -2,6 +2,13 @@
 
 import { formatAspectRatio } from "@/utils/campaign-display";
 import type { Campaign } from "@/types/campaign";
+import {
+  VIDEO_EXPORT_STAGE_DESCRIPTIONS,
+  VIDEO_EXPORT_STAGE_LABELS,
+  VIDEO_EXPORT_UI_STAGES,
+  getVideoExportStepState,
+  type VideoExportUiStage,
+} from "@/utils/video-export-stages";
 import { useEffect, useState } from "react";
 
 interface CampaignVideoExportOverlayProps {
@@ -10,6 +17,7 @@ interface CampaignVideoExportOverlayProps {
   campaignTopic: string;
   aspectRatio: Campaign["aspect_ratio"];
   slideCount: number;
+  stage?: VideoExportUiStage;
   error?: string | null;
   onDismiss?: () => void;
 }
@@ -26,6 +34,7 @@ export default function CampaignVideoExportOverlay({
   campaignTopic,
   aspectRatio,
   slideCount,
+  stage = "preparing",
   error = null,
   onDismiss,
 }: CampaignVideoExportOverlayProps) {
@@ -49,13 +58,11 @@ export default function CampaignVideoExportOverlay({
   }
 
   const headline = campaignTitle.trim() || campaignTopic;
+  const stageDescription = VIDEO_EXPORT_STAGE_DESCRIPTIONS[stage];
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-8">
-      <div
-        className="absolute inset-0 bg-black/80"
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/80" aria-hidden="true" />
 
       <div
         role="dialog"
@@ -96,13 +103,49 @@ export default function CampaignVideoExportOverlay({
               {headline}
             </h2>
             <p className="mt-4 text-sm leading-7 text-muted-foreground">
-              Stitching {slideCount} slides with AI narration. This usually takes
-              1–3 minutes. Keep this tab open.
+              {stageDescription} This usually takes 1–3 minutes. Keep this tab
+              open.
             </p>
+
+            <ol className="mt-6 space-y-2 text-left">
+              {VIDEO_EXPORT_UI_STAGES.map((step) => {
+                const stepState = getVideoExportStepState(step, stage);
+
+                return (
+                  <li
+                    key={step}
+                    className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition ${
+                      stepState === "active"
+                        ? "border-primary/40 bg-primary/10 text-foreground"
+                        : stepState === "done"
+                          ? "border-border/60 bg-background/40 text-muted-foreground"
+                          : "border-transparent text-muted-foreground/70"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        stepState === "done"
+                          ? "bg-primary text-primary-foreground"
+                          : stepState === "active"
+                            ? "border border-primary text-primary"
+                            : "border border-border text-muted-foreground"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {stepState === "done" ? "✓" : stepState === "active" ? "•" : ""}
+                    </span>
+                    <span className="font-medium">
+                      {VIDEO_EXPORT_STAGE_LABELS[step]}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
             <p className="mt-4 text-xs tabular-nums text-muted-foreground">
               {formatElapsed(elapsedSeconds)}
             </p>
-            <dl className="mt-8 flex flex-wrap justify-center gap-6 text-center text-sm text-muted-foreground">
+            <dl className="mt-6 flex flex-wrap justify-center gap-6 text-center text-sm text-muted-foreground">
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide">
                   Format

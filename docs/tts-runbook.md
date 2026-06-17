@@ -154,7 +154,9 @@ Rate-limited to 2 requests/minute. Monthly cap via `BETA_VIDEO_EXPORTS_PER_MONTH
 
 Apply migration `supabase/migrations/20260617000005_video_export.sql` before deploying.
 
-`GET /api/exports/:id` polls Fal queue status when webhooks are unavailable (wrong `NEXT_PUBLIC_APP_URL`, deployment protection, etc.).
+`GET /api/exports/:id` polls Fal queue status when webhooks are unavailable (wrong `NEXT_PUBLIC_APP_URL`, deployment protection, etc.) and returns `export.stage` (`images_to_video` | `merge_audio`) for the rendering overlay.
+
+Client poll timeout is 10 minutes (`VIDEO_EXPORT_POLL_TIMEOUT_MS`).
 
 ### Narration cache
 
