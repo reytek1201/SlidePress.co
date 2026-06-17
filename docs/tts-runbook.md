@@ -16,6 +16,7 @@ Internal setup for ElevenLabs text-to-speech (Phase 0). Not user-facing document
 | `ENABLE_TTS_AUDIT` | No | Set `true` on preview/prod to enable `POST /api/dev/audit-campaign-audio` (disabled in prod by default). |
 | `BETA_TTS_PREVIEWS_PER_MONTH` | No | Monthly voice preview cap per user (default `30`). |
 | `BETA_AUDIO_EXPORTS_PER_MONTH` | No | Monthly narration ZIP export cap per user (default `5`). |
+| `BETA_VIDEO_EXPORTS_PER_MONTH` | No | Monthly video export cap per user (default `3`). |
 
 ### `ELEVENLABS_VOICE_IDS` format
 
@@ -134,6 +135,26 @@ curl -X POST http://localhost:3000/api/export-audio \
 ```
 
 Apply migration `supabase/migrations/20260617000004_audio_export.sql` before deploying (adds `audio` export type and `tts_export` event).
+
+---
+
+## Video export (Phase 4)
+
+User-facing route: `POST /api/export-video` (auth required). Uses Fal FFmpeg (`fal-ai/ffmpeg-api/images-to-video` then `merge-audio-video`) with the existing `FAL_KEY` and `/api/webhooks/fal` callback.
+
+```json
+{ "campaignId": "...", "persona": "warm" }
+```
+
+Requirements: **9:16** campaign, all slide images ready, every slide has a voiceover script.
+
+Returns `{ exportId, status: "processing" }`. Poll `GET /api/exports/:id` until `status` is `completed`, then download `outputUrl`.
+
+Rate-limited to 2 requests/minute. Monthly cap via `BETA_VIDEO_EXPORTS_PER_MONTH` (default `3`).
+
+Apply migration `supabase/migrations/20260617000005_video_export.sql` before deploying.
+
+Local dev requires `FAL_KEY`, `FAL_WEBHOOK_SECRET`, and `NEXT_PUBLIC_APP_URL` reachable by Fal (use ngrok or deploy preview for webhook testing).
 
 ---
 

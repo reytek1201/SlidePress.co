@@ -8,3 +8,9 @@ export const TTS_EXPORT_DISCLOSURE =
 
 export const TTS_EXPORT_SUCCESS_DISCLOSURE =
   "Your file includes AI-generated narration.";
+
+export const TTS_VIDEO_EXPORT_DISCLOSURE =
+  "Video includes AI-generated narration synced to your slides.";
+
+export const TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE =
+  "Your MP4 includes AI-generated narration.";

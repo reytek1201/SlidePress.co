@@ -1,11 +1,14 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   extractImageUrlFromWebhook,
+  getAppBaseUrl,
   verifyFalWebhookSecret,
   type FalWebhookPayload,
 } from "@/utils/fal";
+import type { FalVideoWebhookPayload } from "@/utils/fal-video";
 import { refreshCampaignImageStatus } from "@/utils/campaign-image-status";
 import { maybeSendCampaignImagesReadyPush } from "@/utils/send-campaign-push";
+import { handleVideoExportWebhook } from "@/utils/video-export-webhook";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -17,12 +20,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = (await request.json()) as FalWebhookPayload;
+    const body = (await request.json()) as FalWebhookPayload &
+      FalVideoWebhookPayload;
 
     if (!body.request_id) {
       return NextResponse.json(
         { success: false, error: "Missing request_id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -34,11 +38,30 @@ export async function POST(request: Request) {
       .eq("fal_request_id", body.request_id)
       .maybeSingle();
 
-    if (slideError || !slide) {
+    if (slideError) {
       return NextResponse.json(
-        { success: false, error: "Slide not found for request" },
-        { status: 404 }
+        { success: false, error: "Failed to look up slide" },
+        { status: 500 },
       );
+    }
+
+    if (!slide) {
+      const videoResult = await handleVideoExportWebhook(
+        body,
+        getAppBaseUrl(request),
+      );
+
+      if (videoResult.status === 404) {
+        return NextResponse.json(
+          { success: false, error: "Request not found for webhook" },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        handled: videoResult.handled,
+      });
     }
 
     if (body.status === "ERROR") {
@@ -70,7 +93,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         { success: false, error: "Missing image URL in webhook payload" },
-        { status: 422 }
+        { status: 422 },
       );
     }
 
@@ -86,7 +109,7 @@ export async function POST(request: Request) {
           error: "Failed to update slide",
           details: updateError.message,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -100,7 +123,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { success: false, error: message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

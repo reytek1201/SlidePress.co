@@ -6,8 +6,6 @@ import type { PlatformCaption } from "@/types/captions";
 import {
   formatAllCaptionsForCopy,
   formatCaptionForCopy,
-  formatHashtagsForDisplay,
-  PLATFORM_LABELS,
   sortCaptionsByPlatform,
 } from "@/types/captions";
 import {
@@ -29,7 +27,7 @@ import {
   CampaignActionsSheet,
 } from "@/app/campaign/[id]/campaign-actions-sheet";
 import CampaignPublishPanel from "@/app/campaign/[id]/campaign-publish-panel";
-import CampaignVoicePanel from "@/app/campaign/[id]/campaign-voice-panel";
+import CampaignVideoExportOverlay from "@/app/campaign/[id]/campaign-video-export-overlay";
 import CampaignProgressStrip from "@/app/campaign/[id]/campaign-progress-strip";
 import CampaignSlidesMobileView from "@/app/campaign/[id]/campaign-slides-mobile-view";
 import CampaignTitleEditor from "@/app/campaign/[id]/campaign-title-editor";
@@ -49,7 +47,10 @@ import {
 } from "@/utils/native-slide-export";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
-import { TTS_EXPORT_SUCCESS_DISCLOSURE } from "@/utils/tts/disclosure-copy";
+import {
+  TTS_EXPORT_SUCCESS_DISCLOSURE,
+  TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE,
+} from "@/utils/tts/disclosure-copy";
 
 const USER_SCROLL_COOLDOWN_MS = 3000;
 const SLIDE_UPDATE_DEBOUNCE_MS = 150;
@@ -79,8 +80,11 @@ export default function CampaignWorkspace({
   const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingAudio, setIsExportingAudio] = useState(false);
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [audioExportMessage, setAudioExportMessage] = useState<string | null>(null);
+  const [videoExportMessage, setVideoExportMessage] = useState<string | null>(null);
+  const [videoExportError, setVideoExportError] = useState<string | null>(null);
   const [captionsMessage, setCaptionsMessage] = useState<string | null>(null);
   const [justFinishedSlide, setJustFinishedSlide] = useState<{
     slideIndex: number;
@@ -140,6 +144,13 @@ export default function CampaignWorkspace({
   const hasVoiceoverScripts = slides.some((slide) =>
     Boolean(slide.voiceover_script?.trim()),
   );
+  const allSlidesHaveVoiceoverScripts =
+    slides.length > 0 &&
+    slides.every((slide) => Boolean(slide.voiceover_script?.trim()));
+  const canExportVideo =
+    campaign.aspect_ratio === "9:16" &&
+    imagesComplete &&
+    allSlidesHaveVoiceoverScripts;
 
   useEffect(() => {
     isGeneratingImagesRef.current = isGeneratingImages;
@@ -568,16 +579,152 @@ export default function CampaignWorkspace({
     }
   }
 
-  const voicePanelProps = {
+  async function pollVideoExport(exportId: string): Promise<string> {
+    const timeoutMs = 5 * 60_000;
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const response = await fetch(`/api/exports/${exportId}`);
+      const data = (await response.json()) as {
+        success?: boolean;
+        export?: {
+          status?: string;
+          outputUrl?: string | null;
+          errorMessage?: string | null;
+        };
+        error?: string;
+      };
+
+      if (!response.ok || !data.success || !data.export) {
+        throw new Error(data.error ?? "Failed to check video export status");
+      }
+
+      if (data.export.status === "completed" && data.export.outputUrl) {
+        return data.export.outputUrl;
+      }
+
+      if (data.export.status === "failed") {
+        throw new Error(data.export.errorMessage ?? "Video export failed");
+      }
+    }
+
+    throw new Error("Video export timed out. Try again in a few minutes.");
+  }
+
+  function getCampaignVideoFilename(): string {
+    const base =
+      campaign.title
+        ?.trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || `campaign-${campaign.id.slice(0, 8)}`;
+
+    return `${base}-video.mp4`;
+  }
+
+  async function handleExportVideo() {
+    setError(null);
+    setVideoExportMessage(null);
+    setVideoExportError(null);
+    setIsExportingVideo(true);
+
+    try {
+      const response = await fetch("/api/export-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          persona: preferredVoicePersona,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        exportId?: string;
+        error?: string;
+      };
+
+      if (!response.ok || !data.success || !data.exportId) {
+        throw new Error(data.error ?? "Video export failed");
+      }
+
+      const outputUrl = await pollVideoExport(data.exportId);
+      const filename = getCampaignVideoFilename();
+      const videoResponse = await fetch(outputUrl);
+
+      if (!videoResponse.ok) {
+        throw new Error("Failed to download rendered video");
+      }
+
+      const blob = await videoResponse.blob();
+
+      if (canUseNativeSlideExport()) {
+        await shareCampaignZip(blob, filename);
+        setVideoExportMessage(
+          `Use the share sheet to save your video. ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`,
+        );
+      } else {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+
+        setVideoExportMessage(
+          `Video downloaded. ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`,
+        );
+      }
+    } catch (exportError) {
+      const message =
+        exportError instanceof Error
+          ? exportError.message
+          : "Something went wrong";
+
+      setError(message);
+      setVideoExportError(message);
+    } finally {
+      setIsExportingVideo(false);
+    }
+  }
+
+  const publishPanelProps = {
+    sortedCaptions,
+    imagesComplete,
+    hasVoiceoverScripts,
+    canExportVideo,
+    canGenerateCaptions,
+    isGeneratingCaptions,
+    captionsMessage,
+    copiedPlatform,
+    copiedAllCaptions: copiedPlatform === "all",
+    isNativeApp: isNativeApp === true,
     preferredVoicePersona,
     brandId: campaign.brand_id,
-    disabled: campaign.status === "generating_text",
-    isSaving: isSavingVoicePersona,
-    hasVoiceoverScripts,
+    isSavingVoicePersona,
+    isExporting,
     isExportingAudio,
+    isSavingAllPhotos,
+    saveAllPhotosProgress,
+    savedAllPhotos,
+    exportMessage,
     audioExportMessage,
+    isExportingVideo,
+    videoExportMessage,
+    campaignStatus: campaign.status,
+    onGenerateCaptions: handleGenerateCaptions,
+    onCopyCaption: handleCopyCaption,
+    onCopyAllCaptions: handleCopyAllCaptions,
     onPersonaChange: (persona: VoicePersona) => void handleVoicePersonaChange(persona),
-    onExportAudio: () => void handleDownloadNarration(),
+    onDownloadZip: handleDownloadZip,
+    onDownloadNarration: handleDownloadNarration,
+    onExportVideo: handleExportVideo,
+    onSaveAllToPhotos: handleSaveAllToPhotos,
   };
 
   async function handleGenerateCaptions() {
@@ -827,6 +974,8 @@ export default function CampaignWorkspace({
     canGenerateCaptions,
     isGeneratingCaptions,
     isExporting,
+    isExportingAudio,
+    hasVoiceoverScripts,
     isNativeApp: isNativeApp === true,
     isSavingAllPhotos,
     saveAllPhotosProgress,
@@ -835,6 +984,7 @@ export default function CampaignWorkspace({
     onGenerateImages: handleGenerateImages,
     onGenerateCaptions: handleGenerateCaptions,
     onDownloadZip: handleDownloadZip,
+    onDownloadNarration: handleDownloadNarration,
     onCopyAllCaptions: handleCopyAllCaptions,
     onSaveAllToPhotos: handleSaveAllToPhotos,
   };
@@ -1061,16 +1211,6 @@ export default function CampaignWorkspace({
             />
           </div>
 
-          {exportMessage && (
-            <div className="mb-6 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
-              {exportMessage}
-            </div>
-          )}
-
-          <div className="mb-4 hidden md:block">
-            <CampaignVoicePanel {...voicePanelProps} />
-          </div>
-
           <div className="md:hidden">
             <CampaignSlidesMobileView
               slides={slides}
@@ -1118,149 +1258,7 @@ export default function CampaignWorkspace({
         <div
           className={mobileTab !== "publish" ? "max-md:hidden" : ""}
         >
-          <div className="md:hidden space-y-4">
-            <CampaignGenerationPanel
-              {...nextStepProps}
-              inlineActions
-              onOpenMoreActions={() => setActionsSheetOpen(true)}
-              onTabChange={setMobileTab}
-              variant="publish"
-            />
-            <CampaignPublishPanel
-              sortedCaptions={sortedCaptions}
-              imagesComplete={imagesComplete}
-              canGenerateCaptions={canGenerateCaptions}
-              isGeneratingCaptions={isGeneratingCaptions}
-              captionsMessage={captionsMessage}
-              copiedPlatform={copiedPlatform}
-              onGenerateCaptions={handleGenerateCaptions}
-              onCopyCaption={handleCopyCaption}
-              voicePanel={<CampaignVoicePanel {...voicePanelProps} />}
-            />
-          </div>
-
-          <section
-            id="section-publish"
-            className="mt-8 hidden scroll-mt-28 rounded-xl border border-border bg-card/30 p-4 sm:mt-10 sm:scroll-mt-36 sm:rounded-2xl sm:p-6 md:block md:scroll-mt-40 md:p-8"
-          >
-          <CampaignGenerationPanel
-            {...nextStepProps}
-            variant="publish"
-          />
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-foreground md:text-xl">Publish</h2>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6 md:max-w-2xl">
-                AI-written post copy for TikTok, Instagram, and YouTube Shorts.
-                Regenerating captions only updates publish copy — not your slide
-                images.
-              </p>
-            </div>
-
-            {sortedCaptions.length > 0 && (
-              <button
-                type="button"
-                onClick={handleGenerateCaptions}
-                disabled={!canGenerateCaptions}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-5 sm:py-3"
-              >
-                {isGeneratingCaptions ? "Regenerating…" : "Regenerate captions"}
-              </button>
-            )}
-          </div>
-
-          {captionsMessage && (
-            <div className="mt-6 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
-              {captionsMessage}
-            </div>
-          )}
-
-          <div className="mt-6">
-            <CampaignVoicePanel {...voicePanelProps} />
-          </div>
-
-          <div className="mt-4 sm:mt-6">
-            {sortedCaptions.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border bg-background/40 px-4 py-6 text-center sm:rounded-xl sm:px-6 sm:py-8">
-                <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
-                  Use the next step bar to generate hooks, post copy, and
-                  hashtags tailored to each platform.
-                </p>
-              </div>
-            ) : (
-              <article className="overflow-hidden rounded-lg border border-border bg-card/50 sm:rounded-xl">
-                {sortedCaptions.map((platformCaption, index) => (
-                  <section
-                    key={platformCaption.id}
-                    className={
-                      index > 0 ? "border-t border-border" : undefined
-                    }
-                  >
-                    <div className="flex items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 md:px-6">
-                      <h3 className="text-sm font-semibold text-secondary-foreground">
-                        {PLATFORM_LABELS[platformCaption.platform]}
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCaption(platformCaption)}
-                        className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-secondary-foreground transition hover:border-ring/60 hover:text-foreground sm:px-3 sm:py-1.5 sm:text-xs"
-                      >
-                        {copiedPlatform === platformCaption.platform
-                          ? "Copied"
-                          : "Copy section"}
-                      </button>
-                    </div>
-
-                    <div className="space-y-3 px-3 pb-4 sm:space-y-4 sm:px-5 sm:pb-6 md:px-6">
-                      {platformCaption.platform === "youtube_shorts" &&
-                        platformCaption.title && (
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              Title
-                            </p>
-                            <p className="mt-2 text-sm font-semibold text-foreground">
-                              {platformCaption.title}
-                            </p>
-                          </div>
-                        )}
-
-                      {platformCaption.hook && (
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Hook
-                          </p>
-                          <p className="mt-1.5 text-sm leading-6 text-secondary-foreground sm:mt-2">
-                            {platformCaption.hook}
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Caption
-                        </p>
-                        <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-secondary-foreground sm:mt-2 sm:leading-7">
-                          {platformCaption.caption}
-                        </p>
-                      </div>
-
-                      {platformCaption.hashtags.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Hashtags
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-sky-300">
-                            {formatHashtagsForDisplay(platformCaption.hashtags)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                ))}
-              </article>
-            )}
-          </div>
-        </section>
+          <CampaignPublishPanel {...publishPanelProps} />
         </div>
 
         {mobileTab === "details" && (
@@ -1312,6 +1310,15 @@ export default function CampaignWorkspace({
           initialSlideIndex={previewInitialIndex}
         />
       )}
+      <CampaignVideoExportOverlay
+        open={isExportingVideo || Boolean(videoExportError)}
+        campaignTitle={campaign.title ?? ""}
+        campaignTopic={campaign.topic}
+        aspectRatio={campaign.aspect_ratio}
+        slideCount={slides.length}
+        error={videoExportError}
+        onDismiss={() => setVideoExportError(null)}
+      />
     </div>
   );
 }

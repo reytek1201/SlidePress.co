@@ -40,6 +40,10 @@ export function getBetaLimits() {
     process.env.BETA_AUDIO_EXPORTS_PER_MONTH ?? "5",
     10
   );
+  const videoExportsPerMonth = parseInt(
+    process.env.BETA_VIDEO_EXPORTS_PER_MONTH ?? "3",
+    10
+  );
 
   return {
     campaignsPerMonth: Number.isFinite(campaignsPerMonth)
@@ -54,6 +58,9 @@ export function getBetaLimits() {
     audioExportsPerMonth: Number.isFinite(audioExportsPerMonth)
       ? audioExportsPerMonth
       : 5,
+    videoExportsPerMonth: Number.isFinite(videoExportsPerMonth)
+      ? videoExportsPerMonth
+      : 3,
   };
 }
 
@@ -71,6 +78,10 @@ export function ttsPreviewLimitMessage(limit: number): string {
 
 export function audioExportLimitMessage(limit: number): string {
   return `Beta limit: ${limit} narration exports per month. Resets on the 1st.`;
+}
+
+export function videoExportLimitMessage(limit: number): string {
+  return `Beta limit: ${limit} video exports per month. Resets on the 1st.`;
 }
 
 export async function getUsageSummary(
@@ -134,10 +145,22 @@ export async function getUsageSummary(
     throw new Error("Failed to load audio export usage");
   }
 
+  const { count: videoExportsThisMonth, error: videoExportError } = await supabase
+    .from("usage_events")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("event_type", "video_export")
+    .gte("created_at", startOfMonth.toISOString());
+
+  if (videoExportError) {
+    throw new Error("Failed to load video export usage");
+  }
+
   const campaignsUsed = campaignsThisMonth ?? 0;
   const regenerationsUsed = slideRegenerationsThisMonth ?? 0;
   const ttsPreviewsUsed = ttsPreviewsThisMonth ?? 0;
   const audioExportsUsed = audioExportsThisMonth ?? 0;
+  const videoExportsUsed = videoExportsThisMonth ?? 0;
 
   const remainingCampaigns = Math.max(
     0,
@@ -155,6 +178,10 @@ export async function getUsageSummary(
     0,
     limits.audioExportsPerMonth - audioExportsUsed
   );
+  const remainingVideoExports = Math.max(
+    0,
+    limits.videoExportsPerMonth - videoExportsUsed
+  );
 
   return {
     campaignsThisMonth: campaignsUsed,
@@ -162,17 +189,20 @@ export async function getUsageSummary(
     slideRegenerationsThisMonth: regenerationsUsed,
     ttsPreviewsThisMonth: ttsPreviewsUsed,
     audioExportsThisMonth: audioExportsUsed,
+    videoExportsThisMonth: videoExportsUsed,
     limits,
     remaining: {
       campaigns: remainingCampaigns,
       slideRegenerations: remainingRegenerations,
       ttsPreviews: remainingTtsPreviews,
       audioExports: remainingAudioExports,
+      videoExports: remainingVideoExports,
     },
     canCreateCampaign: remainingCampaigns > 0,
     canRegenerateSlide: remainingRegenerations > 0,
     canPreviewTts: remainingTtsPreviews > 0,
     canExportAudio: remainingAudioExports > 0,
+    canExportVideo: remainingVideoExports > 0,
     planLabel: "Early access",
     resetsAt: getNextMonthStart().toISOString(),
   };
@@ -272,6 +302,43 @@ export async function recordTtsAudioExport(
 
   if (error) {
     throw new Error("Failed to record audio export");
+  }
+}
+
+export async function assertVideoExportLimit(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const usage = await getUsageSummary(supabase, userId);
+
+  if (!usage.canExportVideo) {
+    throw new UsageLimitError(
+      videoExportLimitMessage(usage.limits.videoExportsPerMonth),
+    );
+  }
+}
+
+export interface RecordVideoExportMetadata {
+  campaignId: string;
+  exportId: string;
+  persona: string;
+  slideCount: number;
+  charCount: number;
+}
+
+export async function recordVideoExport(
+  userId: string,
+  metadata: RecordVideoExportMetadata,
+): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("usage_events").insert({
+    user_id: userId,
+    event_type: "video_export",
+    metadata,
+  });
+
+  if (error) {
+    throw new Error("Failed to record video export");
   }
 }
 

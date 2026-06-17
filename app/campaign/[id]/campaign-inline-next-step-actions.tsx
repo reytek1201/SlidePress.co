@@ -13,6 +13,7 @@ type NextStepHandlers = Pick<
   | "onGenerateImages"
   | "onGenerateCaptions"
   | "onDownloadZip"
+  | "onDownloadNarration"
   | "onCopyAllCaptions"
   | "onSaveAllToPhotos"
 >;
@@ -27,6 +28,9 @@ function runNextStepAction(action: NextStepAction, handlers: NextStepHandlers) {
       break;
     case "download_zip":
       handlers.onDownloadZip();
+      break;
+    case "download_narration":
+      handlers.onDownloadNarration();
       break;
     case "copy_captions":
       handlers.onCopyAllCaptions();

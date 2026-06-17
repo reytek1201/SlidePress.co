@@ -1,47 +1,134 @@
 "use client";
 
-import type { ReactNode } from "react";
+import CampaignCaptionsAccordion from "@/app/campaign/[id]/campaign-captions-accordion";
+import CampaignExportPanel from "@/app/campaign/[id]/campaign-export-panel";
+import CampaignNarrationPanel from "@/app/campaign/[id]/campaign-narration-panel";
+import CampaignVideoPanel from "@/app/campaign/[id]/campaign-video-panel";
 import type { PlatformCaption } from "@/types/captions";
-import {
-  formatHashtagsForDisplay,
-  PLATFORM_LABELS,
-} from "@/types/captions";
+import type { VoicePersona } from "@/utils/tts/voice-catalog";
 
 interface CampaignPublishPanelProps {
   sortedCaptions: PlatformCaption[];
   imagesComplete: boolean;
+  hasVoiceoverScripts: boolean;
+  canExportVideo: boolean;
   canGenerateCaptions: boolean;
   isGeneratingCaptions: boolean;
   captionsMessage: string | null;
   copiedPlatform: string | null;
+  copiedAllCaptions: boolean;
+  isNativeApp: boolean;
+  preferredVoicePersona: VoicePersona;
+  brandId: string | null;
+  isSavingVoicePersona: boolean;
+  isExporting: boolean;
+  isExportingAudio: boolean;
+  isSavingAllPhotos: boolean;
+  saveAllPhotosProgress: { saved: number; total: number } | null;
+  savedAllPhotos: boolean;
+  exportMessage: string | null;
+  audioExportMessage: string | null;
+  isExportingVideo: boolean;
+  videoExportMessage: string | null;
+  campaignStatus: string;
   onGenerateCaptions: () => void;
   onCopyCaption: (platformCaption: PlatformCaption) => void;
-  voicePanel?: ReactNode;
+  onCopyAllCaptions: () => void;
+  onPersonaChange: (persona: VoicePersona) => void;
+  onDownloadZip: () => void;
+  onDownloadNarration: () => void;
+  onExportVideo: () => void;
+  onSaveAllToPhotos: () => void;
 }
 
 export default function CampaignPublishPanel({
   sortedCaptions,
   imagesComplete,
+  hasVoiceoverScripts,
+  canExportVideo,
   canGenerateCaptions,
   isGeneratingCaptions,
   captionsMessage,
   copiedPlatform,
+  copiedAllCaptions,
+  isNativeApp,
+  preferredVoicePersona,
+  brandId,
+  isSavingVoicePersona,
+  isExporting,
+  isExportingAudio,
+  isSavingAllPhotos,
+  saveAllPhotosProgress,
+  savedAllPhotos,
+  exportMessage,
+  audioExportMessage,
+  isExportingVideo,
+  videoExportMessage,
+  campaignStatus,
   onGenerateCaptions,
   onCopyCaption,
-  voicePanel,
+  onCopyAllCaptions,
+  onPersonaChange,
+  onDownloadZip,
+  onDownloadNarration,
+  onExportVideo,
+  onSaveAllToPhotos,
 }: CampaignPublishPanelProps) {
+  const captionsReady = sortedCaptions.length > 0 && !isGeneratingCaptions;
+  const disabled = campaignStatus === "generating_text";
+
+  const downloadSections = (
+    <>
+      {hasVoiceoverScripts && (
+        <CampaignNarrationPanel
+          preferredVoicePersona={preferredVoicePersona}
+          brandId={brandId}
+          disabled={disabled}
+          isSavingVoicePersona={isSavingVoicePersona}
+          isExportingAudio={isExportingAudio}
+          audioExportMessage={audioExportMessage}
+          onPersonaChange={onPersonaChange}
+          onDownloadNarration={onDownloadNarration}
+        />
+      )}
+
+      {canExportVideo && (
+        <CampaignVideoPanel
+          canExportVideo={canExportVideo}
+          disabled={disabled}
+          isExportingVideo={isExportingVideo}
+          videoExportMessage={videoExportMessage}
+          onExportVideo={onExportVideo}
+        />
+      )}
+
+      <CampaignExportPanel
+        imagesComplete={imagesComplete}
+        isNativeApp={isNativeApp}
+        disabled={disabled}
+        isExporting={isExporting}
+        isSavingAllPhotos={isSavingAllPhotos}
+        saveAllPhotosProgress={saveAllPhotosProgress}
+        savedAllPhotos={savedAllPhotos}
+        exportMessage={exportMessage}
+        onDownloadZip={onDownloadZip}
+        onSaveAllToPhotos={onSaveAllToPhotos}
+      />
+    </>
+  );
+
   return (
     <section
       id="section-publish"
       className="scroll-mt-28 rounded-xl border border-border bg-card/30 p-4 md:mt-8 md:scroll-mt-36 md:rounded-2xl md:p-6 lg:scroll-mt-40 lg:p-8"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Publish</h2>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            AI-written post copy for TikTok, Instagram, and YouTube Shorts.
-            Regenerating captions only updates publish copy — not your slide
-            images.
+          <h2 className="text-lg font-semibold text-foreground md:text-xl">
+            Publish
+          </h2>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6 md:max-w-2xl">
+            Copy post text, download narration, or export slide images.
           </p>
         </div>
 
@@ -50,25 +137,56 @@ export default function CampaignPublishPanel({
             type="button"
             onClick={onGenerateCaptions}
             disabled={!canGenerateCaptions}
-            className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-5 sm:py-3"
           >
             {isGeneratingCaptions ? "Regenerating…" : "Regenerate captions"}
           </button>
         )}
       </div>
 
-      {voicePanel && <div className="mt-4">{voicePanel}</div>}
+      {captionsReady && (
+        <div className="mt-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 sm:mt-6">
+          <p className="text-sm font-semibold text-emerald-200">Ready to post</p>
+          <p className="mt-1 text-sm leading-6 text-emerald-200/90">
+            Copy all captions in one tap, or download assets below.
+          </p>
+          <button
+            type="button"
+            onClick={onCopyAllCaptions}
+            className="btn-primary mt-4 w-full py-2.5 text-sm sm:w-auto sm:px-6"
+          >
+            {copiedAllCaptions ? "Copied all captions" : "Copy all captions"}
+          </button>
+        </div>
+      )}
+
+      {isGeneratingCaptions && (
+        <div className="mt-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 sm:mt-6">
+          <p className="text-sm font-semibold text-foreground">
+            Generating captions…
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Writing hooks and post copy for each platform.
+          </p>
+        </div>
+      )}
 
       {captionsMessage && (
-        <div className="mt-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
+        <div className="mt-4 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200 sm:mt-6">
           {captionsMessage}
         </div>
       )}
 
-      <div className="mt-4">
+      {captionsReady && (
+        <div className="mt-4 flex flex-col gap-4 sm:mt-6 sm:gap-6">
+          {downloadSections}
+        </div>
+      )}
+
+      <div className="mt-4 sm:mt-6">
         {sortedCaptions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border bg-background/40 px-4 py-6 text-center">
-            <p className="text-xs leading-5 text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border bg-background/40 px-4 py-6 text-center sm:rounded-xl sm:px-6 sm:py-8">
+            <p className="text-xs leading-5 text-muted-foreground sm:text-sm">
               {imagesComplete
                 ? "Generate hooks, post copy, and hashtags tailored to each platform."
                 : "Finish generating slide images on the Slides tab first."}
@@ -78,83 +196,26 @@ export default function CampaignPublishPanel({
                 type="button"
                 onClick={onGenerateCaptions}
                 disabled={!canGenerateCaptions}
-                className="btn-primary mt-4 w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary mt-4 w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6"
               >
                 {isGeneratingCaptions ? "Generating captions…" : "Generate captions"}
               </button>
             )}
           </div>
         ) : (
-          <article className="overflow-hidden rounded-lg border border-border bg-card/50">
-            {sortedCaptions.map((platformCaption, index) => (
-              <section
-                key={platformCaption.id}
-                className={index > 0 ? "border-t border-border" : undefined}
-              >
-                <div className="flex items-center justify-between gap-2 px-3 py-3">
-                  <h3 className="text-sm font-semibold text-secondary-foreground">
-                    {PLATFORM_LABELS[platformCaption.platform]}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => onCopyCaption(platformCaption)}
-                    className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-secondary-foreground transition hover:border-ring/60 hover:text-foreground"
-                  >
-                    {copiedPlatform === platformCaption.platform
-                      ? "Copied"
-                      : "Copy section"}
-                  </button>
-                </div>
-
-                <div className="space-y-3 px-3 pb-4">
-                  {platformCaption.platform === "youtube_shorts" &&
-                    platformCaption.title && (
-                      <div>
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Title
-                        </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
-                          {platformCaption.title}
-                        </p>
-                      </div>
-                    )}
-
-                  {platformCaption.hook && (
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Hook
-                      </p>
-                      <p className="mt-1.5 text-sm leading-6 text-secondary-foreground">
-                        {platformCaption.hook}
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Caption
-                    </p>
-                    <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-secondary-foreground">
-                      {platformCaption.caption}
-                    </p>
-                  </div>
-
-                  {platformCaption.hashtags.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Hashtags
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-sky-300">
-                        {formatHashtagsForDisplay(platformCaption.hashtags)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            ))}
-          </article>
+          <CampaignCaptionsAccordion
+            captions={sortedCaptions}
+            copiedPlatform={copiedPlatform}
+            onCopyCaption={onCopyCaption}
+          />
         )}
       </div>
+
+      {!captionsReady && (hasVoiceoverScripts || imagesComplete) && (
+        <div className="mt-4 flex flex-col gap-4 sm:mt-6 sm:gap-6">
+          {downloadSections}
+        </div>
+      )}
     </section>
   );
 }

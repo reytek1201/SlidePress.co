@@ -14,7 +14,12 @@ export const CAMPAIGN_WORKSPACE_TABS: {
 export function tabForNextStepAction(
   action: NextStepAction,
 ): CampaignWorkspaceTab {
-  if (action === "generate_captions" || action === "copy_captions") {
+  if (
+    action === "generate_captions" ||
+    action === "copy_captions" ||
+    action === "download_zip" ||
+    action === "download_narration"
+  ) {
     return "publish";
   }
 

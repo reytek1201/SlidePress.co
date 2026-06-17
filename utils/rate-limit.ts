@@ -68,3 +68,16 @@ export function assertTtsExportRateLimit(userId: string): void {
     TTS_EXPORT_RATE_LIMIT.windowMs,
   );
 }
+
+export const VIDEO_EXPORT_RATE_LIMIT = {
+  maxRequests: 2,
+  windowMs: 60_000,
+} as const;
+
+export function assertVideoExportRateLimit(userId: string): void {
+  assertRateLimit(
+    `video:export:${userId}`,
+    VIDEO_EXPORT_RATE_LIMIT.maxRequests,
+    VIDEO_EXPORT_RATE_LIMIT.windowMs,
+  );
+}

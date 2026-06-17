@@ -3,6 +3,7 @@ export interface UsageLimits {
   slideRegenerationsPerMonth: number;
   ttsPreviewsPerMonth: number;
   audioExportsPerMonth: number;
+  videoExportsPerMonth: number;
 }
 
 export interface UsageRemaining {
@@ -10,6 +11,7 @@ export interface UsageRemaining {
   slideRegenerations: number;
   ttsPreviews: number;
   audioExports: number;
+  videoExports: number;
 }
 
 export interface UsageSummary {
@@ -18,12 +20,14 @@ export interface UsageSummary {
   slideRegenerationsThisMonth: number;
   ttsPreviewsThisMonth: number;
   audioExportsThisMonth: number;
+  videoExportsThisMonth: number;
   limits: UsageLimits;
   remaining: UsageRemaining;
   canCreateCampaign: boolean;
   canRegenerateSlide: boolean;
   canPreviewTts: boolean;
   canExportAudio: boolean;
+  canExportVideo: boolean;
   planLabel: string;
   resetsAt: string;
 }

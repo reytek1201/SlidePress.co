@@ -12,46 +12,45 @@ const PERSONA_LABELS: Record<VoicePersona, string> = {
   professional: "Professional",
 };
 
-interface CampaignVoicePanelProps {
+interface CampaignNarrationPanelProps {
   preferredVoicePersona: VoicePersona;
   brandId: string | null;
   disabled?: boolean;
-  isSaving?: boolean;
-  hasVoiceoverScripts?: boolean;
+  isSavingVoicePersona?: boolean;
   isExportingAudio?: boolean;
   audioExportMessage?: string | null;
   onPersonaChange: (persona: VoicePersona) => void;
-  onExportAudio?: () => void;
+  onDownloadNarration: () => void;
 }
 
-export default function CampaignVoicePanel({
+export default function CampaignNarrationPanel({
   preferredVoicePersona,
   brandId,
   disabled = false,
-  isSaving = false,
-  hasVoiceoverScripts = false,
+  isSavingVoicePersona = false,
   isExportingAudio = false,
   audioExportMessage = null,
   onPersonaChange,
-  onExportAudio,
-}: CampaignVoicePanelProps) {
+  onDownloadNarration,
+}: CampaignNarrationPanelProps) {
   return (
-    <div className="rounded-lg border border-border bg-background/40 p-4">
+    <div className="rounded-lg border border-border bg-background/40 p-4 sm:rounded-xl sm:p-5">
       <div className="flex flex-col gap-1">
-        <h3 className="text-sm font-semibold text-foreground">AI narration voice</h3>
+        <h3 className="text-sm font-semibold text-foreground">Narration</h3>
         <p className="text-xs leading-5 text-muted-foreground">
-          Preview slides and export narration MP3s for video editing.
+          Choose a voice, then download MP3s for video editing. Preview each
+          slide on the Slides tab.
         </p>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {VOICE_PERSONAS.map((persona) => {
           const isActive = persona === preferredVoicePersona;
           return (
             <button
               key={persona}
               type="button"
-              disabled={disabled || isSaving || !brandId}
+              disabled={disabled || isSavingVoicePersona || !brandId}
               onClick={() => onPersonaChange(persona)}
               className={`rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                 isActive
@@ -71,41 +70,29 @@ export default function CampaignVoicePanel({
         </p>
       )}
 
-      {isSaving && (
-        <p className="mt-2 text-xs text-muted-foreground">Saving voice preference…</p>
+      {isSavingVoicePersona && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Saving voice preference…
+        </p>
       )}
 
-      {onExportAudio && (
-        <div className="mt-4 border-t border-border pt-4">
-          <button
-            type="button"
-            disabled={disabled || isExportingAudio || !hasVoiceoverScripts}
-            onClick={onExportAudio}
-            className="btn-primary w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isExportingAudio ? "Generating narration…" : "Download narration"}
-          </button>
+      <button
+        type="button"
+        disabled={disabled || isExportingAudio}
+        onClick={onDownloadNarration}
+        className="btn-primary mt-4 w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isExportingAudio ? "Generating narration…" : "Download narration"}
+      </button>
 
-          {!hasVoiceoverScripts && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Voiceover scripts appear after slide copy is generated.
-            </p>
-          )}
-
-          {audioExportMessage && (
-            <div className="mt-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5 text-xs text-emerald-200">
-              {audioExportMessage}
-            </div>
-          )}
-
-          <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-            {TTS_EXPORT_DISCLOSURE}
-          </p>
+      {audioExportMessage && (
+        <div className="mt-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5 text-xs text-emerald-200">
+          {audioExportMessage}
         </div>
       )}
 
       <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-        {TTS_PREVIEW_DISCLOSURE}
+        {TTS_EXPORT_DISCLOSURE} {TTS_PREVIEW_DISCLOSURE}
       </p>
     </div>
   );

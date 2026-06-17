@@ -20,6 +20,8 @@ export interface CampaignNextStepInput {
   canGenerateCaptions: boolean;
   isGeneratingCaptions: boolean;
   isExporting: boolean;
+  isExportingAudio?: boolean;
+  hasVoiceoverScripts?: boolean;
   isNativeApp: boolean;
   isSavingAllPhotos: boolean;
   saveAllPhotosProgress: { saved: number; total: number } | null;
@@ -28,6 +30,7 @@ export interface CampaignNextStepInput {
   onGenerateImages: () => void;
   onGenerateCaptions: () => void;
   onDownloadZip: () => void;
+  onDownloadNarration: () => void;
   onCopyAllCaptions: () => void;
   onSaveAllToPhotos: () => void;
 }
@@ -37,6 +40,7 @@ type NextStepHandlers = Pick<
   | "onGenerateImages"
   | "onGenerateCaptions"
   | "onDownloadZip"
+  | "onDownloadNarration"
   | "onCopyAllCaptions"
   | "onSaveAllToPhotos"
 >;
@@ -51,6 +55,9 @@ function runNextStepAction(action: NextStepAction, handlers: NextStepHandlers) {
       break;
     case "download_zip":
       handlers.onDownloadZip();
+      break;
+    case "download_narration":
+      handlers.onDownloadNarration();
       break;
     case "copy_captions":
       handlers.onCopyAllCaptions();
@@ -89,6 +96,8 @@ export function useCampaignNextStep(input: CampaignNextStepInput) {
     canGenerateCaptions: input.canGenerateCaptions,
     isGeneratingCaptions: input.isGeneratingCaptions,
     isExporting: input.isExporting,
+    isExportingAudio: input.isExportingAudio,
+    hasVoiceoverScripts: input.hasVoiceoverScripts,
     isNativeApp: input.isNativeApp,
     isSavingAllPhotos: input.isSavingAllPhotos,
     saveAllPhotosProgress: input.saveAllPhotosProgress,
@@ -98,6 +107,7 @@ export function useCampaignNextStep(input: CampaignNextStepInput) {
     onGenerateImages: input.onGenerateImages,
     onGenerateCaptions: input.onGenerateCaptions,
     onDownloadZip: input.onDownloadZip,
+    onDownloadNarration: input.onDownloadNarration,
     onCopyAllCaptions: input.onCopyAllCaptions,
     onSaveAllToPhotos: input.onSaveAllToPhotos,
   };
@@ -162,7 +172,10 @@ export default function CampaignNextStepControls({
     }
 
     const scrollTarget =
-      action === "copy_captions" || action === "generate_captions"
+      action === "copy_captions" ||
+      action === "generate_captions" ||
+      action === "download_zip" ||
+      action === "download_narration"
         ? "section-publish"
         : "section-slides";
 

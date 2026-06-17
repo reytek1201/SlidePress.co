@@ -139,6 +139,21 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
             </div>
             <div className="rounded-xl border border-border bg-background/40 px-4 py-4">
               <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Video exports
+              </dt>
+              <dd className="mt-2 text-2xl font-semibold text-foreground">
+                {usage.videoExportsThisMonth}
+                <span className="text-base font-normal text-muted-foreground">
+                  {" "}
+                  / {usage.limits.videoExportsPerMonth}
+                </span>
+              </dd>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {usage.remaining.videoExports} remaining
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-background/40 px-4 py-4">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Total campaigns
               </dt>
               <dd className="mt-2 text-2xl font-semibold text-foreground">

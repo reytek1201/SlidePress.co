@@ -21,6 +21,7 @@ export type NextStepAction =
   | "generate_images"
   | "generate_captions"
   | "download_zip"
+  | "download_narration"
   | "copy_captions"
   | "save_all_photos";
 
@@ -120,7 +121,7 @@ export function getCampaignProgressSteps(
       label: "Export",
       complete: exportReady && captionsComplete,
       current: currentStep === "export",
-      scrollTargetId: "section-slides",
+      scrollTargetId: "section-publish",
     },
   ];
 }
@@ -136,6 +137,8 @@ export function getCampaignNextStep(options: {
   canGenerateCaptions: boolean;
   isGeneratingCaptions: boolean;
   isExporting: boolean;
+  isExportingAudio?: boolean;
+  hasVoiceoverScripts?: boolean;
   isNativeApp?: boolean;
   isSavingAllPhotos?: boolean;
   saveAllPhotosProgress?: { saved: number; total: number } | null;
@@ -151,6 +154,8 @@ export function getCampaignNextStep(options: {
     canGenerateCaptions,
     isGeneratingCaptions,
     isExporting,
+    isExportingAudio = false,
+    hasVoiceoverScripts = false,
     isNativeApp = false,
     isSavingAllPhotos = false,
     saveAllPhotosProgress = null,
@@ -213,6 +218,15 @@ export function getCampaignNextStep(options: {
   }
 
   if (imagesComplete && captionsCount > 0) {
+    const narrationSecondary: CampaignNextStepButton | null = hasVoiceoverScripts
+      ? {
+          action: "download_narration",
+          label: isExportingAudio ? "Generating narration…" : "Download narration",
+          disabled: isExportingAudio,
+          loading: isExportingAudio,
+        }
+      : null;
+
     if (isNativeApp) {
       const saveAllLabel = isSavingAllPhotos
         ? saveAllPhotosProgress
@@ -220,46 +234,58 @@ export function getCampaignNextStep(options: {
           : "Saving to Photos…"
         : "Save all to Photos";
 
-      return {
-        action: "save_all_photos",
-        label: saveAllLabel,
-        description:
-          "Slides and captions are ready — save images to Photos and post.",
-        disabled: isSavingAllPhotos,
-        loading: isSavingAllPhotos,
-        scrollTargetId: "section-slides",
-        secondaries: [
-          {
-            action: "copy_captions",
-            label: "Copy all captions",
-            disabled: false,
-            loading: false,
-          },
-          {
-            action: "download_zip",
-            label: isExporting ? "Preparing zip…" : "Share zip",
-            disabled: isExporting,
-            loading: isExporting,
-          },
-        ],
-      };
-    }
-
-    return {
-      action: "download_zip",
-      label: isExporting ? "Preparing zip…" : "Download zip",
-      description: "Slides and captions are ready — export assets for posting.",
-      disabled: isExporting,
-      loading: isExporting,
-      scrollTargetId: "section-slides",
-      secondaries: [
+      const secondaries: CampaignNextStepButton[] = [
         {
           action: "copy_captions",
           label: "Copy all captions",
           disabled: false,
           loading: false,
         },
-      ],
+        {
+          action: "download_zip",
+          label: isExporting ? "Preparing zip…" : "Share zip",
+          disabled: isExporting,
+          loading: isExporting,
+        },
+      ];
+
+      if (narrationSecondary) {
+        secondaries.push(narrationSecondary);
+      }
+
+      return {
+        action: "save_all_photos",
+        label: saveAllLabel,
+        description:
+          "Slides and captions are ready — save images, copy post text, or export.",
+        disabled: isSavingAllPhotos,
+        loading: isSavingAllPhotos,
+        scrollTargetId: "section-publish",
+        secondaries,
+      };
+    }
+
+    const secondaries: CampaignNextStepButton[] = [
+      {
+        action: "download_zip",
+        label: isExporting ? "Preparing zip…" : "Download zip",
+        disabled: isExporting,
+        loading: isExporting,
+      },
+    ];
+
+    if (narrationSecondary) {
+      secondaries.push(narrationSecondary);
+    }
+
+    return {
+      action: "copy_captions",
+      label: "Copy all captions",
+      description: "Post copy is ready — copy captions or download assets below.",
+      disabled: false,
+      loading: false,
+      scrollTargetId: "section-publish",
+      secondaries,
     };
   }
 

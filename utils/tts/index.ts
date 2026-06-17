@@ -43,6 +43,8 @@ export {
   TTS_EXPORT_DISCLOSURE,
   TTS_EXPORT_SUCCESS_DISCLOSURE,
   TTS_PREVIEW_DISCLOSURE,
+  TTS_VIDEO_EXPORT_DISCLOSURE,
+  TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE,
 } from "@/utils/tts/disclosure-copy";
 
 export { normalizeVoiceoverScript } from "@/utils/tts/normalize-script";

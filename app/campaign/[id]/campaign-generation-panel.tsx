@@ -62,35 +62,8 @@ export default function CampaignGenerationPanel({
     !isStartingImages &&
     canGenerateImages;
 
-  if (variant === "publish" && captionsCount > 0 && !isGeneratingCaptions) {
-    return (
-      <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3">
-        <p className="text-sm font-semibold text-emerald-200">Captions ready</p>
-        <p className="mt-1 text-sm leading-6 text-emerald-200/90">
-          Copy platform copy below, or export your slides.
-        </p>
-        {inlineActions && (
-          <CampaignInlineNextStepActions
-            {...nextStepInput}
-            onOpenMoreActions={onOpenMoreActions}
-            onTabChange={onTabChange}
-          />
-        )}
-      </div>
-    );
-  }
-
-  if (variant === "publish" && isGeneratingCaptions) {
-    return (
-      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-        <p className="text-sm font-semibold text-foreground">
-          Generating captions…
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Writing hooks and post copy for each platform.
-        </p>
-      </div>
-    );
+  if (variant === "publish") {
+    return null;
   }
 
   if (imagesComplete && variant === "slides") {

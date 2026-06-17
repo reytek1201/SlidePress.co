@@ -1,0 +1,167 @@
+import { fal } from "@fal-ai/client";
+
+export const FAL_IMAGES_TO_VIDEO_MODEL = "fal-ai/ffmpeg-api/images-to-video";
+export const FAL_MERGE_AUDIO_VIDEO_MODEL =
+  "fal-ai/ffmpeg-api/merge-audio-video";
+
+export const VIDEO_EXPORT_FPS = 24;
+export const VIDEO_MIN_FRAMES_PER_SLIDE = 12;
+
+export type VideoExportPipelineStage = "images_to_video" | "merge_audio";
+
+export interface FalVideoImageFrame {
+  url: string;
+  frames: number;
+}
+
+export interface VideoExportMetadata {
+  stage: VideoExportPipelineStage;
+  persona?: string;
+  audioUrl?: string;
+  silentVideoUrl?: string;
+}
+
+interface FalQueueResponse {
+  request_id: string;
+}
+
+interface FalFilePayload {
+  url?: string;
+}
+
+export interface FalVideoWebhookPayload {
+  request_id: string;
+  status: "OK" | "ERROR";
+  error?: string;
+  payload?: {
+    video?: FalFilePayload;
+  };
+}
+
+function getFalKey(): string {
+  const falKey = process.env.FAL_KEY;
+  if (!falKey) {
+    throw new Error("FAL_KEY is not configured");
+  }
+  return falKey;
+}
+
+function configureFalClient(): void {
+  fal.config({
+    credentials: getFalKey(),
+  });
+}
+
+export function framesForAudioDuration(durationSeconds: number): number {
+  return Math.max(
+    VIDEO_MIN_FRAMES_PER_SLIDE,
+    Math.ceil(durationSeconds * VIDEO_EXPORT_FPS),
+  );
+}
+
+export async function uploadFalMedia(
+  buffer: Buffer,
+  contentType: string,
+  fileName: string,
+): Promise<string> {
+  configureFalClient();
+
+  const blob = new Blob([new Uint8Array(buffer)], { type: contentType });
+  const file = new File([blob], fileName, { type: contentType });
+  const url = await fal.storage.upload(file);
+
+  if (!url) {
+    throw new Error("Fal storage upload did not return a URL");
+  }
+
+  return url;
+}
+
+export async function submitFalVideoQueue(
+  model: string,
+  input: Record<string, unknown>,
+  webhookUrl: string,
+): Promise<string> {
+  const endpoint = `https://queue.fal.run/${model}?fal_webhook=${encodeURIComponent(webhookUrl)}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${getFalKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Fal video queue submission failed: ${errorBody}`);
+  }
+
+  const data = (await response.json()) as FalQueueResponse;
+
+  if (!data.request_id) {
+    throw new Error("Fal video queue response did not include request_id");
+  }
+
+  return data.request_id;
+}
+
+export async function submitImagesToVideoQueue(
+  images: FalVideoImageFrame[],
+  webhookUrl: string,
+): Promise<string> {
+  return submitFalVideoQueue(
+    FAL_IMAGES_TO_VIDEO_MODEL,
+    {
+      images,
+      fps: VIDEO_EXPORT_FPS,
+    },
+    webhookUrl,
+  );
+}
+
+export async function submitMergeAudioVideoQueue(
+  videoUrl: string,
+  audioUrl: string,
+  webhookUrl: string,
+): Promise<string> {
+  return submitFalVideoQueue(
+    FAL_MERGE_AUDIO_VIDEO_MODEL,
+    {
+      video_url: videoUrl,
+      audio_url: audioUrl,
+    },
+    webhookUrl,
+  );
+}
+
+export function extractVideoUrlFromWebhook(
+  body: FalVideoWebhookPayload,
+): string | null {
+  return body.payload?.video?.url ?? null;
+}
+
+export function parseVideoExportMetadata(
+  value: unknown,
+): VideoExportMetadata | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const stage = record.stage;
+
+  if (stage !== "images_to_video" && stage !== "merge_audio") {
+    return null;
+  }
+
+  return {
+    stage,
+    persona: typeof record.persona === "string" ? record.persona : undefined,
+    audioUrl: typeof record.audioUrl === "string" ? record.audioUrl : undefined,
+    silentVideoUrl:
+      typeof record.silentVideoUrl === "string"
+        ? record.silentVideoUrl
+        : undefined,
+  };
+}
