@@ -1,8 +1,8 @@
 # SlidePress — Product Features
 
-**Turn a topic into post-ready carousel campaigns in minutes.**
+**Turn a topic into post-ready carousel campaigns — and soon, Reels-ready video — in minutes.**
 
-SlidePress is a marketing automation app for creators and small teams who need social carousel content fast — slide copy, AI-generated visuals, platform captions, and a one-click download. No design tool juggling. No blank-page syndrome.
+SlidePress is a marketing automation app for creators and small teams who need social content fast: slide copy, AI-generated visuals, voiceover scripts, platform captions, and one-click export. No design tool juggling. No blank-page syndrome.
 
 **Live at:** [slidepress.co](https://www.slidepress.co)
 
@@ -11,8 +11,9 @@ SlidePress is a marketing automation app for creators and small teams who need s
 ## Who it's for
 
 - Solo founders and marketers shipping organic social content
-- Agencies and brands running TikTok, Instagram carousel, and YouTube Shorts from the same campaign
-- Anyone who wants **topic → slides → images → captions → zip** in one workflow
+- Agencies and brands running **TikTok, Instagram carousels, Reels, and YouTube Shorts** from the same campaign
+- Teams managing **multiple brands or clients** with separate kits, products, and campaigns
+- Anyone who wants **topic → slides → images → captions → publish** in one workflow — with **AI-narrated video** on the roadmap
 
 ---
 
@@ -21,10 +22,10 @@ SlidePress is a marketing automation app for creators and small teams who need s
 ### Create a campaign
 
 - Enter a **topic or pain point**
-- Choose **aspect ratio**: 4:5 (feed/carousel) or 9:16 (Reels/Shorts/TikTok)
+- Choose **aspect ratio**: 4:5 (feed/carousel) or **9:16 (Reels/Shorts/TikTok)** — the format we optimize for future video export
 - Choose **slide count**: 3, 5, or 7 slides
 - Optionally upload **product, style, and logo** reference images to steer copy and visuals
-- **Brand library** — save product/style/logo once and reuse on every new campaign (auto-saves after create; toggle on/off per campaign; full management in **Settings**)
+- **Brand workspaces** — each brand has its own reference images, products, and campaigns; switch brands from the campaigns header when you manage more than one
 - **Instant redirect** to the campaign workspace — a waiting screen runs while Gemini writes slide scripts (usually 15–30 seconds)
 - **Retry** if text generation fails, with a clear error message
 
@@ -45,8 +46,8 @@ SlidePress is a marketing automation app for creators and small teams who need s
 - **Shared app shell** when signed in — one consistent way to move around
 - **Desktop:** top bar with SlidePress **logo**, Campaigns, New campaign, **Settings**
 - **Mobile:** top bar (logo) + **bottom tab bar** with Campaigns, center **+** FAB, and **Settings**
-- **Settings** (`/settings`) — account, brand library, usage summary; sign out lives here
-- **Campaigns list** is browse-only — tap a row to open; no delete/duplicate clutter on the list
+- **Settings** (`/settings`) — account, brands, security, usage; sign out lives here
+- **Campaigns list** is browse-only — tap a row to open; brand switcher on campaigns when you have multiple brands
 - Logged-in mobile users land on **My campaigns**; create always via **+** or New campaign button (opens sheet)
 - **Forgot password** on the sign-in screen sends a reset email
 
@@ -56,16 +57,16 @@ SlidePress is a marketing automation app for creators and small teams who need s
 - **Sticky Next step bar** — one primary action that adapts (generate images → captions → download zip + copy all)
 - **Inline campaign rename** — edit title from the workspace header
 - **Slides before Publish** — review copy and images first, then captions
+- **Mobile workspace** — tabbed layout (Slides / Publish / Details), filmstrip, compact progress strip
 - **Scroll-to-top** button when deep in the page (above mobile tab bar)
-- **Mobile workspace** — compact progress strip, sticky next-step bar, tighter slide cards and publish section on small screens
-- View all slides with **text overlay** and **voiceover script**
+- View all slides with **text overlay** and **voiceover script** (written for natural spoken delivery)
 - **Edit headlines** inline (up to 12 words per slide)
-- **Copy voiceover** per slide to clipboard
+- **Copy voiceover** per slide to clipboard — ready for recording or future AI narration
 - **Download a single slide image** without exporting the full zip
 - **Carousel preview** — full-screen swipe through ready slides (tap image or “Preview carousel”)
 - **Generate images** when ready — one click for the whole campaign
 - Live **image progress** — “2 of 5 images ready” with realtime updates
-- Metadata at a glance: **target audience**, **aspect ratio**, **slide count**
+- Metadata at a glance: **target audience**, **aspect ratio**, **slide count**, **brand**
 - **Duplicate campaign** from the workspace header — reuse topic and references, fresh AI copy
 - **Delete campaign** in a **Danger zone** at the bottom (confirm before permanent removal)
 
@@ -79,6 +80,15 @@ SlidePress is a marketing automation app for creators and small teams who need s
   - Quick feedback chips: Brighter, Minimal, Bold colors, Product larger, Different layout, Try again
   - Optional free-text notes for what to change
   - Updated headlines apply on the next regeneration
+
+### Voiceover scripts (today)
+
+Every slide includes a **voiceover script** — a natural spoken line Gemini writes alongside the on-slide headline. Today you can:
+
+- **Review** scripts in the workspace alongside each slide
+- **Copy** any script to clipboard for recording in CapCut, TikTok, or your DAW
+
+Scripts are authored with **text-to-speech in mind** so they’re ready for the next phase: **AI narration and video export** (see Roadmap).
 
 ### Publish copy
 
@@ -97,9 +107,18 @@ SlidePress is a marketing automation app for creators and small teams who need s
   - `slides/` — numbered slide images
   - `captions.txt` — all platform copy in one file (if captions were generated)
 
+### Brands & settings
+
+- **Brands** — each workspace has a name, reference kit (product / style / logo), and optional **products** (name, photo, description) for campaign context
+- **Settings → Brands** — manage all brands; edit kit and products per brand
+- **Campaigns header** — switch active brand, edit kit, add a brand (returns to campaigns when done)
+- **Usage** — campaigns and slide regenerations this month with beta limits (default 10 campaigns, 30 regenerations; resets monthly)
+- **Security** (native) — optional Face ID / fingerprint app unlock
+- **Account deletion** — type `DELETE` to confirm; removes all campaigns, brands, usage data, and auth access
+
 ### Campaign management
 
-- **My campaigns** list with preview thumbnails, format, and date
+- **My campaigns** list with preview thumbnails, format, and date — scoped to the active brand
 - **Duplicate campaign** — from the workspace (not the list)
 - **Delete campaign** — hidden in workspace Danger zone only
 
@@ -107,19 +126,11 @@ SlidePress is a marketing automation app for creators and small teams who need s
 
 - Email sign-in via Supabase Auth
 - **Google sign-in** on **`/login`** — OAuth via Supabase; redirects through **`/auth/callback`**
+- **Apple sign-in** (native iOS) — Sign in with Apple sheet
 - **Strong passwords** on sign up — 8+ characters with uppercase, lowercase, and a number
-- Sign-up respects Supabase settings — auto sign-in when email confirmation is off; confirmation message when it is on
-- **Forgot password** on the sign-in screen
-- **Settings** — email, password reset email, sign out, **account deletion** (Settings → Account deletion)
+- **Forgot password** on the sign-in screen (including deep links in the native app)
 - Your campaigns are private to your account (row-level security)
 - Production auth configured for SlidePress.co domain
-
-### Settings
-
-- **Account** — view email, send password reset link, sign out
-- **Delete account** — collapsed under **Account deletion…** at the bottom of Settings; type `DELETE` to confirm; removes all campaigns, brand library, usage data, and auth access (Apple App Store requirement)
-- **Brand library** — upload, replace, or clear saved product/style/logo references (same assets used on create)
-- **Usage** — campaigns and slide regenerations this month with beta limits (default 10 campaigns, 30 regenerations; resets monthly)
 
 ### Beta usage limits
 
@@ -139,26 +150,67 @@ SlidePress is a marketing automation app for creators and small teams who need s
 
 ---
 
-## Typical workflow
+## Typical workflow (today)
 
 ```
-1. Visit **slidepress.co** → sign in at **`/login`** → My campaigns (mobile) or **New campaign** at **`/new`** (desktop)
-2. Enter topic + pick format + slide count (+ optional references)
-3. Land on workspace waiting screen → slide scripts appear
-4. Review slide copy → Generate images
-5. Preview carousel → fix any slide (edit headline → regenerate)
-6. Generate captions
-7. Copy all or download zip / individual slides
-8. Post to TikTok, Instagram, YouTube
+1. Visit slidepress.co → sign in → My campaigns
+2. Pick a brand (or use your default) → New campaign
+3. Enter topic + pick format + slide count (+ optional references)
+4. Land on workspace → slide scripts + voiceover appear
+5. Review copy → Generate images
+6. Preview carousel → fix any slide (edit headline → regenerate)
+7. Generate captions
+8. Copy all or download zip / save slides to Photos
+9. Post to TikTok, Instagram, YouTube
 ```
 
 **Goal:** Fewest steps between idea and publish-ready assets.
+
+### Workflow coming soon (narration & video)
+
+```
+… steps 1–7 unchanged …
+8. Preview AI voice → export narration or create a Reel-ready MP4
+9. Post video + paste caption — no CapCut assembly required
+```
+
+---
+
+## Coming soon: AI narration & video export
+
+SlidePress already writes **per-slide voiceover scripts**. The next major release adds **premium AI narration** (via **ElevenLabs**) and **video export** so 9:16 campaigns become post-ready Reels, Shorts, and TikToks — not just image carousels.
+
+### What customers will get (phased rollout)
+
+| Phase | Customer-facing capability |
+|-------|----------------------------|
+| **Voice preview** | Hear how each slide sounds with a curated AI voice before you export |
+| **Audio export** | Download narration as MP3s (per slide + full read-through) for editors who still want CapCut |
+| **Video export** | One-click **MP4** — slides, motion, and AI narration stitched for vertical video |
+| **Polish** | Presets (Quick Reel, silent + captions), optional **brand voice**, burned-in captions |
+| **Paid tiers** | Higher video limits, studio-quality voices, multiple brand voices |
+
+### Why it matters (marketing angle)
+
+- **Same campaign, more reach** — carousels for feed, video for algorithms that favor Reels and Shorts
+- **Scripts already written** — voiceover is generated with your slides; video completes the loop
+- **Sounds human** — ElevenLabs-class voices, not robotic platform TTS
+- **9:16 by design** — campaigns created for vertical video export from day one
+- **Agency-ready** — multiple brands, consistent voice and motion per client
+
+### What we’re not promising in v1 of video
+
+- Full voice library browser (we’ll curate a small set of great voices)
+- Direct upload to TikTok / Instagram / YouTube (export MP4 + captions; you post)
+- 4:5 video before 9:16 Reels quality is solid
+
+*Internal tracking: GitHub epic [#1](https://github.com/reytek1201/SlidePress.co/issues/1) (ElevenLabs: Narration & Video Export).*
 
 ---
 
 ## Roadmap
 
-Phased delivery for SlidePress. **Mobile today = responsive web** in Safari/Chrome (bottom tabs, create sheet, workspace polish). **Phase 5** adds installable **iOS + Android apps** via Capacitor — same Next.js app, no UI rewrite.
+Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS/Android** via Capacitor (same Next.js app on Vercel).
 
 ### Shipped ✅
 
@@ -168,34 +220,21 @@ Phased delivery for SlidePress. **Mobile today = responsive web** in Safari/Chro
 | **2** | Publish handoff — carousel preview, copy voiceover, single-slide download |
 | **3** | Brand library + **Settings** (account, brand assets, usage display) |
 | **4** | Ship & protect — landing, SEO, usage limits, mobile polish, Google auth, account deletion, prod deploy |
+| **5** | **Mobile app (Capacitor)** — native auth, share/save to Photos, push when images ready, biometric lock, settings hub |
+| **5+** | **Brand workspaces** — multi-brand kits, products, campaigns switcher, unified settings UX |
 
-### Phase 4 — Ship & protect ✅ (complete)
-
-- **Marketing landing** — public **`/`** hero; app at **`/login`**, **`/new`**, **`/campaigns`**, etc.
-- **SEO** — sitemap, robots, Open Graph / Twitter metadata on **`/`**, JSON-LD, custom OG image, **`noindex`** on app routes
-- **Brand identity** — logo in nav, login, favicon, and social previews
-- **Beta usage limits** — 10 campaigns / month, 30 slide regenerations / month (env-configurable); enforced server-side
-- **Mobile workspace polish** — compact sticky bar, tighter slide cards, denser publish section; bottom nav on phone
-- **Unified page layout** — consistent marketing and app page widths
-- **Google sign-in** — OAuth on **`/login`** with **`/auth/callback`**
-- **Strong passwords** — enforced on email sign up
-- **Account deletion** — Settings → **Account deletion…** (type `DELETE`; Apple App Store requirement)
-- **Production** — deployed on Vercel; Supabase migrations applied (brand library, usage events)
-
-### Phase 5 — Mobile app (Capacitor) 📱 *(next)*
-
-Wrap the existing SlidePress web app for **App Store** and **Google Play** — one codebase on Vercel, native shells on device.
+### Phase 5 — Mobile app (Capacitor) ✅ (largely complete)
 
 | Step | Deliverable |
 |------|-------------|
-| **5.1 Scaffold** ✅ | Capacitor iOS + Android loading production (`slidepress.co`) — see `docs/capacitor.md` |
+| **5.1 Scaffold** ✅ | Capacitor iOS + Android loading production — see `docs/capacitor.md` |
 | **5.2 Auth** ✅ | Google + Apple OAuth (deep link), password reset deep links |
-| **5.3 App shell** | Icons + splash (`npm run cap:assets`) ✅, status bar (SlidePress dark + orange) ✅ |
-| **5.4 Native affordances** | Share sheet + Save to Photos (per slide, carousel, and **Save all to Photos** in next step bar) ✅ |
-| **5.5 Beta distribution** | TestFlight + Play internal testing — see `docs/beta-release.md` 🚧 |
-| **5.6 Push notifications** | Opt-in alerts when all campaign images finish (APNs on iOS, FCM on Android; native app, background/closed) ✅ |
+| **5.3 App shell** ✅ | Icons + splash, status bar (SlidePress dark + orange) |
+| **5.4 Native affordances** ✅ | Share sheet + Save to Photos (per slide, carousel, save all) |
+| **5.5 Beta distribution** 🚧 | TestFlight + Play internal testing — see `docs/beta-release.md` |
+| **5.6 Push notifications** ✅ | Opt-in alerts when all campaign images finish |
 
-**Mobile UX (native + responsive web):**
+**Mobile UX:**
 
 | Deliverable | Status |
 |-------------|--------|
@@ -204,17 +243,24 @@ Wrap the existing SlidePress web app for **App Store** and **Google Play** — o
 | Mobile settings hub + sub-pages | ✅ |
 | Face ID / biometric app unlock + Keychain session | ✅ |
 | Offline connectivity screen (native) | ✅ |
-| Privacy + Terms pages + Settings → About | ✅ |
+| Privacy + Terms + Settings → About | ✅ |
+| Brand switcher + per-brand campaigns | ✅ |
 
-**Out of scope for Phase 5:** React Native rewrite, offline-first workspace, in-app Stripe (billing stays web until Phase 6).
+### Phase 6 — Narration, video & scale *(in progress / planned)*
 
-**Depends on:** Phase 4 complete ✅
+**6A — ElevenLabs narration & video** *(active epic)*
 
-### Phase 6 — Scale & publish *(planned)*
+1. Foundation — server-side TTS, voice catalog, usage metering  
+2. Voice preview in workspace  
+3. Audio export (narration ZIP)  
+4. Video MVP — slides → MP4 (9:16, AI voice, motion)  
+5. Polish — presets, brand voice, burned-in captions  
+6. Scale — Stripe tiers, video limits, monitoring  
+
+**6B — Business scale**
 
 - **Usage tiers & billing** — paid plans with higher caps (Stripe)
-- **Video export** — slides → single MP4 for Reels/Shorts/TikTok (Remotion/FFmpeg)
-- **Direct platform posting** — optional upload to TikTok / Instagram / YouTube (higher complexity)
+- **Direct platform posting** — optional upload to TikTok / Instagram / YouTube (higher complexity; later)
 
 ### Not planned for v1
 
@@ -231,20 +277,30 @@ Wrap the existing SlidePress web app for **App Store** and **Google Play** — o
 | Layer | Technology |
 |-------|------------|
 | App | Next.js 16, React 19, Tailwind |
-| Mobile (Phase 5) | Capacitor — iOS + Android WebView shell |
+| Mobile | Capacitor — iOS + Android WebView shell |
 | Hosting | Vercel (SlidePress.co) |
 | Database & auth | Supabase (PostgreSQL + RLS) |
-| Slide copy | Google Gemini 2.5 Flash |
+| Slide copy & voiceover | Google Gemini 2.5 Flash |
 | Slide images | Fal.ai Nano Banana 2 |
+| Platform captions | Google Gemini |
+| Narration & video *(planned)* | ElevenLabs TTS + FFmpeg/Remotion render pipeline |
 | Realtime | Supabase Realtime on slides & campaigns |
 
-Approximate **variable cost per 5-slide campaign** (images + AI text): **~$0.45–0.65** depending on regenerations. Pricing for end users will be set above this with tier limits.
+Approximate **variable cost per 5-slide campaign** today (images + AI text): **~$0.45–0.65** depending on regenerations. **Video export** (planned) adds roughly **~$0.10–0.30** per Reel (TTS + render) at beta scale. End-user pricing will include tier limits above these costs.
 
 ---
 
 ## One-line pitch
 
-**SlidePress:** Describe your offer once — get carousel slides, AI images with headlines, and platform captions ready to post.
+**Today:** Describe your offer once — get carousel slides, AI images with headlines, voiceover scripts, and platform captions ready to post.
+
+**Soon:** Same campaign → **AI-narrated Reel** in one export. No second production pass.
+
+---
+
+## Elevator pitch (for sales / landing copy)
+
+SlidePress turns a topic into a full social campaign: headlines on every slide, AI-generated visuals, spoken scripts, and captions for TikTok, Instagram, and YouTube. Creators post carousels today; **Reels-ready video with premium AI narration** is next — built on the voiceover you already get with every slide.
 
 ---
 
