@@ -1,8 +1,6 @@
 import { buildFalWebhookUrl, getAppBaseUrl } from "@/utils/fal";
-import {
-  submitImagesToVideoQueue,
-  type VideoExportMetadata,
-} from "@/utils/fal-video";
+import { queueComposedVideoExport } from "@/utils/queue-composed-video-export";
+import type { VideoExportMetadata } from "@/utils/fal-video";
 import { prepareCampaignVideo } from "@/utils/prepare-campaign-video";
 import { resolveCampaignVoicePersona } from "@/utils/tts/resolve-campaign-persona";
 import { isTtsError } from "@/utils/tts/types";
@@ -155,7 +153,7 @@ export async function POST(request: Request) {
     );
 
     const metadata: VideoExportMetadata = {
-      stage: "images_to_video",
+      stage: "compose_slides",
       preset,
       includeCaptions,
       voiceQuality,
@@ -198,32 +196,18 @@ export async function POST(request: Request) {
     });
 
     const webhookUrl = buildFalWebhookUrl(getAppBaseUrl(request));
-    const requestId = await submitImagesToVideoQueue(
-      prepared.imageFrames,
-      webhookUrl,
-    );
 
-    const nextMetadata: VideoExportMetadata = {
-      stage: "images_to_video",
+    await queueComposedVideoExport({
+      supabase,
+      exportId: exportRow.id,
+      aspectRatio: typedCampaign.aspect_ratio,
+      prepared,
       preset,
       includeCaptions,
       voiceQuality,
       persona,
-      audioUrl: prepared.audioUrl,
-      captionSegments: prepared.captionSegments,
-    };
-
-    const { error: exportUpdateError } = await supabase
-      .from("exports")
-      .update({
-        fal_request_id: requestId,
-        metadata: nextMetadata,
-      })
-      .eq("id", exportId);
-
-    if (exportUpdateError) {
-      throw new Error("Failed to update export record with Fal request");
-    }
+      webhookUrl,
+    });
 
     await recordVideoExport(user.id, {
       campaignId,

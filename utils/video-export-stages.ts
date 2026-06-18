@@ -1,14 +1,14 @@
 /** Client-side stages shown in the video export overlay. */
 export type VideoExportUiStage =
   | "preparing"
-  | "images_to_video"
+  | "compose_slides"
   | "merge_audio"
   | "burn_captions"
   | "downloading";
 
 export const VIDEO_EXPORT_UI_STAGES: VideoExportUiStage[] = [
   "preparing",
-  "images_to_video",
+  "compose_slides",
   "merge_audio",
   "burn_captions",
   "downloading",
@@ -16,7 +16,7 @@ export const VIDEO_EXPORT_UI_STAGES: VideoExportUiStage[] = [
 
 export const VIDEO_EXPORT_STAGE_LABELS: Record<VideoExportUiStage, string> = {
   preparing: "Preparing",
-  images_to_video: "Stitching slides",
+  compose_slides: "Motion & transitions",
   merge_audio: "Adding voiceover",
   burn_captions: "Adding captions",
   downloading: "Downloading video",
@@ -26,8 +26,9 @@ export const VIDEO_EXPORT_STAGE_DESCRIPTIONS: Record<
   VideoExportUiStage,
   string
 > = {
-  preparing: "Preparing your slides and queuing the video render…",
-  images_to_video: "Building a silent video from your slide images…",
+  preparing: "Synthesizing narration and preparing slide timing…",
+  compose_slides:
+    "Applying Ken Burns motion and crossfade transitions between slides…",
   merge_audio: "Merging AI narration into your video…",
   burn_captions: "Rendering on-screen captions onto your video…",
   downloading: "Saving your MP4 — almost done…",
@@ -46,8 +47,8 @@ export function mapPipelineStageToUiStage(
     return "merge_audio";
   }
 
-  if (stage === "images_to_video") {
-    return "images_to_video";
+  if (stage === "compose_slides" || stage === "images_to_video") {
+    return "compose_slides";
   }
 
   return "preparing";

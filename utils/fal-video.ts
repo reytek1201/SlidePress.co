@@ -12,6 +12,7 @@ import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 
 export type VideoExportPipelineStage =
+  | "compose_slides"
   | "images_to_video"
   | "merge_audio"
   | "burn_captions";
@@ -206,6 +207,7 @@ export function parseVideoExportMetadata(
   const stage = record.stage;
 
   if (
+    stage !== "compose_slides" &&
     stage !== "images_to_video" &&
     stage !== "merge_audio" &&
     stage !== "burn_captions"

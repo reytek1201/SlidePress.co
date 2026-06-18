@@ -1,5 +1,5 @@
-import { burnCaptionsOnVideo, fetchVideoBuffer } from "@/utils/burn-video-captions";
 import type { CaptionSegment } from "@/utils/build-caption-srt";
+import { burnCaptionsOnVideo, fetchVideoBuffer } from "@/utils/burn-video-captions";
 import { uploadFalMedia } from "@/utils/fal-video";
 import { presetBurnsCaptions } from "@/utils/video-export-presets";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
@@ -19,8 +19,14 @@ export async function finalizeVideoExport(
     input.includeCaptions,
   );
 
-  if (!shouldBurnCaptions || !input.captionSegments?.length) {
+  if (!shouldBurnCaptions) {
     return input.videoUrl;
+  }
+
+  if (!input.captionSegments?.length) {
+    throw new Error(
+      "Caption burn-in was requested but no caption segments were provided",
+    );
   }
 
   const videoBuffer = await fetchVideoBuffer(input.videoUrl);
@@ -29,5 +35,9 @@ export async function finalizeVideoExport(
     input.captionSegments,
   );
 
-  return uploadFalMedia(captionedBuffer, "video/mp4", "campaign-video-captioned.mp4");
+  return uploadFalMedia(
+    captionedBuffer,
+    "video/mp4",
+    "campaign-video-captioned.mp4",
+  );
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { getAppBaseUrl } from "@/utils/fal";
 import { advanceVideoExportIfReady } from "@/utils/advance-video-export";
 import { parseVideoExportMetadata } from "@/utils/fal-video";
@@ -58,9 +59,20 @@ export async function GET(
     if (exportRow.status === "processing" && exportRow.export_type === "video") {
       try {
         await advanceVideoExportIfReady(exportRow, getAppBaseUrl(request));
-      } catch {
-        // Non-fatal: if polling Fal fails we just return current DB status and
-        // the client will retry on the next poll.
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Video export advancement failed";
+
+        if (exportRow.status === "processing") {
+          const admin = createAdminClient();
+          await admin
+            .from("exports")
+            .update({
+              status: "failed",
+              error_message: message,
+            })
+            .eq("id", id);
+        }
       }
 
       // Re-read so we return the latest status after any advancement.

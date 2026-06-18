@@ -14,7 +14,7 @@ function formatSrtTimestamp(seconds: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
 }
 
-function wrapCaptionText(text: string, maxLineLength = 42): string {
+export function wrapCaptionText(text: string, maxLineLength = 42): string {
   const words = text.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) {
     return "";

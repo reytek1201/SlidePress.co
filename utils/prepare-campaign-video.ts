@@ -27,7 +27,13 @@ export interface PrepareCampaignVideoInput {
   usage: TtsUsageContext;
 }
 
+export interface PreparedSlideClip {
+  imageUrl: string;
+  durationSeconds: number;
+}
+
 export interface PrepareCampaignVideoResult {
+  slideClips: PreparedSlideClip[];
   imageFrames: FalVideoImageFrame[];
   audioUrl?: string;
   captionSegments: CaptionSegment[];
@@ -71,6 +77,7 @@ export async function prepareCampaignVideo(
   const modelId = resolveTtsModelId(input.voiceQuality);
 
   const imageFrames: FalVideoImageFrame[] = [];
+  const slideClips: PreparedSlideClip[] = [];
   let totalChars = 0;
 
   if (includeNarration) {
@@ -101,6 +108,10 @@ export async function prepareCampaignVideo(
         url: slide.image_url!,
         frames: framesForAudioDuration(durationSeconds),
       });
+      slideClips.push({
+        imageUrl: slide.image_url!,
+        durationSeconds,
+      });
       audioBuffers.push(narration.audio);
       totalChars += narration.charCount;
     }
@@ -113,6 +124,7 @@ export async function prepareCampaignVideo(
     );
 
     return {
+      slideClips,
       imageFrames,
       audioUrl,
       captionSegments: buildCaptionSegmentsFromDurations(
@@ -135,10 +147,15 @@ export async function prepareCampaignVideo(
       url: slide.image_url!,
       frames: framesForAudioDuration(durationSeconds),
     });
+    slideClips.push({
+      imageUrl: slide.image_url!,
+      durationSeconds,
+    });
     totalChars += scripts[index]!.length;
   }
 
   return {
+    slideClips,
     imageFrames,
     captionSegments: buildCaptionSegmentsFromDurations(
       scripts,

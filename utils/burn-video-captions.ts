@@ -3,52 +3,81 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import ffmpegPath from "ffmpeg-static";
 import {
-  buildCaptionSrt,
   type CaptionSegment,
+  wrapCaptionText,
 } from "@/utils/build-caption-srt";
+import { requireFfmpegPath } from "@/utils/ffmpeg";
 
 const execFileAsync = promisify(execFile);
 
-function escapeSubtitlesPath(filePath: string): string {
-  return filePath
+function escapeDrawtext(text: string): string {
+  return text
     .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
     .replace(/:/g, "\\:")
-    .replace(/'/g, "\\'");
+    .replace(/\[/g, "\\[")
+    .replace(/\]/g, "\\]")
+    .replace(/,/g, "\\,")
+    .replace(/%/g, "\\%");
+}
+
+function buildDrawtextFilter(segments: CaptionSegment[]): string {
+  const filters = segments
+    .map((segment) => {
+      const wrapped = wrapCaptionText(segment.text, 36);
+      if (!wrapped) {
+        return null;
+      }
+
+      const text = escapeDrawtext(wrapped.replace(/\n/g, "|"));
+      const start = segment.startSeconds.toFixed(3);
+      const end = segment.endSeconds.toFixed(3);
+
+      return [
+        `drawtext=text='${text}'`,
+        `enable='between(t\\,${start}\\,${end})'`,
+        "fontsize=34",
+        "fontcolor=white",
+        "borderw=3",
+        "bordercolor=black@0.85",
+        "x=(w-text_w)/2",
+        "y=h*0.78",
+        "line_spacing=10",
+      ].join(":");
+    })
+    .filter((entry): entry is string => Boolean(entry));
+
+  if (filters.length === 0) {
+    return "";
+  }
+
+  return filters.join(",");
 }
 
 export async function burnCaptionsOnVideo(
   videoBuffer: Buffer,
   segments: CaptionSegment[],
 ): Promise<Buffer> {
-  if (!ffmpegPath) {
-    throw new Error("FFmpeg is not available for caption burn-in");
-  }
-
-  const srt = buildCaptionSrt(segments);
-  if (!srt.trim()) {
-    return videoBuffer;
+  const drawtextFilter = buildDrawtextFilter(segments);
+  if (!drawtextFilter) {
+    throw new Error("No caption text available to burn into video");
   }
 
   const dir = await mkdtemp(join(tmpdir(), "slidepress-captions-"));
 
   try {
     const inputPath = join(dir, "input.mp4");
-    const srtPath = join(dir, "captions.srt");
     const outputPath = join(dir, "output.mp4");
 
     await writeFile(inputPath, videoBuffer);
-    await writeFile(srtPath, srt, "utf8");
 
-    const subtitleFilter = `subtitles='${escapeSubtitlesPath(srtPath)}':force_style='FontName=Arial,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=48'`;
-
-    await execFileAsync(ffmpegPath, [
+    await execFileAsync(requireFfmpegPath(), [
       "-y",
       "-i",
       inputPath,
       "-vf",
-      subtitleFilter,
+      drawtextFilter,
       "-c:a",
       "copy",
       outputPath,

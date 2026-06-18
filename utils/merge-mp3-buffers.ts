@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import ffmpegPath from "ffmpeg-static";
+import { requireFfmpegPath } from "@/utils/ffmpeg";
 import { parseBuffer } from "music-metadata";
 
 const execFileAsync = promisify(execFile);
@@ -28,9 +28,7 @@ export async function concatMp3Buffers(buffers: Buffer[]): Promise<Buffer> {
     return buffers[0]!;
   }
 
-  if (!ffmpegPath) {
-    throw new Error("FFmpeg is not available for audio merge");
-  }
+  const ffmpegPath = requireFfmpegPath();
 
   const dir = await mkdtemp(join(tmpdir(), "slidepress-mp3-"));
 

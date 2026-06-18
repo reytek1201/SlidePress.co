@@ -9,11 +9,11 @@ import {
   submitMergeAudioVideoQueue,
   type VideoExportMetadata,
 } from "@/utils/fal-video";
-import { finalizeVideoExport } from "@/utils/finalize-video-export";
 import {
-  presetBurnsCaptions,
-  presetIncludesNarration,
-} from "@/utils/video-export-presets";
+  completeVideoExportWithCaptions,
+  includesVideoNarration,
+  shouldBurnVideoCaptions,
+} from "@/utils/complete-video-export";
 
 interface ProcessingExportRow {
   id: string;
@@ -23,16 +23,16 @@ interface ProcessingExportRow {
   export_type: string;
 }
 
-function resolveExportOptions(metadata: VideoExportMetadata) {
-  const preset = metadata.preset ?? "quick_reel";
-  const includeCaptions = metadata.includeCaptions ?? false;
+async function markExportFailed(exportId: string, message: string): Promise<void> {
+  const supabase = createAdminClient();
 
-  return {
-    preset,
-    includeCaptions,
-    shouldBurnCaptions: presetBurnsCaptions(preset, includeCaptions),
-    includesNarration: presetIncludesNarration(preset),
-  };
+  await supabase
+    .from("exports")
+    .update({
+      status: "failed",
+      error_message: message,
+    })
+    .eq("id", exportId);
 }
 
 async function completeBurnCaptionsStage(
@@ -41,28 +41,30 @@ async function completeBurnCaptionsStage(
   videoUrl: string,
 ): Promise<void> {
   const supabase = createAdminClient();
-  const { preset, includeCaptions } = resolveExportOptions(metadata);
 
-  const outputUrl = await finalizeVideoExport({
-    videoUrl,
-    preset,
-    includeCaptions,
-    captionSegments: metadata.captionSegments,
-  });
+  try {
+    const outputUrl = await completeVideoExportWithCaptions(metadata, videoUrl);
 
-  await supabase
-    .from("exports")
-    .update({
-      status: "completed",
-      output_url: outputUrl,
-      error_message: null,
-      fal_request_id: null,
-      metadata: {
-        ...metadata,
-        pendingVideoUrl: undefined,
-      },
-    })
-    .eq("id", exportId);
+    await supabase
+      .from("exports")
+      .update({
+        status: "completed",
+        output_url: outputUrl,
+        error_message: null,
+        fal_request_id: null,
+        metadata: {
+          ...metadata,
+          pendingVideoUrl: undefined,
+        },
+      })
+      .eq("id", exportId);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Caption burn-in failed";
+
+    await markExportFailed(exportId, message);
+    throw error;
+  }
 }
 
 async function queueBurnCaptionsStage(
@@ -92,9 +94,7 @@ async function completeVideoExport(
   videoUrl: string,
   deferBurn = false,
 ): Promise<void> {
-  const { shouldBurnCaptions } = resolveExportOptions(metadata);
-
-  if (shouldBurnCaptions) {
+  if (shouldBurnVideoCaptions(metadata)) {
     await queueBurnCaptionsStage(exportId, metadata, videoUrl);
     if (!deferBurn) {
       await completeBurnCaptionsStage(exportId, metadata, videoUrl);
@@ -115,8 +115,7 @@ async function completeVideoExport(
 }
 
 /**
- * Checks whether the current Fal job for a video export has finished and, if
- * so, advances the pipeline without relying on webhook delivery.
+ * Advances in-flight video exports when Fal jobs finish or caption burn-in runs.
  */
 export async function advanceVideoExportIfReady(
   exportRow: ProcessingExportRow,
@@ -150,10 +149,8 @@ export async function advanceVideoExportIfReady(
   const videoUrl = await fetchFalVideoUrl(model, exportRow.fal_request_id);
   if (!videoUrl) return;
 
-  const { includesNarration } = resolveExportOptions(metadata);
-
   if (metadata.stage === "images_to_video") {
-    if (!includesNarration) {
+    if (!includesVideoNarration(metadata)) {
       await completeVideoExport(exportRow.id, metadata, videoUrl);
       return;
     }
@@ -191,22 +188,16 @@ export async function handleImagesToVideoComplete(
   appBaseUrl: string,
   deferBurn = false,
 ): Promise<void> {
-  const { includesNarration } = resolveExportOptions(metadata);
-
-  if (!includesNarration) {
+  if (!includesVideoNarration(metadata)) {
     await completeVideoExport(exportId, metadata, videoUrl, deferBurn);
     return;
   }
 
   if (!metadata.audioUrl) {
-    const supabase = createAdminClient();
-    await supabase
-      .from("exports")
-      .update({
-        status: "failed",
-        error_message: "Missing narration audio URL for video merge",
-      })
-      .eq("id", exportId);
+    await markExportFailed(
+      exportId,
+      "Missing narration audio URL for video merge",
+    );
     return;
   }
 

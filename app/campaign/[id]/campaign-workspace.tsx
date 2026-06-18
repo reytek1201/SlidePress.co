@@ -670,7 +670,7 @@ export default function CampaignWorkspace({
         throw new Error(data.error ?? "Video export failed");
       }
 
-      setVideoExportStage("images_to_video");
+      setVideoExportStage("compose_slides");
 
       const outputUrl = await pollVideoExport(data.exportId, setVideoExportStage);
       setVideoExportStage("downloading");

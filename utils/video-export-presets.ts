@@ -13,7 +13,7 @@ export const VIDEO_EXPORT_PRESETS: VideoExportPresetConfig[] = [
     id: "quick_reel",
     label: "Quick Reel",
     description:
-      "AI narration synced to your slides — ready for Reels, Shorts, and TikTok.",
+      "AI narration with Ken Burns motion and crossfade transitions — ready for Reels, Shorts, and TikTok.",
   },
   {
     id: "silent_captions",
