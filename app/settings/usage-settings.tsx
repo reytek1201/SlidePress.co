@@ -7,10 +7,11 @@ import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-function formatResetDate(isoDate: string): string {
+function formatRenewalDate(isoDate: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
     day: "numeric",
+    year: "numeric",
   }).format(new Date(isoDate));
 }
 
@@ -460,9 +461,13 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                 </span>
               ) : usage.resetsAt ? (
                 <span className="text-xs text-muted-foreground">
-                  Resets {formatResetDate(usage.resetsAt)}
+                  Renews {formatRenewalDate(usage.resetsAt)}
                 </span>
-              ) : null}
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Renews monthly
+                </span>
+              )}
             </div>
             {!usage.isLifetimeTier && (
               isNative

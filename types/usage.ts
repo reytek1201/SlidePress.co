@@ -40,7 +40,7 @@ export interface UsageSummary {
   canExportAudio: boolean;
   canCreateBrand: boolean;
   brands: UsageBrands;
-  /** ISO date — next reset for paid tiers; null for free (credits never refill). */
+  /** ISO date — next renewal for paid tiers; null for free (credits never refill). */
   resetsAt: string | null;
   /** True for free tier (lifetime credits, no monthly reset). */
   isLifetimeTier: boolean;
