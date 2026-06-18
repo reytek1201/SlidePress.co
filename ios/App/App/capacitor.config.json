@@ -29,6 +29,7 @@
 		"PushNotificationsPlugin",
 		"SharePlugin",
 		"StatusBarPlugin",
+		"PurchasesPlugin",
 		"SecureStoragePlugin"
 	]
 }
