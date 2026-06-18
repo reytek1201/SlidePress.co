@@ -10,6 +10,7 @@ export const VIDEO_EXPORT_FPS = 24;
 import type { AspectRatio } from "@/types/campaign";
 import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
+import type { SlideExportFingerprint } from "@/utils/video-export-fingerprint";
 
 export type VideoExportPipelineStage =
   | "compose_slides"
@@ -33,6 +34,9 @@ export interface VideoExportMetadata {
   pendingVideoUrl?: string;
   slideClips?: StoredSlideClip[];
   composeStarted?: boolean;
+  narrationFingerprint?: string;
+  slideFingerprints?: SlideExportFingerprint[];
+  reusedNarration?: boolean;
 }
 
 interface FalQueueResponse {
@@ -227,7 +231,64 @@ export function parseVideoExportMetadata(
       typeof record.composeStarted === "boolean"
         ? record.composeStarted
         : undefined,
+    narrationFingerprint:
+      typeof record.narrationFingerprint === "string"
+        ? record.narrationFingerprint
+        : undefined,
+    slideFingerprints: parseStoredSlideFingerprints(record.slideFingerprints),
+    reusedNarration:
+      typeof record.reusedNarration === "boolean"
+        ? record.reusedNarration
+        : undefined,
   };
+}
+
+function parseStoredSlideFingerprints(
+  value: unknown,
+): SlideExportFingerprint[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const fingerprints = value
+    .map((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return null;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const slideId =
+        typeof record.slideId === "string" ? record.slideId : null;
+      const slideIndex =
+        typeof record.slideIndex === "number" ? record.slideIndex : null;
+      const imageFingerprint =
+        typeof record.imageFingerprint === "string"
+          ? record.imageFingerprint
+          : null;
+      const scriptFingerprint =
+        typeof record.scriptFingerprint === "string"
+          ? record.scriptFingerprint
+          : null;
+
+      if (
+        !slideId ||
+        slideIndex === null ||
+        !imageFingerprint ||
+        !scriptFingerprint
+      ) {
+        return null;
+      }
+
+      return {
+        slideId,
+        slideIndex,
+        imageFingerprint,
+        scriptFingerprint,
+      };
+    })
+    .filter((entry): entry is SlideExportFingerprint => entry !== null);
+
+  return fingerprints.length > 0 ? fingerprints : undefined;
 }
 
 function parseStoredSlideClips(value: unknown): StoredSlideClip[] | undefined {

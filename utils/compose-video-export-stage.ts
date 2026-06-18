@@ -10,6 +10,7 @@ import { composeSlidesToVideo } from "@/utils/compose-slide-video";
 import { includesVideoNarration } from "@/utils/complete-video-export";
 import { createAdminClient } from "@/utils/supabase/admin";
 import type { PrepareCampaignVideoResult } from "@/utils/prepare-campaign-video";
+import type { SlideExportFingerprint } from "@/utils/video-export-fingerprint";
 
 export function buildStoredSlideClips(
   prepared: PrepareCampaignVideoResult,
@@ -120,6 +121,9 @@ export function buildComposeStageMetadata(input: {
   aspectRatio: AspectRatio;
   prepared: PrepareCampaignVideoResult;
   slideClips: StoredSlideClip[];
+  narrationFingerprint: string;
+  slideFingerprints: SlideExportFingerprint[];
+  reusedNarration?: boolean;
 }): VideoExportMetadata {
   return {
     stage: "compose_slides",
@@ -129,5 +133,8 @@ export function buildComposeStageMetadata(input: {
     aspectRatio: input.aspectRatio,
     audioUrl: input.prepared.audioUrl,
     slideClips: input.slideClips,
+    narrationFingerprint: input.narrationFingerprint,
+    slideFingerprints: input.slideFingerprints,
+    reusedNarration: input.reusedNarration,
   };
 }

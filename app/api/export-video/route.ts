@@ -5,9 +5,14 @@ import {
   buildComposeStageMetadata,
   buildStoredSlideClips,
 } from "@/utils/compose-video-export-stage";
+import { findReusableVideoExportNarration } from "@/utils/find-reusable-video-export-narration";
 import { resolveCampaignVoicePersona } from "@/utils/tts/resolve-campaign-persona";
 import { isTtsError } from "@/utils/tts/types";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
+import {
+  presetIncludesNarration,
+} from "@/utils/video-export-presets";
+import { buildVideoExportFingerprints } from "@/utils/video-export-fingerprint";
 import {
   assertVideoExportLimit,
   isUsageLimitError,
@@ -182,6 +187,38 @@ export async function POST(request: Request) {
       personaOverride as VoicePersona | undefined,
     );
 
+    const fingerprints = buildVideoExportFingerprints({
+      slides: slidesForExport,
+      persona,
+      voiceQuality,
+      preset,
+    });
+
+    let reusedAudioUrl: string | undefined;
+    let fastPath: "image_only" | undefined;
+
+    if (presetIncludesNarration(preset)) {
+      const reusableNarration = await findReusableVideoExportNarration(
+        supabase,
+        {
+          campaignId,
+          aspectRatio: targetAspectRatio,
+          preset,
+          voiceQuality,
+          persona,
+          narrationFingerprint: fingerprints.narrationFingerprint,
+          slideFingerprints: fingerprints.slides,
+        },
+      );
+
+      if (reusableNarration) {
+        reusedAudioUrl = reusableNarration.audioUrl;
+        if (reusableNarration.imageOnlyUpdate) {
+          fastPath = "image_only";
+        }
+      }
+    }
+
     const { data: exportRow, error: exportInsertError } = await supabase
       .from("exports")
       .insert({
@@ -234,6 +271,7 @@ export async function POST(request: Request) {
         userId: user.id,
         campaignId,
       },
+      reusedAudioUrl,
     });
 
     const slideClips = buildStoredSlideClips(prepared);
@@ -244,6 +282,9 @@ export async function POST(request: Request) {
       aspectRatio: targetAspectRatio,
       prepared,
       slideClips,
+      narrationFingerprint: fingerprints.narrationFingerprint,
+      slideFingerprints: fingerprints.slides,
+      reusedNarration: Boolean(reusedAudioUrl),
     });
 
     const { error: exportUpdateError } = await supabase
@@ -261,6 +302,8 @@ export async function POST(request: Request) {
       success: true,
       exportId,
       status: "processing",
+      ...(fastPath ? { fastPath } : {}),
+      ...(reusedAudioUrl ? { reusedNarration: true } : {}),
     });
   } catch (error) {
     if (exportId) {

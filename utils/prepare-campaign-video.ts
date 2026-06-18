@@ -2,6 +2,7 @@ import type { Slide } from "@/types/campaign";
 import { estimateSlideDurationSeconds } from "@/utils/build-caption-srt";
 import { uploadFalMedia } from "@/utils/fal-video";
 import { concatMp3Buffers, getMp3DurationSeconds } from "@/utils/merge-mp3-buffers";
+import { loadCampaignNarrationFromCache } from "@/utils/tts/load-campaign-narration-from-cache";
 import { synthesizeCampaignNarration } from "@/utils/tts/synthesize-campaign-narration";
 import { resolveTtsModelId, type VoiceQuality } from "@/utils/tts/types";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
@@ -17,6 +18,8 @@ export interface PrepareCampaignVideoInput {
   preset: VideoExportPreset;
   voiceQuality?: VoiceQuality;
   usage: TtsUsageContext;
+  /** Skip TTS synthesis and Fal audio upload when narration is unchanged. */
+  reusedAudioUrl?: string;
 }
 
 export interface PreparedSlideClip {
@@ -70,12 +73,38 @@ export async function prepareCampaignVideo(
   let totalChars = 0;
 
   if (includeNarration) {
-    const narrationSlides = await synthesizeCampaignNarration({
-      slides: sortedSlides,
-      persona: input.persona,
-      modelId,
-      usage: input.usage,
-    });
+    let useReusedAudio = Boolean(input.reusedAudioUrl);
+    let narrationSlides;
+
+    if (useReusedAudio) {
+      try {
+        narrationSlides = await loadCampaignNarrationFromCache({
+          slides: sortedSlides,
+          persona: input.persona,
+          modelId,
+          usage: input.usage,
+        });
+      } catch (error) {
+        console.warn(
+          "Cached narration reuse failed; falling back to synthesis:",
+          error instanceof Error ? error.message : error,
+        );
+        useReusedAudio = false;
+        narrationSlides = await synthesizeCampaignNarration({
+          slides: sortedSlides,
+          persona: input.persona,
+          modelId,
+          usage: input.usage,
+        });
+      }
+    } else {
+      narrationSlides = await synthesizeCampaignNarration({
+        slides: sortedSlides,
+        persona: input.persona,
+        modelId,
+        usage: input.usage,
+      });
+    }
 
     const narrationByIndex = new Map(
       narrationSlides.map((slide) => [slide.slideIndex, slide]),
@@ -97,6 +126,15 @@ export async function prepareCampaignVideo(
       });
       audioBuffers.push(narration.audio);
       totalChars += narration.charCount;
+    }
+
+    if (useReusedAudio && input.reusedAudioUrl) {
+      return {
+        slideClips,
+        audioUrl: input.reusedAudioUrl,
+        slideCount: sortedSlides.length,
+        totalChars,
+      };
     }
 
     const mergedAudio = await concatMp3Buffers(audioBuffers);

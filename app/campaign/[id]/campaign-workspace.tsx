@@ -887,6 +887,8 @@ export default function CampaignWorkspace({
         error?: string;
         code?: string;
         upgradeUrl?: string;
+        fastPath?: "image_only";
+        reusedNarration?: boolean;
       }>(response);
 
       if (response.status === 429 && data.code === "LIMIT_EXCEEDED") {
@@ -907,6 +909,12 @@ export default function CampaignWorkspace({
 
       if (!response.ok || !data.success || !data.exportId) {
         throw new Error(data.error ?? "Video export failed");
+      }
+
+      if (data.fastPath === "image_only") {
+        setVideoExportMessage(
+          "Scripts unchanged — reusing narration and re-rendering updated slide images.",
+        );
       }
 
       setUsage((current) =>
@@ -1526,7 +1534,7 @@ export default function CampaignWorkspace({
           </div>
 
           {canShowFormatUpsell && (
-            <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-4 md:mb-6">
+            <div className="mb-4 hidden rounded-xl border border-primary/20 bg-primary/5 px-4 py-4 md:mb-6 md:block">
               <p className="text-sm font-semibold text-foreground">
                 Also post in {formatAspectRatio(upsellAspectRatio)}?
               </p>
