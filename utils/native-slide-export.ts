@@ -76,10 +76,18 @@ async function writeImageToCache(
   return written.uri;
 }
 
+function sanitizeCacheFilename(filename: string, fallback = "campaign.bin"): string {
+  const safe = filename
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return safe || fallback;
+}
+
 async function writeBlobToCache(blob: Blob, filename: string): Promise<string> {
   const base64 = await blobToBase64(blob);
-  const safeName = filename.replace(/\.[^.]+$/, "") || "campaign";
-  const path = `${safeName}.zip`;
+  const path = sanitizeCacheFilename(filename);
 
   const written = await Filesystem.writeFile({
     path,
@@ -217,19 +225,44 @@ export async function shareSlideImage(
   });
 }
 
-export async function shareCampaignZip(
-  zipBlob: Blob,
+export async function shareCampaignFile(
+  blob: Blob,
   filename: string,
+  options?: { title?: string; dialogTitle?: string },
 ): Promise<void> {
   if (!canUseNativeSlideExport()) {
     throw new Error("Share is only available in the mobile app");
   }
 
-  const fileUri = await writeBlobToCache(zipBlob, filename);
+  const fileUri = await writeBlobToCache(blob, filename);
 
   await Share.share({
+    title: options?.title ?? "SlidePress export",
+    dialogTitle: options?.dialogTitle ?? "Save file",
+    files: [fileUri],
+  });
+}
+
+export async function shareCampaignZip(
+  zipBlob: Blob,
+  filename: string,
+): Promise<void> {
+  const zipFilename = filename.endsWith(".zip") ? filename : `${filename}.zip`;
+
+  await shareCampaignFile(zipBlob, zipFilename, {
     title: "SlidePress campaign",
     dialogTitle: "Save campaign zip",
-    files: [fileUri],
+  });
+}
+
+export async function shareCampaignVideo(
+  videoBlob: Blob,
+  filename: string,
+): Promise<void> {
+  const videoFilename = filename.endsWith(".mp4") ? filename : `${filename}.mp4`;
+
+  await shareCampaignFile(videoBlob, videoFilename, {
+    title: "SlidePress video",
+    dialogTitle: "Save video",
   });
 }

@@ -43,6 +43,7 @@ import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import {
   canUseNativeSlideExport,
   saveAllSlidesToPhotos,
+  shareCampaignVideo,
   shareCampaignZip,
 } from "@/utils/native-slide-export";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -683,7 +684,7 @@ export default function CampaignWorkspace({
       const blob = await videoResponse.blob();
 
       if (canUseNativeSlideExport()) {
-        await shareCampaignZip(blob, filename);
+        await shareCampaignVideo(blob, filename);
         setVideoExportMessage(
           `Use the share sheet to save your video. ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`,
         );
