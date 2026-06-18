@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { getAppUrl, getStripe, getStripePriceId } from "@/utils/stripe";
+import { getAppUrl, getCheckoutSessionBranding, getStripe, getStripePriceId } from "@/utils/stripe";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       client_reference_id: user.id,
       success_url: `${appUrl}/settings/usage?checkout=success`,
       cancel_url: `${appUrl}/settings/usage?checkout=cancel`,
+      ...getCheckoutSessionBranding(appUrl, tier),
       metadata: {
         user_id: user.id,
         tier,

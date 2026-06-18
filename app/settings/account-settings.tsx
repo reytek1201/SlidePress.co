@@ -5,6 +5,7 @@ import PasswordResetForm from "@/app/components/password-reset-form";
 import SettingsSection from "@/app/settings/settings-section";
 import { createClient } from "@/utils/supabase/client";
 import { clearBiometricSession } from "@/utils/biometric-session";
+import { logOutRevenueCat } from "@/utils/revenuecat";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
 import { buildNativeOAuthRedirectUrl } from "@/utils/native-oauth";
 import { useRouter } from "next/navigation";
@@ -61,6 +62,7 @@ export default function AccountSettings({
   async function handleSignOut() {
     setSigningOut(true);
     await clearBiometricSession();
+    await logOutRevenueCat();
     await supabase.auth.signOut();
     router.push("/");
     router.refresh();

@@ -9,6 +9,8 @@ import {
   getNativeAuthCallbackKey,
   parseNativeAuthCallback,
 } from "@/utils/native-oauth";
+import { createClient } from "@/utils/supabase/client";
+import { configureRevenueCat } from "@/utils/revenuecat";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { useRouter } from "next/navigation";
@@ -44,6 +46,17 @@ async function handleNativeAuthUrl(
     handledAuthCallbacks.delete(callbackKey);
     navigate("/login?error=auth_callback_error");
     return;
+  }
+
+  // Identify the user in RevenueCat so IAP purchases are linked to their account.
+  try {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) {
+      void configureRevenueCat(user.id);
+    }
+  } catch {
+    // Non-fatal — RC will configure on next app open.
   }
 
   completeNativeOAuthNavigation(nextPath, navigate);

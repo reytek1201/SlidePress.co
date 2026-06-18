@@ -2,6 +2,8 @@
 
 import SettingsSection from "@/app/settings/settings-section";
 import type { UsageSummary } from "@/types/usage";
+import { isNativeAppRuntime } from "@/utils/is-native-app";
+import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -89,6 +91,8 @@ const PLAN_FEATURES: Record<
   },
 };
 
+// ─── Web upgrade / manage (Stripe) ───────────────────────────────────────────
+
 interface UpgradeButtonProps {
   tier: "creator" | "agency";
   currentTier: string;
@@ -99,8 +103,7 @@ function UpgradeButton({ tier, currentTier }: UpgradeButtonProps) {
   const [error, setError] = useState<string | null>(null);
 
   const isCurrent = currentTier === tier;
-  const isDowngrade =
-    (currentTier === "agency" && tier === "creator");
+  const isDowngrade = currentTier === "agency" && tier === "creator";
 
   async function handleClick() {
     if (isCurrent) return;
@@ -159,9 +162,7 @@ function UpgradeButton({ tier, currentTier }: UpgradeButtonProps) {
               ? "Upgrade to Creator"
               : "Upgrade to Agency Pro"}
       </button>
-      {error && (
-        <p className="mt-2 text-xs text-red-400">{error}</p>
-      )}
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </div>
   );
 }
@@ -206,9 +207,172 @@ function ManageSubscriptionButton() {
       >
         {loading ? "Opening…" : "Manage subscription"}
       </button>
-      {error && (
-        <p className="mt-2 text-xs text-red-400">{error}</p>
-      )}
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+// ─── Native upgrade / manage (RevenueCat) ────────────────────────────────────
+
+/** Maps our tier ID to the RevenueCat package identifier set in the dashboard. */
+const RC_PACKAGE_ID: Record<"creator" | "agency", string> = {
+  creator: "creator",
+  agency: "agency",
+};
+
+interface NativeUpgradeButtonProps {
+  tier: "creator" | "agency";
+  currentTier: string;
+}
+
+function NativeUpgradeButton({ tier, currentTier }: NativeUpgradeButtonProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isCurrent = currentTier === tier;
+  const isDowngrade = currentTier === "agency" && tier === "creator";
+
+  async function handlePurchase() {
+    if (isCurrent) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { purchaseRCPackage } = await import("@/utils/revenuecat");
+      const { Purchases } = await import("@revenuecat/purchases-capacitor");
+
+      const offerings = await Purchases.getOfferings();
+      const offering = offerings.current;
+
+      if (!offering) {
+        throw new Error("No offerings available. Please try again later.");
+      }
+
+      const pkg = offering.availablePackages.find(
+        (p) => p.identifier === RC_PACKAGE_ID[tier],
+      );
+
+      if (!pkg) {
+        throw new Error("No package found for this plan.");
+      }
+
+      const result = await purchaseRCPackage(pkg);
+
+      if (result.cancelled) {
+        // User dismissed — not an error.
+        setLoading(false);
+        return;
+      }
+
+      if (!result.success) {
+        throw new Error(result.error ?? "Purchase failed");
+      }
+
+      // Success — tier update arrives via RevenueCat webhook; reload to reflect.
+      window.location.reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setLoading(false);
+    }
+  }
+
+  if (isCurrent) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        Current plan
+      </span>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => void handlePurchase()}
+        disabled={loading}
+        className={`w-full rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
+          isDowngrade
+            ? "border border-border text-secondary-foreground hover:border-ring/60 hover:text-foreground"
+            : "bg-primary text-primary-foreground hover:opacity-90"
+        }`}
+      >
+        {loading
+          ? "Processing…"
+          : isDowngrade
+            ? "Switch to Creator"
+            : tier === "creator"
+              ? "Upgrade to Creator"
+              : "Upgrade to Agency Pro"}
+      </button>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+/** Opens the OS-native subscription management screen. */
+function NativeManageSubscriptionButton() {
+  function handleOpen() {
+    const platform = Capacitor.getPlatform();
+    if (platform === "ios") {
+      // Deep-links to iOS Settings > Apple ID > Subscriptions.
+      window.open("https://apps.apple.com/account/subscriptions", "_system");
+    } else {
+      // Deep-links to Play Store subscriptions.
+      window.open(
+        "https://play.google.com/store/account/subscriptions?package=co.slidepress.app",
+        "_system",
+      );
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleOpen}
+      className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground"
+    >
+      Manage subscription
+    </button>
+  );
+}
+
+/** Restore purchases link (native only). */
+function NativeRestoreButton() {
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleRestore() {
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const { restoreRCPurchases } = await import("@/utils/revenuecat");
+      const result = await restoreRCPurchases();
+
+      if (result.success) {
+        setMessage("Purchases restored. Reloading…");
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setMessage(result.error ?? "Nothing to restore");
+      }
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Restore failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => void handleRestore()}
+        disabled={loading}
+        className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-60"
+      >
+        {loading ? "Restoring…" : "Restore purchases"}
+      </button>
+      {message && <p className="mt-1 text-xs text-muted-foreground">{message}</p>}
     </div>
   );
 }
@@ -221,6 +385,7 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [usageLoading, setUsageLoading] = useState(true);
   const [usageError, setUsageError] = useState<string | null>(null);
+  const isNative = isNativeAppRuntime();
 
   useEffect(() => {
     let cancelled = false;
@@ -299,7 +464,11 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                 </span>
               ) : null}
             </div>
-            {!usage.isLifetimeTier && <ManageSubscriptionButton />}
+            {!usage.isLifetimeTier && (
+              isNative
+                ? <NativeManageSubscriptionButton />
+                : <ManageSubscriptionButton />
+            )}
           </div>
 
           {/* Credit tiles */}
@@ -369,6 +538,7 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
               </h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 {(["creator", "agency"] as const).map((planTier) => {
+
                   const info = PLAN_FEATURES[planTier];
                   const isCurrent = usage.tier === planTier;
 
@@ -407,35 +577,75 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                         ))}
                       </ul>
                       <div className="mt-4">
-                        <UpgradeButton tier={planTier} currentTier={usage.tier} />
+                        {isNative ? (
+                          <NativeUpgradeButton tier={planTier} currentTier={usage.tier} />
+                        ) : (
+                          <UpgradeButton tier={planTier} currentTier={usage.tier} />
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
+              {isNative && (
+                <div className="mt-4">
+                  <NativeRestoreButton />
+                </div>
+              )}
             </div>
           )}
 
           {/* Agency users: just show manage button */}
           {usage.tier === "agency" && (
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
               <p className="text-xs text-muted-foreground">
-                You&apos;re on the highest plan. Use{" "}
-                <button
-                  type="button"
-                  onClick={() => {
-                    void fetch("/api/billing/create-portal", { method: "POST" })
-                      .then((r) => r.json())
-                      .then((d: { url?: string }) => {
-                        if (d.url) window.location.href = d.url;
-                      });
-                  }}
-                  className="font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  Stripe billing portal
-                </button>{" "}
-                to manage or cancel.
+                You&apos;re on the highest plan.{" "}
+                {isNative ? (
+                  <>
+                    Manage or cancel your subscription through the{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const platform = Capacitor.getPlatform();
+                        if (platform === "ios") {
+                          window.open(
+                            "https://apps.apple.com/account/subscriptions",
+                            "_system",
+                          );
+                        } else {
+                          window.open(
+                            "https://play.google.com/store/account/subscriptions?package=co.slidepress.app",
+                            "_system",
+                          );
+                        }
+                      }}
+                      className="font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {Capacitor.getPlatform() === "ios" ? "App Store" : "Play Store"}
+                    </button>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Use{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void fetch("/api/billing/create-portal", { method: "POST" })
+                          .then((r) => r.json())
+                          .then((d: { url?: string }) => {
+                            if (d.url) window.location.href = d.url;
+                          });
+                      }}
+                      className="font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Stripe billing portal
+                    </button>{" "}
+                    to manage or cancel.
+                  </>
+                )}
               </p>
+              {isNative && <NativeRestoreButton />}
             </div>
           )}
         </>

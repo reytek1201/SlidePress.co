@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { getAppUrl, getStripe } from "@/utils/stripe";
+import { getAppUrl, getSlidePressPortalConfigurationId, getStripe } from "@/utils/stripe";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -33,10 +33,12 @@ export async function POST() {
 
     const stripe = getStripe();
     const appUrl = getAppUrl();
+    const configurationId = await getSlidePressPortalConfigurationId(stripe);
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: balance.stripe_customer_id,
       return_url: `${appUrl}/settings/usage`,
+      configuration: configurationId,
     });
 
     return NextResponse.json({ success: true, url: portalSession.url });
