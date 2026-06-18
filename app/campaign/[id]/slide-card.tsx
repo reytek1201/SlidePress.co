@@ -7,18 +7,15 @@ import {
   slideImageFilename,
 } from "@/utils/download-slide";
 import {
-  blobToFile,
-  captureReferencePhoto,
-} from "@/utils/native-camera";
-import {
   saveSlideImageToPhotos,
   shareSlideImage,
 } from "@/utils/native-slide-export";
-import { uploadReferenceImage } from "@/utils/upload-reference";
-import { createClient } from "@/utils/supabase/client";
-import { memo, useCallback, useRef, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import SlideOverlayEditor from "./slide-overlay-editor";
-import SlideRegenerateControls from "./slide-regenerate-controls";
+import SlideRegenerateSheet, {
+  type SlideRegenerateOptions,
+} from "./slide-regenerate-sheet";
+import SlideVoiceoverEditor from "./slide-voiceover-editor";
 import SlideVoicePreview from "./slide-voice-preview";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 
@@ -35,7 +32,7 @@ interface SlideCardProps {
   onSlideUpdated: (slideId: string, patch: Partial<Slide>) => void;
   onRegenerate: (
     slideId: string,
-    options?: { snapProductUrl?: string; feedback?: RegenerateFeedbackChipId[]; notes?: string },
+    options?: SlideRegenerateOptions,
   ) => void;
   onError: (message: string) => void;
 }
@@ -54,18 +51,15 @@ const SlideCard = memo(function SlideCard({
   onRegenerate,
   onError,
 }: SlideCardProps) {
-  const supabase = createClient();
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isCopiedVoiceover, setIsCopiedVoiceover] = useState(false);
-  const [selectedFeedbackChips, setSelectedFeedbackChips] = useState<RegenerateFeedbackChipId[]>([]);
-  const [regenerateNotes, setRegenerateNotes] = useState("");
-  const [snapPhotoUrl, setSnapPhotoUrl] = useState<string | null>(null);
-  const [snapUploadedUrl, setSnapUploadedUrl] = useState<string | null>(null);
-  const [isSnapping, setIsSnapping] = useState(false);
-  const snapBlobRef = useRef<Blob | null>(null);
+  const [suggestVoiceoverMatch, setSuggestVoiceoverMatch] = useState(false);
+  const [suggestRegenerateImage, setSuggestRegenerateImage] = useState(false);
+  const [regenerateSheetOpen, setRegenerateSheetOpen] = useState(false);
+
+  const regenerateDisabled = isAnySlideGenerating && !isRegenerating;
 
   const handleSaveToPhotos = useCallback(async () => {
     if (!slide.image_url) return;
@@ -115,69 +109,22 @@ const SlideCard = memo(function SlideCard({
     }
   }, [slide.image_url, slide.slide_index, onError]);
 
-  const handleCopyVoiceover = useCallback(async () => {
-    if (!slide.voiceover_script) return;
-    try {
-      await navigator.clipboard.writeText(slide.voiceover_script);
-      setIsCopiedVoiceover(true);
-      window.setTimeout(() => setIsCopiedVoiceover(false), 2000);
-    } catch {
-      onError("Could not copy to clipboard");
-    }
-  }, [slide.voiceover_script, onError]);
-
-  const handleToggleChip = useCallback((chipId: RegenerateFeedbackChipId) => {
-    setSelectedFeedbackChips((current) =>
-      current.includes(chipId)
-        ? current.filter((id) => id !== chipId)
-        : [...current, chipId],
-    );
-  }, []);
-
-  const handleSnapPhoto = useCallback(async () => {
-    if (isSnapping) return;
-    setIsSnapping(true);
-    try {
-      const result = await captureReferencePhoto("camera");
-      if (!result) return;
-
-      snapBlobRef.current = result.blob;
-      const objectUrl = URL.createObjectURL(result.blob);
-      setSnapPhotoUrl(objectUrl);
-
-      const file = blobToFile(result.blob, result.filename);
-      const uploadedUrl = await uploadReferenceImage(supabase, file, userId, "product");
-      setSnapUploadedUrl(uploadedUrl);
-    } catch {
-      onError("Could not capture photo");
-    } finally {
-      setIsSnapping(false);
-    }
-  }, [isSnapping, supabase, userId, onError]);
-
-  const handleClearSnapPhoto = useCallback(() => {
-    if (snapPhotoUrl) {
-      URL.revokeObjectURL(snapPhotoUrl);
-    }
-    setSnapPhotoUrl(null);
-    setSnapUploadedUrl(null);
-    snapBlobRef.current = null;
-  }, [snapPhotoUrl]);
-
-  const handleRegenerate = useCallback(() => {
-    onRegenerate(slide.id, {
-      snapProductUrl: snapUploadedUrl ?? undefined,
-      feedback: selectedFeedbackChips.length > 0 ? selectedFeedbackChips : undefined,
-      notes: regenerateNotes.trim() || undefined,
-    });
-    setSelectedFeedbackChips([]);
-    setRegenerateNotes("");
-    handleClearSnapPhoto();
-  }, [slide.id, snapUploadedUrl, selectedFeedbackChips, regenerateNotes, onRegenerate, handleClearSnapPhoto]);
+  const handleRegenerate = useCallback(
+    (options: SlideRegenerateOptions) => {
+      onRegenerate(slide.id, options);
+      setSuggestRegenerateImage(false);
+    },
+    [slide.id, onRegenerate],
+  );
 
   const handleOpenPreview = useCallback(() => {
     onOpenPreview(slide.slide_index);
   }, [slide.slide_index, onOpenPreview]);
+
+  function openRegenerateSheet() {
+    setRegenerateSheetOpen(true);
+    setSuggestRegenerateImage(false);
+  }
 
   const showImageSlot =
     Boolean(slide.image_url) ||
@@ -269,42 +216,57 @@ const SlideCard = memo(function SlideCard({
           <SlideOverlayEditor
             slideId={slide.id}
             value={slide.text_overlay ?? ""}
-            disabled={
-              isRegenerating ||
-              (isAnySlideGenerating && !isRegenerating)
-            }
+            disabled={regenerateDisabled || isRegenerating}
             onSaved={(textOverlay) => {
+              const headlineChanged =
+                textOverlay.trim() !== (slide.text_overlay ?? "").trim();
               onSlideUpdated(slide.id, { text_overlay: textOverlay });
+              if (headlineChanged) {
+                setSuggestVoiceoverMatch(true);
+                if (slide.image_url) {
+                  setSuggestRegenerateImage(true);
+                }
+              }
             }}
             onError={onError}
           />
 
-          <div>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Voiceover script
+          {suggestRegenerateImage && slide.image_url ? (
+            <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2.5">
+              <p className="text-xs leading-5 text-secondary-foreground">
+                Headline changed — regenerate the image so it matches?
               </p>
-              {slide.voiceover_script && (
-                <button
-                  type="button"
-                  onClick={() => void handleCopyVoiceover()}
-                  className="text-xs font-medium text-muted-foreground transition hover:text-foreground"
-                >
-                  {isCopiedVoiceover ? "Copied" : "Copy"}
-                </button>
-              )}
+              <button
+                type="button"
+                disabled={regenerateDisabled || isRegenerating}
+                onClick={openRegenerateSheet}
+                className="mt-2 text-xs font-semibold text-primary underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Fix this slide
+              </button>
             </div>
-            <p className="mt-1.5 text-sm leading-6 text-secondary-foreground md:mt-2 md:leading-7">
-              {slide.voiceover_script ?? "—"}
-            </p>
-            <SlideVoicePreview
-              campaignId={campaignId}
-              slideId={slide.id}
-              hasVoiceover={Boolean(slide.voiceover_script)}
-              preferredVoicePersona={preferredVoicePersona}
-              onError={onError}
-            />
-          </div>
+          ) : null}
+
+          <SlideVoiceoverEditor
+            slideId={slide.id}
+            value={slide.voiceover_script ?? ""}
+            headline={slide.text_overlay ?? ""}
+            disabled={regenerateDisabled || isRegenerating}
+            suggestMatchHeadline={suggestVoiceoverMatch}
+            onDismissMatchSuggestion={() => setSuggestVoiceoverMatch(false)}
+            onSaved={(voiceoverScript) => {
+              onSlideUpdated(slide.id, { voiceover_script: voiceoverScript });
+              setSuggestVoiceoverMatch(false);
+            }}
+            onError={onError}
+          />
+          <SlideVoicePreview
+            campaignId={campaignId}
+            slideId={slide.id}
+            hasVoiceover={Boolean(slide.voiceover_script)}
+            preferredVoicePersona={preferredVoicePersona}
+            onError={onError}
+          />
 
           {slide.image_url && (
             <div className="flex flex-wrap gap-2">
@@ -337,25 +299,28 @@ const SlideCard = memo(function SlideCard({
                   {isDownloading ? "Downloading…" : "Download image"}
                 </button>
               )}
+              <button
+                type="button"
+                disabled={regenerateDisabled || isRegenerating}
+                onClick={openRegenerateSheet}
+                className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:py-2.5"
+              >
+                {isRegenerating ? "Regenerating…" : "Fix this slide…"}
+              </button>
             </div>
           )}
 
-          {slide.image_url && (
-            <SlideRegenerateControls
-              disabled={isAnySlideGenerating && !isRegenerating}
-              isRegenerating={isRegenerating}
-              selectedChipIds={selectedFeedbackChips}
-              notes={regenerateNotes}
-              onNotesChange={setRegenerateNotes}
-              onToggleChip={handleToggleChip}
-              onRegenerate={handleRegenerate}
-              isNativeApp={isNativeApp}
-              snapPhotoUrl={snapPhotoUrl}
-              isSnapping={isSnapping}
-              onSnapPhoto={() => void handleSnapPhoto()}
-              onClearSnapPhoto={handleClearSnapPhoto}
-            />
-          )}
+          <SlideRegenerateSheet
+            open={regenerateSheetOpen}
+            onClose={() => setRegenerateSheetOpen(false)}
+            disabled={regenerateDisabled}
+            isRegenerating={isRegenerating}
+            isNativeApp={isNativeApp}
+            userId={userId}
+            headline={slide.text_overlay ?? ""}
+            onRegenerate={handleRegenerate}
+            onError={onError}
+          />
         </div>
       </div>
     </article>

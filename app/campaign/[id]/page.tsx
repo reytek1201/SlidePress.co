@@ -1,7 +1,7 @@
 import CampaignWorkspace from "@/app/campaign/[id]/campaign-workspace";
 import { createClient } from "@/utils/supabase/server";
 import { appRobots } from "@/utils/site-metadata";
-import type { Campaign, Slide } from "@/types/campaign";
+import type { Campaign, Slide, SlideImage } from "@/types/campaign";
 import type { PlatformCaption } from "@/types/captions";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -54,8 +54,21 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
     notFound();
   }
 
-  const slides = slidesResult.data;
+  const slides = slidesResult.data ?? [];
   const captions = captionsResult.data;
+  const slideIds = slides.map((slide) => slide.id);
+
+  let slideImages: SlideImage[] = [];
+
+  if (slideIds.length > 0) {
+    const { data } = await supabase
+      .from("slide_images")
+      .select("*")
+      .in("slide_id", slideIds);
+
+    slideImages = (data ?? []) as SlideImage[];
+  }
+
   const typedCampaign = campaign as Campaign;
 
   let brandName: string | null = null;
@@ -83,7 +96,8 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
   return (
     <CampaignWorkspace
       initialCampaign={typedCampaign}
-      initialSlides={(slides ?? []) as Slide[]}
+      initialSlides={slides as Slide[]}
+      initialSlideImages={slideImages}
       initialCaptions={(captions ?? []) as PlatformCaption[]}
       userId={user.id}
       brandName={brandName}

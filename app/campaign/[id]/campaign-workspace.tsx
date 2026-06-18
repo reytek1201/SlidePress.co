@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/utils/supabase/client";
-import type { Campaign, Slide } from "@/types/campaign";
+import type { AspectRatio, Campaign, Slide, SlideImage } from "@/types/campaign";
 import type { PlatformCaption } from "@/types/captions";
 import {
   formatAllCaptionsForCopy,
@@ -17,6 +17,8 @@ import {
   scrollToSlideCard,
 } from "@/utils/campaign-progress";
 import SlideCard from "@/app/campaign/[id]/slide-card";
+import AddFormatSheet from "@/app/campaign/[id]/add-format-sheet";
+import CampaignAspectToggle from "@/app/campaign/[id]/campaign-aspect-toggle";
 import CarouselPreviewModal from "@/app/campaign/[id]/carousel-preview-modal";
 import CampaignDetailsPanel from "@/app/campaign/[id]/campaign-details-panel";
 import CampaignGeneratingView from "@/app/campaign/[id]/campaign-generating-view";
@@ -46,7 +48,7 @@ import {
   shareCampaignVideo,
   shareCampaignZip,
 } from "@/utils/native-slide-export";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
@@ -61,6 +63,12 @@ import {
   mapPipelineStageToUiStage,
   type VideoExportUiStage,
 } from "@/utils/video-export-stages";
+import {
+  indexSlideImages,
+  mergeSlidesWithAspect,
+  otherAspectRatio,
+  slidesCompleteForAspect,
+} from "@/utils/slide-aspect-images";
 
 const USER_SCROLL_COOLDOWN_MS = 3000;
 const SLIDE_UPDATE_DEBOUNCE_MS = 150;
@@ -68,6 +76,7 @@ const SLIDE_UPDATE_DEBOUNCE_MS = 150;
 interface CampaignWorkspaceProps {
   initialCampaign: Campaign;
   initialSlides: Slide[];
+  initialSlideImages: SlideImage[];
   initialCaptions: PlatformCaption[];
   userId: string;
   brandName?: string | null;
@@ -77,6 +86,7 @@ interface CampaignWorkspaceProps {
 export default function CampaignWorkspace({
   initialCampaign,
   initialSlides,
+  initialSlideImages,
   initialCaptions,
   userId,
   brandName = null,
@@ -85,6 +95,15 @@ export default function CampaignWorkspace({
   const supabase = createClient();
   const [campaign, setCampaign] = useState(initialCampaign);
   const [slides, setSlides] = useState(initialSlides);
+  const [slideImages, setSlideImages] = useState(initialSlideImages);
+  const [activeAspectRatio, setActiveAspectRatio] = useState<AspectRatio>(
+    initialCampaign.aspect_ratio,
+  );
+  const [addFormatSheetOpen, setAddFormatSheetOpen] = useState(false);
+  const [isGeneratingFormat, setIsGeneratingFormat] = useState(false);
+  const [videoExportAspectRatio, setVideoExportAspectRatio] = useState<AspectRatio>(
+    initialCampaign.aspect_ratio,
+  );
   const [captions, setCaptions] = useState(initialCaptions);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
@@ -129,30 +148,87 @@ export default function CampaignWorkspace({
   const textGenerationStarted = useRef(false);
   const prevSlidesRef = useRef(initialSlides);
   const prevImagesCompleteRef = useRef(
-    initialSlides.length > 0 && initialSlides.every((slide) => slide.image_url)
+    initialSlides.length > 0 &&
+      initialSlides.every((slide) => slide.image_url),
   );
   const lastUserScrollAtRef = useRef(0);
   const isGeneratingImagesRef = useRef(false);
   const pendingSlideUpdatesRef = useRef<Map<string, Slide>>(new Map());
   const slideFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slideIdsRef = useRef(new Set(initialSlides.map((slide) => slide.id)));
+
+  const imageIndex = useMemo(
+    () => indexSlideImages(slideImages),
+    [slideImages],
+  );
+
+  const displaySlides = useMemo(
+    () => mergeSlidesWithAspect(slides, activeAspectRatio, campaign, imageIndex),
+    [slides, activeAspectRatio, campaign, imageIndex],
+  );
+
+  const secondaryAspectRatio = campaign.secondary_aspect_ratio;
+  const upsellAspectRatio = otherAspectRatio(campaign.aspect_ratio);
+
+  const primaryImagesComplete = useMemo(
+    () =>
+      slides.length > 0 &&
+      slidesCompleteForAspect(
+        slides,
+        campaign.aspect_ratio,
+        campaign,
+        imageIndex,
+      ),
+    [slides, campaign, imageIndex],
+  );
+
+  const secondaryImagesComplete = useMemo(
+    () =>
+      Boolean(
+        secondaryAspectRatio &&
+          slidesCompleteForAspect(
+            slides,
+            secondaryAspectRatio,
+            campaign,
+            imageIndex,
+          ),
+      ),
+    [slides, secondaryAspectRatio, campaign, imageIndex],
+  );
+
+  const activeImagesComplete = useMemo(
+    () =>
+      slides.length > 0 &&
+      slidesCompleteForAspect(slides, activeAspectRatio, campaign, imageIndex),
+    [slides, activeAspectRatio, campaign, imageIndex],
+  );
+
+  const imagesComplete = primaryImagesComplete;
+  const slideCount = campaign.slide_count ?? slides.length;
+  const imagesReadyCount = displaySlides.filter((slide) => slide.image_url).length;
+  const canShowFormatUpsell =
+    primaryImagesComplete &&
+    !secondaryAspectRatio &&
+    campaign.status !== "generating_images";
+  const dualFormatVideoReady =
+    Boolean(secondaryAspectRatio) &&
+    primaryImagesComplete &&
+    secondaryImagesComplete;
 
   const isAwaitingTextGeneration =
     slides.length === 0 &&
     (campaign.status === "generating_text" || campaign.status === "failed");
 
-  const imagesComplete = slides.length > 0 && slides.every((slide) => slide.image_url);
-  const imagesReadyCount = slides.filter((slide) => slide.image_url).length;
-  const slideCount = campaign.slide_count ?? slides.length;
-  const isAnySlideGenerating = slides.some(
-    (slide) => slide.fal_request_id && !slide.image_url
+  const isAnySlideGenerating = displaySlides.some(
+    (slide) => slide.fal_request_id && !slide.image_url,
   );
   const isGeneratingImages =
     campaign.status === "generating_images" || isAnySlideGenerating;
   const canGenerateImages =
     !isGenerating &&
     campaign.status !== "generating_images" &&
-    !imagesComplete;
+    !primaryImagesComplete;
   const sortedCaptions = sortCaptionsByPlatform(captions);
   const canGenerateCaptions = slides.length > 0 && !isGeneratingCaptions;
   const hasVoiceoverScripts = slides.some((slide) =>
@@ -162,9 +238,18 @@ export default function CampaignWorkspace({
     slides.length > 0 &&
     slides.every((slide) => Boolean(slide.voiceover_script?.trim()));
   const canExportVideo =
-    (campaign.aspect_ratio === "9:16" || campaign.aspect_ratio === "4:5") &&
-    imagesComplete &&
+    (videoExportAspectRatio === "9:16" || videoExportAspectRatio === "4:5") &&
+    slidesCompleteForAspect(
+      slides,
+      videoExportAspectRatio,
+      campaign,
+      imageIndex,
+    ) &&
     allSlidesHaveVoiceoverScripts;
+
+  useEffect(() => {
+    slideIdsRef.current = new Set(slides.map((slide) => slide.id));
+  }, [slides]);
 
   useEffect(() => {
     isGeneratingImagesRef.current = isGeneratingImages;
@@ -188,11 +273,11 @@ export default function CampaignWorkspace({
 
   useEffect(() => {
     const prev = prevSlidesRef.current;
-    prevSlidesRef.current = slides;
+    prevSlidesRef.current = displaySlides;
 
     let newestReadySlide: Slide | null = null;
 
-    for (const slide of slides) {
+    for (const slide of displaySlides) {
       const prevSlide = prev.find((entry) => entry.id === slide.id);
       if (slide.image_url && !prevSlide?.image_url) {
         newestReadySlide = slide;
@@ -216,7 +301,7 @@ export default function CampaignWorkspace({
         }, 4000);
       }
 
-      const allCompleteNow = slides.every((slide) => slide.image_url);
+      const allCompleteNow = displaySlides.every((slide) => slide.image_url);
 
       if (!allCompleteNow) {
         const userScrolledRecently =
@@ -235,7 +320,7 @@ export default function CampaignWorkspace({
         }
       }
     }
-  }, [slides, isGeneratingImages]);
+  }, [displaySlides, isGeneratingImages]);
 
   useEffect(() => {
     if (imagesComplete && !prevImagesCompleteRef.current) {
@@ -258,6 +343,24 @@ export default function CampaignWorkspace({
     };
   }, []);
 
+  const refreshSlideImages = useCallback(async () => {
+    const slideIds = slides.map((slide) => slide.id);
+
+    if (slideIds.length === 0) {
+      setSlideImages([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("slide_images")
+      .select("*")
+      .in("slide_id", slideIds);
+
+    if (data) {
+      setSlideImages(data as SlideImage[]);
+    }
+  }, [slides, supabase]);
+
   const refreshSlides = useCallback(async () => {
     const { data: refreshedSlides } = await supabase
       .from("slides")
@@ -268,7 +371,9 @@ export default function CampaignWorkspace({
     if (refreshedSlides) {
       setSlides(refreshedSlides as Slide[]);
     }
-  }, [campaign.id, supabase]);
+
+    await refreshSlideImages();
+  }, [campaign.id, refreshSlideImages, supabase]);
 
   const refreshCampaign = useCallback(async () => {
     const { data: refreshedCampaign } = await supabase
@@ -409,6 +514,40 @@ export default function CampaignWorkspace({
       .on(
         "postgres_changes",
         {
+          event: "*",
+          schema: "public",
+          table: "slide_images",
+        },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as SlideImage | undefined;
+
+          if (!row?.slide_id || !slideIdsRef.current.has(row.slide_id)) {
+            return;
+          }
+
+          if (payload.eventType === "DELETE") {
+            setSlideImages((current) =>
+              current.filter((entry) => entry.id !== row.id),
+            );
+            return;
+          }
+
+          setSlideImages((current) => {
+            const existingIndex = current.findIndex((entry) => entry.id === row.id);
+
+            if (existingIndex === -1) {
+              return [...current, row];
+            }
+
+            const next = [...current];
+            next[existingIndex] = row;
+            return next;
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
           event: "UPDATE",
           schema: "public",
           table: "campaigns",
@@ -487,6 +626,52 @@ export default function CampaignWorkspace({
       );
     } finally {
       setIsGenerating(false);
+    }
+  }
+
+  async function handleGenerateFormatVariant() {
+    setError(null);
+    setIsGeneratingFormat(true);
+
+    try {
+      const response = await fetch("/api/generate-format-variant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: campaign.id }),
+      });
+
+      const data = (await response.json()) as {
+        success: boolean;
+        error?: string;
+        mode?: string;
+        aspectRatio?: AspectRatio;
+      };
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error ?? "Failed to add format");
+      }
+
+      setAddFormatSheetOpen(false);
+      setActiveAspectRatio(data.aspectRatio ?? upsellAspectRatio);
+      setCampaign((current) => ({
+        ...current,
+        secondary_aspect_ratio: data.aspectRatio ?? upsellAspectRatio,
+        status: data.mode === "sync" ? "completed" : "generating_images",
+        image_generation_aspect: data.mode === "sync" ? null : upsellAspectRatio,
+        error_message: null,
+      }));
+
+      if (data.mode === "sync") {
+        await Promise.all([refreshSlides(), refreshCampaign()]);
+      }
+    } catch (generateError) {
+      setError(
+        generateError instanceof Error
+          ? generateError.message
+          : "Something went wrong",
+      );
+    } finally {
+      setIsGeneratingFormat(false);
     }
   }
 
@@ -657,6 +842,7 @@ export default function CampaignWorkspace({
           persona: preferredVoicePersona,
           preset: videoPreset,
           voiceQuality,
+          aspectRatio: videoExportAspectRatio,
         }),
       });
 
@@ -729,7 +915,9 @@ export default function CampaignWorkspace({
     preferredVoicePersona,
     voiceQuality,
     videoPreset,
-    aspectRatioLabel: formatAspectRatio(campaign.aspect_ratio),
+    aspectRatioLabel: formatAspectRatio(videoExportAspectRatio),
+    dualFormatVideoReady,
+    videoExportAspectRatio,
     brandId: campaign.brand_id,
     isSavingVoicePersona,
     isExporting,
@@ -748,6 +936,7 @@ export default function CampaignWorkspace({
     onPersonaChange: (persona: VoicePersona) => void handleVoicePersonaChange(persona),
     onVoiceQualityChange: setVoiceQuality,
     onVideoPresetChange: setVideoPreset,
+    onVideoExportAspectRatioChange: setVideoExportAspectRatio,
     onDownloadZip: handleDownloadZip,
     onDownloadNarration: handleDownloadNarration,
     onExportVideo: handleExportVideo,
@@ -824,7 +1013,7 @@ export default function CampaignWorkspace({
     setSaveAllPhotosProgress(null);
 
     try {
-      const result = await saveAllSlidesToPhotos(slides, (saved, total) => {
+      const result = await saveAllSlidesToPhotos(displaySlides, (saved, total) => {
         setSaveAllPhotosProgress({ saved, total });
       });
 
@@ -858,7 +1047,7 @@ export default function CampaignWorkspace({
     setPreviewOpen(true);
   }, []);
 
-  const slidesWithImages = slides.filter((slide) => slide.image_url);
+  const slidesWithImages = displaySlides.filter((slide) => slide.image_url);
 
   const handleRegenerateSlide = useCallback(async (
     slideId: string,
@@ -868,7 +1057,7 @@ export default function CampaignWorkspace({
     setRegeneratingSlideId(slideId);
 
     try {
-      const slide = slides.find((entry) => entry.id === slideId);
+      const slide = displaySlides.find((entry) => entry.id === slideId);
       const textOverlay = slide?.text_overlay?.trim() || undefined;
 
       const response = await fetch("/api/regenerate-slide", {
@@ -876,6 +1065,7 @@ export default function CampaignWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           slideId,
+          aspectRatio: activeAspectRatio,
           text_overlay: textOverlay,
           ...(options?.feedback?.length ? { feedback: options.feedback } : {}),
           ...(options?.notes ? { notes: options.notes } : {}),
@@ -887,50 +1077,66 @@ export default function CampaignWorkspace({
         success: boolean;
         error?: string;
         mode?: string;
+        aspectRatio?: AspectRatio;
       };
 
       if (!response.ok || !data.success) {
         throw new Error(data.error ?? "Failed to regenerate slide");
       }
 
-      setSlides((current) =>
-        current.map((slide) =>
-          slide.id === slideId
-            ? {
-                ...slide,
-                image_url: null,
-                fal_request_id: null,
-              }
-            : slide
-        )
-      );
+      const targetAspect = data.aspectRatio ?? activeAspectRatio;
+
+      setSlideImages((current) => {
+        const existing = current.find(
+          (entry) =>
+            entry.slide_id === slideId && entry.aspect_ratio === targetAspect,
+        );
+
+        if (existing) {
+          return current.map((entry) =>
+            entry.id === existing.id
+              ? { ...entry, image_url: null, fal_request_id: null }
+              : entry,
+          );
+        }
+
+        return [
+          ...current,
+          {
+            id: `pending-${slideId}-${targetAspect}`,
+            slide_id: slideId,
+            aspect_ratio: targetAspect,
+            image_url: null,
+            fal_request_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ];
+      });
+
+      if (targetAspect === campaign.aspect_ratio) {
+        setSlides((current) =>
+          current.map((entry) =>
+            entry.id === slideId
+              ? {
+                  ...entry,
+                  image_url: null,
+                  fal_request_id: null,
+                }
+              : entry,
+          ),
+        );
+      }
 
       setCampaign((current) => ({
         ...current,
         status: "generating_images",
         error_message: null,
+        image_generation_aspect: targetAspect,
       }));
 
       if (data.mode === "sync") {
-        const { data: refreshedSlides } = await supabase
-          .from("slides")
-          .select("*")
-          .eq("campaign_id", campaign.id)
-          .order("slide_index", { ascending: true });
-
-        const { data: refreshedCampaign } = await supabase
-          .from("campaigns")
-          .select("*")
-          .eq("id", campaign.id)
-          .single();
-
-        if (refreshedSlides) {
-          setSlides(refreshedSlides as Slide[]);
-        }
-
-        if (refreshedCampaign) {
-          setCampaign(refreshedCampaign as Campaign);
-        }
+        await Promise.all([refreshSlides(), refreshCampaign()]);
       }
     } catch (regenerateError) {
       setError(
@@ -941,7 +1147,14 @@ export default function CampaignWorkspace({
     } finally {
       setRegeneratingSlideId(null);
     }
-  }, [campaign.id, slides, supabase]);
+  }, [
+    activeAspectRatio,
+    campaign.aspect_ratio,
+    campaign.id,
+    displaySlides,
+    refreshCampaign,
+    refreshSlides,
+  ]);
 
   const handleSlideUpdated = useCallback((slideId: string, patch: Partial<Slide>) => {
     setSlides((current) =>
@@ -1213,22 +1426,53 @@ export default function CampaignWorkspace({
                 {formatSlidesImageStatus({
                   slideCount,
                   imagesReadyCount,
-                  imagesComplete,
+                  imagesComplete: activeImagesComplete,
                   isGeneratingImages,
                 })}
               </p>
             </div>
 
-            {slidesWithImages.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3">
+              {secondaryAspectRatio ? (
+                <CampaignAspectToggle
+                  primaryAspectRatio={campaign.aspect_ratio}
+                  secondaryAspectRatio={secondaryAspectRatio}
+                  activeAspectRatio={activeAspectRatio}
+                  onChange={setActiveAspectRatio}
+                  disabled={isGeneratingImages}
+                />
+              ) : null}
+
+              {slidesWithImages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenPreview(0)}
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground sm:w-auto sm:px-5 sm:py-3"
+                >
+                  Preview carousel
+                </button>
+              )}
+            </div>
+          </div>
+
+          {canShowFormatUpsell && (
+            <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-4 md:mb-6">
+              <p className="text-sm font-semibold text-foreground">
+                Also post in {formatAspectRatio(upsellAspectRatio)}?
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Re-use your copy and voiceover — we&apos;ll generate new images
+                sized for {upsellAspectRatio === "9:16" ? "Reels and Stories" : "feed posts"}.
+              </p>
               <button
                 type="button"
-                onClick={() => handleOpenPreview(0)}
-                className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground sm:w-auto sm:px-5 sm:py-3"
+                onClick={() => setAddFormatSheetOpen(true)}
+                className="btn-primary mt-4 w-full py-2.5 text-sm sm:w-auto sm:px-6"
               >
-                Preview carousel
+                Add {formatAspectRatio(upsellAspectRatio)}
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           <div className="mb-4 hidden md:block">
             <CampaignGenerationPanel
@@ -1239,10 +1483,40 @@ export default function CampaignWorkspace({
           </div>
 
           <div className="md:hidden">
+            {secondaryAspectRatio ? (
+              <div className="mb-4 flex justify-center">
+                <CampaignAspectToggle
+                  primaryAspectRatio={campaign.aspect_ratio}
+                  secondaryAspectRatio={secondaryAspectRatio}
+                  activeAspectRatio={activeAspectRatio}
+                  onChange={setActiveAspectRatio}
+                  disabled={isGeneratingImages}
+                />
+              </div>
+            ) : null}
+
+            {canShowFormatUpsell ? (
+              <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-4">
+                <p className="text-sm font-semibold text-foreground">
+                  Also post in {formatAspectRatio(upsellAspectRatio)}?
+                </p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Same copy and voiceover — new images for the other format.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAddFormatSheetOpen(true)}
+                  className="btn-primary mt-4 w-full py-2.5 text-sm"
+                >
+                  Add {formatAspectRatio(upsellAspectRatio)}
+                </button>
+              </div>
+            ) : null}
+
             <CampaignSlidesMobileView
-              slides={slides}
+              slides={displaySlides}
               activeSlideIndex={mobileActiveSlideIndex}
-              aspectRatio={campaign.aspect_ratio}
+              aspectRatio={activeAspectRatio}
               campaignId={campaign.id}
               preferredVoicePersona={preferredVoicePersona}
               justFinishedSlide={justFinishedSlide}
@@ -1262,11 +1536,11 @@ export default function CampaignWorkspace({
           </div>
 
           <div className="hidden grid-cols-1 gap-4 md:grid md:gap-6">
-            {slides.map((slide) => (
+            {displaySlides.map((slide) => (
               <SlideCard
                 key={slide.id}
                 slide={slide}
-                aspectRatio={campaign.aspect_ratio}
+                aspectRatio={activeAspectRatio}
                 campaignId={campaign.id}
                 preferredVoicePersona={preferredVoicePersona}
                 isNativeApp={isNativeApp === true}
@@ -1332,16 +1606,24 @@ export default function CampaignWorkspace({
         <CarouselPreviewModal
           open={previewOpen}
           onClose={() => setPreviewOpen(false)}
-          slides={slides}
-          aspectRatio={campaign.aspect_ratio}
+          slides={displaySlides}
+          aspectRatio={activeAspectRatio}
           initialSlideIndex={previewInitialIndex}
         />
       )}
+      <AddFormatSheet
+        open={addFormatSheetOpen}
+        onClose={() => setAddFormatSheetOpen(false)}
+        secondaryAspectRatio={upsellAspectRatio}
+        slideCount={slideCount}
+        isGenerating={isGeneratingFormat}
+        onConfirm={() => void handleGenerateFormatVariant()}
+      />
       <CampaignVideoExportOverlay
         open={isExportingVideo || Boolean(videoExportError)}
         campaignTitle={campaign.title ?? ""}
         campaignTopic={campaign.topic}
-        aspectRatio={campaign.aspect_ratio}
+        aspectRatio={videoExportAspectRatio}
         slideCount={slides.length}
         stage={videoExportStage}
         videoPreset={videoPreset}

@@ -61,7 +61,9 @@ SlidePress is a marketing automation app for creators and small teams who need s
 - **Scroll-to-top** button when deep in the page (above mobile tab bar)
 - View all slides with **text overlay** and **voiceover script** (written for natural spoken delivery)
 - **Edit headlines** inline (up to 12 words per slide)
-- **Copy voiceover** per slide to clipboard — ready for recording or future AI narration
+- **Edit voiceover scripts** inline (up to 25 words per slide)
+- **Rewrite voiceover with AI** — pick a tone (warmer, punchier, shorter, match headline, etc.) and choose from three options in a sheet
+- **Copy voiceover** per slide to clipboard — ready for recording or AI narration
 - **Download a single slide image** without exporting the full zip
 - **Carousel preview** — full-screen swipe through ready slides (tap image or “Preview carousel”)
 - **Generate images** when ready — one click for the whole campaign
@@ -77,15 +79,31 @@ SlidePress is a marketing automation app for creators and small teams who need s
 - Reference images (product/style/logo) are respected when uploaded
 - **Production webhooks** on SlidePress.co — images queue and update live via Fal callbacks
 - **Regenerate a single slide** without redoing the whole campaign
+  - **Fix this slide** sheet — feedback chips, optional notes, optional snap-a-new product photo (native)
   - Quick feedback chips: Brighter, Minimal, Bold colors, Product larger, Different layout, Try again
   - Optional free-text notes for what to change
   - Updated headlines apply on the next regeneration
+  - Regeneration respects the **active format** when you have both 4:5 and 9:16
+
+### Dual format (4:5 + 9:16 from one campaign)
+
+Create in one aspect ratio first. When primary images are ready, SlidePress offers to add the other format:
+
+- **Confirm before generating** — upsell sheet explains what will happen; you opt in explicitly
+- **Reuse copy** — headlines, voiceover scripts, and platform captions stay the same
+- **Re-generate images only** — new aspect-sized visuals for the secondary format (no auto-crop)
+- **Format toggle** — switch between 4:5 and 9:16 in the workspace to preview and fix slides per format
+- **Zip export** — when both formats are complete, download includes `4x5/` and `9x16/` folders plus `captions.txt`
+- **Video export** — export MP4 per format; **each video export counts as one video credit** (both formats = two exports)
+
+Primary format is chosen at campaign creation; the secondary format is added later from the workspace.
 
 ### Voiceover scripts & AI narration
 
 Every slide includes a **voiceover script** — a natural spoken line Gemini writes alongside the on-slide headline. You can:
 
 - **Review** scripts in the workspace alongside each slide
+- **Edit** scripts inline or **rewrite with AI** (tone chips → three options → save)
 - **Copy** any script to clipboard for recording in CapCut, TikTok, or your DAW
 - **Preview AI voice** per slide (warm, energetic, or professional personas)
 - **Download narration** as a ZIP (per-slide MP3s + full read-through)
@@ -95,18 +113,19 @@ Scripts are authored with **text-to-speech in mind** and synthesized via **Eleve
 
 ### Video export
 
-Available on **4:5 and 9:16** campaigns when all slide images and voiceover scripts are ready.
+Available on **4:5 and 9:16** campaigns when all slide images and voiceover scripts are ready for the format you export.
 
 - **Quick Reel** — AI narration, crossfade transitions between slides, merged into an MP4
 - **Silent video** — no voiceover; slides timed to your scripts with crossfades (mute-friendly posts)
 - **Standard or Studio** voice quality on Quick Reel (Studio uses a higher-quality ElevenLabs model)
 - **Brand default voice** — preferred persona saved per brand
+- **Dual-format campaigns** — when both 4:5 and 9:16 images exist, pick which format to render; each export uses one video credit
 - **Web:** download MP4 directly
 - **Native app:** share sheet saves a proper `.mp4` to Photos or Files
 
 Processing runs on the server (TTS → slide compose → audio merge). Cached narration is reused when you re-export the same scripts — no second ElevenLabs charge for unchanged slides.
 
-**Beta limit:** 3 video exports per month (configurable). Counts one export per successful render request.
+**Beta limit:** 3 video exports per month (configurable). Counts **one export per successful render request** — exporting both 4:5 and 9:16 from the same campaign uses two credits.
 
 ### Publish copy
 
@@ -119,12 +138,13 @@ Processing runs on the server (TTS → slide compose → audio merge). Cached na
 ### Export
 
 - **Download zip** when all slide images are ready (via Next step bar)
+- **Dual-format zip** — `4x5/` and `9x16/` image folders when both formats are complete
 - **Download individual slide images** from each slide card (web)
 - **Download narration ZIP** from the Publish panel (per-slide MP3s + full narration)
 - **Download video MP4** — Quick Reel or Silent video presets (4:5 or 9:16)
 - **Native app:** **Save to Photos** and **Share** per slide; **Save all to Photos**; share narration zip or video via the system share sheet
 - Campaign zip includes:
-  - `slides/` — numbered slide images
+  - `slides/` — numbered slide images (single format), or `4x5/` + `9x16/` when both formats are ready
   - `captions.txt` — all platform copy in one file (if captions were generated)
 
 ### Brands & settings
@@ -183,11 +203,12 @@ Processing runs on the server (TTS → slide compose → audio merge). Cached na
 2. Pick a brand (or use your default) → New campaign
 3. Enter topic + pick format (4:5 or 9:16) + slide count (+ optional references)
 4. Land on workspace → slide scripts + voiceover appear
-5. Review copy → Generate images
-6. Preview carousel → fix any slide (edit headline → regenerate)
-7. Generate captions
-8. Publish: copy captions, download zip, export narration ZIP, or export video MP4
-9. Post to TikTok, Instagram, YouTube
+5. Review copy → edit or rewrite voiceover → Generate images
+6. Preview carousel → fix any slide (edit headline → **Fix this slide** regenerate)
+7. Optional: add the other format (4:5 or 9:16) when primary images are ready
+8. Generate captions
+9. Publish: copy captions, download zip, export narration ZIP, or export video MP4 (per format)
+10. Post to TikTok, Instagram, YouTube
 ```
 
 **Goal:** Fewest steps between idea and publish-ready assets — carousel, narration, or video from one campaign.
@@ -236,6 +257,8 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | **5** | **Mobile app (Capacitor)** — native auth, share/save to Photos, push when images ready, biometric lock, settings hub |
 | **5+** | **Brand workspaces** — multi-brand kits, products, campaigns switcher, unified settings UX |
 | **6A** | **ElevenLabs narration & video** — voice preview, narration ZIP, MP4 export (4:5 + 9:16), presets, studio voice, narration cache |
+| **6A+** | **Voiceover editing** — inline script edit, AI rewrite sheet, regenerate slide sheet |
+| **6B** | **Dual format** — one campaign, optional second aspect (confirm upsell), per-format preview/export |
 
 ### Phase 5 — Mobile app (Capacitor) ✅ (largely complete)
 
@@ -270,7 +293,19 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 4. Video export — slides → MP4 (4:5 + 9:16, AI voice, crossfades)  
 5. Polish — Quick Reel / Silent video presets, brand voice, studio quality  
 
-**6B — Business scale** *(next)*
+**6A+ — Voiceover editing & slide fixes** ✅ *shipped*
+
+- Inline voiceover script edit (PATCH per slide)
+- AI rewrite sheet with tone chips and three options
+- Regenerate slide via **Fix this slide** sheet (replaces inline chip clutter)
+
+**6B — Dual format (4:5 + 9:16)** ✅ *shipped*
+
+- Confirm upsell after primary images complete
+- Per-aspect image storage and workspace format toggle
+- Zip folders per format; video export per format (one credit each)
+
+**6C — Business scale** *(next)*
 
 - **Usage tiers & billing** — paid plans with higher caps (Stripe) — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14)
 - **Direct platform posting** — optional upload to TikTok / Instagram / YouTube (later)
@@ -298,7 +333,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | Slide images | Fal.ai Nano Banana 2 |
 | Platform captions | Google Gemini |
 | Narration & video | ElevenLabs TTS + FFmpeg compose + Fal merge pipeline |
-| Realtime | Supabase Realtime on slides & campaigns |
+| Realtime | Supabase Realtime on slides, slide images & campaigns |
 
 Approximate **variable cost per 5-slide campaign** today (images + AI text): **~$0.45–0.65** depending on regenerations. **Video export** adds roughly **~$0.10–0.30** per Reel (TTS + render) at beta scale. End-user pricing will include tier limits above these costs.
 
@@ -306,7 +341,7 @@ Approximate **variable cost per 5-slide campaign** today (images + AI text): **~
 
 ## One-line pitch
 
-**Today:** Describe your offer once — get carousel slides, AI images with headlines, voiceover scripts, platform captions, AI narration, and Reel-ready MP4 export.
+**Today:** Describe your offer once — get carousel slides, AI images with headlines, editable voiceover scripts, platform captions, AI narration, and Reel-ready MP4 export — optionally in both 4:5 and 9:16 from one campaign.
 
 **Same workflow:** One campaign → carousel zip, narration ZIP, or video — no second production pass.
 
@@ -314,7 +349,7 @@ Approximate **variable cost per 5-slide campaign** today (images + AI text): **~
 
 ## Elevator pitch (for sales / landing copy)
 
-SlidePress turns a topic into a full social campaign: headlines on every slide, AI-generated visuals, spoken scripts, and captions for TikTok, Instagram, and YouTube. Export **carousel zips**, **AI narration**, or **Reel-ready MP4** from the same workspace — built on the voiceover you already get with every slide.
+SlidePress turns a topic into a full social campaign: headlines on every slide, AI-generated visuals, spoken scripts you can edit or rewrite with AI, and captions for TikTok, Instagram, and YouTube. Export **carousel zips** (one or both formats), **AI narration**, or **Reel-ready MP4** per format from the same workspace.
 
 ---
 

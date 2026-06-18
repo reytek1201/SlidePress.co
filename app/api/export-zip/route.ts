@@ -1,7 +1,18 @@
-import { buildCampaignZip, getCampaignZipFilename } from "@/utils/build-campaign-zip";
+import {
+  buildCampaignZip,
+  buildDualAspectCampaignZip,
+  getCampaignZipFilename,
+} from "@/utils/build-campaign-zip";
 import { createClient } from "@/utils/supabase/server";
 import type { Campaign, Slide } from "@/types/campaign";
 import type { PlatformCaption } from "@/types/captions";
+import {
+  aspectRatioFolderName,
+  indexSlideImages,
+  mergeSlidesWithAspect,
+  slidesCompleteForAspect,
+} from "@/utils/slide-aspect-images";
+import { loadSlideImagesForCampaign } from "@/utils/slide-image-persistence";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -23,7 +34,7 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -37,7 +48,7 @@ export async function POST(request: Request) {
           error: "Invalid request payload",
           details: parsedInput.error.flatten(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -52,7 +63,7 @@ export async function POST(request: Request) {
     if (campaignError || !campaign) {
       return NextResponse.json(
         { success: false, error: "Campaign not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -61,7 +72,7 @@ export async function POST(request: Request) {
     if (typedCampaign.user_id !== user.id) {
       return NextResponse.json(
         { success: false, error: "Forbidden" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -74,22 +85,40 @@ export async function POST(request: Request) {
     if (slidesError || !slides || slides.length === 0) {
       return NextResponse.json(
         { success: false, error: "No slides found for campaign" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     const typedSlides = slides as Slide[];
-    const allImagesReady = typedSlides.every((slide) => Boolean(slide.image_url));
+    const slideImages = await loadSlideImagesForCampaign(supabase, campaignId);
+    const imageIndex = indexSlideImages(slideImages as never);
 
-    if (!allImagesReady) {
+    const primaryComplete = slidesCompleteForAspect(
+      typedSlides,
+      typedCampaign.aspect_ratio,
+      typedCampaign,
+      imageIndex,
+    );
+
+    if (!primaryComplete) {
       return NextResponse.json(
         {
           success: false,
           error: "Generate all slide images before exporting",
         },
-        { status: 422 }
+        { status: 422 },
       );
     }
+
+    const secondaryAspect = typedCampaign.secondary_aspect_ratio;
+    const secondaryComplete =
+      secondaryAspect &&
+      slidesCompleteForAspect(
+        typedSlides,
+        secondaryAspect,
+        typedCampaign,
+        imageIndex,
+      );
 
     const { data: exportRow, error: exportInsertError } = await supabase
       .from("exports")
@@ -108,7 +137,7 @@ export async function POST(request: Request) {
           error: "Failed to create export record",
           details: exportInsertError?.message,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -119,10 +148,42 @@ export async function POST(request: Request) {
       .select("*")
       .eq("campaign_id", campaignId);
 
-    const zipBytes = await buildCampaignZip(
-      typedSlides,
-      (captions ?? []) as PlatformCaption[]
-    );
+    const typedCaptions = (captions ?? []) as PlatformCaption[];
+
+    let zipBytes: Uint8Array;
+
+    if (secondaryComplete && secondaryAspect) {
+      const primarySlides = mergeSlidesWithAspect(
+        typedSlides,
+        typedCampaign.aspect_ratio,
+        typedCampaign,
+        imageIndex,
+      );
+      const secondarySlides = mergeSlidesWithAspect(
+        typedSlides,
+        secondaryAspect,
+        typedCampaign,
+        imageIndex,
+      );
+
+      zipBytes = await buildDualAspectCampaignZip(
+        primarySlides,
+        secondarySlides,
+        typedCaptions,
+        aspectRatioFolderName(typedCampaign.aspect_ratio),
+        aspectRatioFolderName(secondaryAspect),
+      );
+    } else {
+      const primarySlides = mergeSlidesWithAspect(
+        typedSlides,
+        typedCampaign.aspect_ratio,
+        typedCampaign,
+        imageIndex,
+      );
+
+      zipBytes = await buildCampaignZip(primarySlides, typedCaptions);
+    }
+
     const filename = getCampaignZipFilename(typedCampaign);
 
     await supabase
@@ -161,7 +222,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { success: false, error: message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

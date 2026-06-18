@@ -7,6 +7,7 @@ import CampaignVideoPanel from "@/app/campaign/[id]/campaign-video-panel";
 import type { PlatformCaption } from "@/types/captions";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
+import type { AspectRatio } from "@/types/campaign";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 
 interface CampaignPublishPanelProps {
@@ -24,6 +25,8 @@ interface CampaignPublishPanelProps {
   voiceQuality: VoiceQuality;
   videoPreset: VideoExportPreset;
   aspectRatioLabel: string;
+  dualFormatVideoReady?: boolean;
+  videoExportAspectRatio?: AspectRatio;
   brandId: string | null;
   isSavingVoicePersona: boolean;
   isExporting: boolean;
@@ -42,6 +45,7 @@ interface CampaignPublishPanelProps {
   onPersonaChange: (persona: VoicePersona) => void;
   onVoiceQualityChange: (voiceQuality: VoiceQuality) => void;
   onVideoPresetChange: (preset: VideoExportPreset) => void;
+  onVideoExportAspectRatioChange?: (aspectRatio: AspectRatio) => void;
   onDownloadZip: () => void;
   onDownloadNarration: () => void;
   onExportVideo: () => void;
@@ -63,6 +67,8 @@ export default function CampaignPublishPanel({
   voiceQuality,
   videoPreset,
   aspectRatioLabel,
+  dualFormatVideoReady = false,
+  videoExportAspectRatio,
   brandId,
   isSavingVoicePersona,
   isExporting,
@@ -81,6 +87,7 @@ export default function CampaignPublishPanel({
   onPersonaChange,
   onVoiceQualityChange,
   onVideoPresetChange,
+  onVideoExportAspectRatioChange,
   onDownloadZip,
   onDownloadNarration,
   onExportVideo,
@@ -115,6 +122,9 @@ export default function CampaignPublishPanel({
           videoExportMessage={videoExportMessage}
           videoPreset={videoPreset}
           voiceQuality={voiceQuality}
+          dualFormatEnabled={dualFormatVideoReady}
+          videoExportAspectRatio={videoExportAspectRatio}
+          onVideoExportAspectRatioChange={onVideoExportAspectRatioChange}
           onPresetChange={onVideoPresetChange}
           onVoiceQualityChange={onVoiceQualityChange}
           onExportVideo={onExportVideo}

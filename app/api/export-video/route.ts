@@ -1,3 +1,4 @@
+import type { Campaign, Slide } from "@/types/campaign";
 import type { VideoExportMetadata } from "@/utils/fal-video";
 import { prepareCampaignVideo } from "@/utils/prepare-campaign-video";
 import {
@@ -18,7 +19,12 @@ import {
 } from "@/utils/rate-limit";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import type { Campaign, Slide } from "@/types/campaign";
+import {
+  indexSlideImages,
+  isCampaignAspectRatio,
+  mergeSlidesWithAspect,
+} from "@/utils/slide-aspect-images";
+import { loadSlideImagesForCampaign } from "@/utils/slide-image-persistence";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -29,6 +35,7 @@ const RequestSchema = z.object({
   persona: z.enum(["warm", "energetic", "professional"]).optional(),
   preset: z.enum(["quick_reel", "silent_captions"]).optional(),
   voiceQuality: z.enum(["standard", "studio"]).optional(),
+  aspectRatio: z.enum(["4:5", "9:16"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -70,6 +77,7 @@ export async function POST(request: Request) {
       persona: personaOverride,
       preset: presetInput,
       voiceQuality: voiceQualityInput,
+      aspectRatio: aspectRatioInput,
     } = parsedInput.data;
 
     const preset = presetInput ?? "quick_reel";
@@ -110,6 +118,19 @@ export async function POST(request: Request) {
       );
     }
 
+    const targetAspectRatio =
+      aspectRatioInput ?? typedCampaign.aspect_ratio;
+
+    if (!isCampaignAspectRatio(typedCampaign, targetAspectRatio)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Video export aspect ratio is not enabled for this campaign",
+        },
+        { status: 422 },
+      );
+    }
+
     const { data: processingExport } = await supabase
       .from("exports")
       .select("id")
@@ -143,6 +164,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const slideImages = await loadSlideImagesForCampaign(supabase, campaignId);
+    const imageIndex = indexSlideImages(slideImages as never);
+    const slidesForExport = mergeSlidesWithAspect(
+      slides as Slide[],
+      targetAspectRatio,
+      typedCampaign,
+      imageIndex,
+    );
+
     await assertVideoExportLimit(supabase, user.id);
 
     const persona = await resolveCampaignVoicePersona(
@@ -163,6 +193,7 @@ export async function POST(request: Request) {
           preset,
           voiceQuality,
           persona,
+          aspectRatio: targetAspectRatio,
         } satisfies VideoExportMetadata,
       })
       .select("id")
@@ -182,7 +213,7 @@ export async function POST(request: Request) {
     exportId = exportRow.id;
 
     const prepared = await prepareCampaignVideo({
-      slides: slides as Slide[],
+      slides: slidesForExport,
       persona,
       preset,
       voiceQuality,
@@ -197,7 +228,7 @@ export async function POST(request: Request) {
       preset,
       voiceQuality,
       persona,
-      aspectRatio: typedCampaign.aspect_ratio,
+      aspectRatio: targetAspectRatio,
       prepared,
       slideClips,
     });

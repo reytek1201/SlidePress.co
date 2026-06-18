@@ -74,6 +74,14 @@ const SlideGenerationFieldsSchema = z.object({
 
 export const TextOverlayInputSchema = SlideGenerationFieldsSchema.shape.text_overlay;
 
+export const VoiceoverInputSchema = z
+  .string()
+  .min(1)
+  .refine(
+    (value) => value.trim().split(/\s+/).filter(Boolean).length <= 25,
+    "voiceover_script must be at most 25 words",
+  );
+
 export function createCampaignGenerationSchema(slideCount: SlideCount) {
   const maxIndex = slideCount - 1;
 

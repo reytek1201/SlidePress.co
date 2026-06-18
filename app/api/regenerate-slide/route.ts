@@ -18,7 +18,15 @@ import {
   REGENERATE_FEEDBACK_CHIP_IDS,
   type RegenerateFeedbackChipId,
 } from "@/types/regenerate-feedback";
-import type { Campaign, Slide } from "@/types/campaign";
+import type { AspectRatio, Campaign, Slide } from "@/types/campaign";
+import {
+  indexSlideImages,
+  resolveSlideImage,
+} from "@/utils/slide-aspect-images";
+import {
+  loadSlideImagesForCampaign,
+  upsertSlideImageRecord,
+} from "@/utils/slide-image-persistence";
 import {
   assertRegenerationLimit,
   isUsageLimitError,
@@ -36,6 +44,7 @@ const RequestSchema = z.object({
   notes: z.string().trim().max(300).optional(),
   text_overlay: TextOverlayInputSchema.optional(),
   snapProductUrl: z.string().url().optional(),
+  aspectRatio: z.enum(["4:5", "9:16"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -50,7 +59,7 @@ export async function POST(request: Request) {
     if (authError || !user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -66,12 +75,18 @@ export async function POST(request: Request) {
           error: "Invalid request payload",
           details: parsedInput.error.flatten(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const { slideId, feedback, notes, text_overlay: textOverlay, snapProductUrl } =
-      parsedInput.data;
+    const {
+      slideId,
+      feedback,
+      notes,
+      text_overlay: textOverlay,
+      snapProductUrl,
+      aspectRatio: aspectRatioInput,
+    } = parsedInput.data;
 
     const { data: slide, error: slideError } = await supabase
       .from("slides")
@@ -82,7 +97,7 @@ export async function POST(request: Request) {
     if (slideError || !slide) {
       return NextResponse.json(
         { success: false, error: "Slide not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -97,7 +112,7 @@ export async function POST(request: Request) {
     if (campaignError || !campaign) {
       return NextResponse.json(
         { success: false, error: "Campaign not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -106,28 +121,61 @@ export async function POST(request: Request) {
     if (typedCampaign.user_id !== user.id) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
-    if (!typedSlide.image_url) {
+    const targetAspectRatio: AspectRatio =
+      aspectRatioInput ?? typedCampaign.aspect_ratio;
+
+    if (
+      targetAspectRatio !== typedCampaign.aspect_ratio &&
+      targetAspectRatio !== typedCampaign.secondary_aspect_ratio
+    ) {
+      return NextResponse.json(
+        { success: false, error: "Aspect ratio is not enabled for this campaign" },
+        { status: 422 },
+      );
+    }
+
+    const slideImages = await loadSlideImagesForCampaign(
+      supabase,
+      typedCampaign.id,
+    );
+    const imageIndex = indexSlideImages(slideImages as never);
+    const resolvedImage = resolveSlideImage(
+      typedSlide,
+      targetAspectRatio,
+      typedCampaign,
+      imageIndex,
+    );
+
+    if (!resolvedImage.image_url) {
       return NextResponse.json(
         { success: false, error: "Slide has no image to regenerate" },
-        { status: 422 }
+        { status: 422 },
       );
     }
 
     const { data: siblingSlides } = await supabase
       .from("slides")
-      .select("id, fal_request_id, image_url")
+      .select("*")
       .eq("campaign_id", typedCampaign.id);
 
-    const anotherSlideGenerating = (siblingSlides ?? []).some(
-      (entry) =>
-        entry.id !== slideId &&
-        entry.fal_request_id &&
-        !entry.image_url
-    );
+    const anotherSlideGenerating = (siblingSlides ?? []).some((entry) => {
+      if (entry.id === slideId) {
+        return false;
+      }
+
+      const resolved = resolveSlideImage(
+        entry as Slide,
+        targetAspectRatio,
+        typedCampaign,
+        imageIndex,
+      );
+
+      return Boolean(resolved.fal_request_id && !resolved.image_url);
+    });
 
     if (anotherSlideGenerating) {
       return NextResponse.json(
@@ -135,7 +183,7 @@ export async function POST(request: Request) {
           success: false,
           error: "Wait for other slide images to finish generating",
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -156,7 +204,7 @@ export async function POST(request: Request) {
             error: "Failed to update headline before regeneration",
             details: overlayUpdateError.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -174,36 +222,32 @@ export async function POST(request: Request) {
     if (!prompt) {
       return NextResponse.json(
         { success: false, error: "Slide missing required content" },
-        { status: 422 }
+        { status: 422 },
       );
     }
 
-    const sourceImageUrl = typedSlide.image_url;
+    const sourceImageUrl = resolvedImage.image_url;
     const regenerationImageUrls = getRegenerationImageUrls(sourceImageUrl, {
       product: snapProductUrl ?? campaign.product_reference_url,
       style: campaign.style_reference_url,
       logo: campaign.logo_reference_url,
     });
 
-    const { error: clearError } = await supabase
-      .from("slides")
-      .update({ image_url: null, fal_request_id: null })
-      .eq("id", slideId);
-
-    if (clearError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to reset slide image",
-          details: clearError.message,
-        },
-        { status: 500 }
-      );
-    }
+    await upsertSlideImageRecord(supabase, {
+      slideId,
+      aspectRatio: targetAspectRatio,
+      imageUrl: null,
+      falRequestId: null,
+      campaign: typedCampaign,
+    });
 
     await supabase
       .from("campaigns")
-      .update({ status: "generating_images", error_message: null })
+      .update({
+        status: "generating_images",
+        error_message: null,
+        image_generation_aspect: targetAspectRatio,
+      })
       .eq("id", typedCampaign.id);
 
     const referenceUrls = regenerationImageUrls;
@@ -214,22 +258,20 @@ export async function POST(request: Request) {
       try {
         const imageUrl = await runNanoBananaSync(
           prompt,
-          campaign.aspect_ratio,
+          targetAspectRatio,
           regenerationImageUrls,
         );
 
-        const { error: slideUpdateError } = await supabase
-          .from("slides")
-          .update({ image_url: imageUrl, fal_request_id: null })
-          .eq("id", slideId);
-
-        if (slideUpdateError) {
-          throw new Error(slideUpdateError.message);
-        }
+        await upsertSlideImageRecord(supabase, {
+          slideId,
+          aspectRatio: targetAspectRatio,
+          imageUrl,
+          falRequestId: null,
+          campaign: typedCampaign,
+        });
 
         await refreshCampaignImageStatus(supabase, typedCampaign.id);
         await maybeSendCampaignImagesReadyPush(typedCampaign.id);
-        // Record quota only after the image is successfully saved.
         await recordSlideRegeneration(user.id);
 
         return NextResponse.json(
@@ -237,8 +279,9 @@ export async function POST(request: Request) {
             success: true,
             mode: "sync",
             slideId,
+            aspectRatio: targetAspectRatio,
           },
-          { status: 200 }
+          { status: 200 },
         );
       } catch (generationError) {
         const message =
@@ -250,7 +293,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json(
           { success: false, error: message },
-          { status: 502 }
+          { status: 502 },
         );
       }
     }
@@ -259,22 +302,19 @@ export async function POST(request: Request) {
       const webhookUrl = buildFalWebhookUrl(appBaseUrl);
       const requestId = await submitNanoBananaToQueue(
         prompt,
-        campaign.aspect_ratio,
+        targetAspectRatio,
         webhookUrl,
-        referenceUrls
+        referenceUrls,
       );
 
-      const { error: slideUpdateError } = await supabase
-        .from("slides")
-        .update({ fal_request_id: requestId })
-        .eq("id", slideId);
+      await upsertSlideImageRecord(supabase, {
+        slideId,
+        aspectRatio: targetAspectRatio,
+        imageUrl: null,
+        falRequestId: requestId,
+        campaign: typedCampaign,
+      });
 
-      if (slideUpdateError) {
-        throw new Error(slideUpdateError.message);
-      }
-
-      // Record quota after the job is successfully queued and the slide
-      // row is updated. Failed submissions do not consume quota.
       await recordSlideRegeneration(user.id);
 
       return NextResponse.json(
@@ -282,8 +322,9 @@ export async function POST(request: Request) {
           success: true,
           mode: "queue",
           slideId,
+          aspectRatio: targetAspectRatio,
         },
-        { status: 202 }
+        { status: 202 },
       );
     } catch (submissionError) {
       const message =
@@ -295,21 +336,21 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         { success: false, error: message },
-        { status: 502 }
+        { status: 502 },
       );
     }
   } catch (error) {
     if (isRateLimitError(error)) {
       return NextResponse.json(
         { success: false, error: error.message, code: error.code },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
     if (isUsageLimitError(error)) {
       return NextResponse.json(
         { success: false, error: error.message, code: error.code },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -318,7 +359,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       { success: false, error: message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

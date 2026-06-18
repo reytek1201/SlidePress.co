@@ -1,9 +1,11 @@
 "use client";
 
+import { formatAspectRatio } from "@/utils/campaign-display";
 import {
   TTS_VIDEO_EXPORT_DISCLOSURE,
   TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE,
 } from "@/utils/tts/disclosure-copy";
+import type { AspectRatio } from "@/types/campaign";
 import type { VoiceQuality } from "@/utils/tts/types";
 import {
   VIDEO_EXPORT_PRESETS,
@@ -18,6 +20,9 @@ interface CampaignVideoPanelProps {
   videoExportMessage?: string | null;
   videoPreset: VideoExportPreset;
   voiceQuality: VoiceQuality;
+  dualFormatEnabled?: boolean;
+  videoExportAspectRatio?: AspectRatio;
+  onVideoExportAspectRatioChange?: (aspectRatio: AspectRatio) => void;
   onPresetChange: (preset: VideoExportPreset) => void;
   onVoiceQualityChange: (voiceQuality: VoiceQuality) => void;
   onExportVideo: () => void;
@@ -31,6 +36,9 @@ export default function CampaignVideoPanel({
   videoExportMessage = null,
   videoPreset,
   voiceQuality,
+  dualFormatEnabled = false,
+  videoExportAspectRatio,
+  onVideoExportAspectRatioChange,
   onPresetChange,
   onVoiceQualityChange,
   onExportVideo,
@@ -50,6 +58,36 @@ export default function CampaignVideoPanel({
           below.
         </p>
       </div>
+
+      {dualFormatEnabled && videoExportAspectRatio && onVideoExportAspectRatioChange ? (
+        <div className="mt-4">
+          <p className="text-xs font-semibold text-foreground">Format</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(["4:5", "9:16"] as const).map((aspectRatio) => {
+              const isActive = videoExportAspectRatio === aspectRatio;
+
+              return (
+                <button
+                  key={aspectRatio}
+                  type="button"
+                  disabled={disabled || isExportingVideo}
+                  onClick={() => onVideoExportAspectRatioChange(aspectRatio)}
+                  className={`rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isActive
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-secondary-foreground hover:border-ring/60 hover:text-foreground"
+                  }`}
+                >
+                  {formatAspectRatio(aspectRatio)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+            Each video export uses one video credit.
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-col gap-2">
         {VIDEO_EXPORT_PRESETS.map((preset) => {

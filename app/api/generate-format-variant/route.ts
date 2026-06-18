@@ -1,11 +1,15 @@
-import { referencesFromCampaign } from "@/utils/campaign-generation";
 import {
   markCampaignFailed,
+  primaryImagesComplete,
   refreshCampaignImageStatus,
 } from "@/utils/campaign-image-status";
-import { maybeSendCampaignImagesReadyPush } from "@/utils/send-campaign-push";
-import { queueSlideImagesForAspect } from "@/utils/queue-slide-images";
+import { referencesFromCampaign } from "@/utils/campaign-generation";
+import {
+  filterSlidesMissingAspectImage,
+  queueSlideImagesForAspect,
+} from "@/utils/queue-slide-images";
 import { assertAiRateLimit, isRateLimitError } from "@/utils/rate-limit";
+import { otherAspectRatio } from "@/utils/slide-aspect-images";
 import { createClient } from "@/utils/supabase/server";
 import { getReferenceImageUrls } from "@/types/references";
 import type { Campaign, Slide } from "@/types/campaign";
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
       );
     }
 
-    assertAiRateLimit(user.id, "generate-images");
+    assertAiRateLimit(user.id, "generate-format-variant");
 
     const body = await request.json();
     const parsedInput = RequestSchema.safeParse(body);
@@ -81,6 +85,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const primaryReady = await primaryImagesComplete(supabase, typedCampaign);
+
+    if (!primaryReady) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Generate all primary slide images before adding another format",
+        },
+        { status: 422 },
+      );
+    }
+
+    const secondaryAspect = otherAspectRatio(typedCampaign.aspect_ratio);
+
     const { data: slides, error: slidesError } = await supabase
       .from("slides")
       .select("*")
@@ -95,12 +113,37 @@ export async function POST(request: Request) {
     }
 
     const typedSlides = slides as Slide[];
-    const slidesToGenerate = typedSlides.filter((slide) => !slide.image_url);
+    const slidesToGenerate = await filterSlidesMissingAspectImage(
+      supabase,
+      typedSlides,
+      secondaryAspect,
+      typedCampaign,
+    );
 
     if (slidesToGenerate.length === 0) {
       return NextResponse.json(
-        { success: true, message: "All slide images already exist" },
+        {
+          success: true,
+          message: `${secondaryAspect} images already exist`,
+          aspectRatio: secondaryAspect,
+        },
         { status: 200 },
+      );
+    }
+
+    const { error: campaignUpdateError } = await supabase
+      .from("campaigns")
+      .update({ secondary_aspect_ratio: secondaryAspect })
+      .eq("id", campaignId);
+
+    if (campaignUpdateError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Failed to enable secondary format",
+          details: campaignUpdateError.message,
+        },
+        { status: 500 },
       );
     }
 
@@ -110,9 +153,9 @@ export async function POST(request: Request) {
 
     const result = await queueSlideImagesForAspect({
       supabase,
-      campaign: typedCampaign,
+      campaign: { ...typedCampaign, secondary_aspect_ratio: secondaryAspect },
       slidesToGenerate,
-      aspectRatio: typedCampaign.aspect_ratio,
+      aspectRatio: secondaryAspect,
       referenceUrls,
       request,
     });
@@ -120,12 +163,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: true,
+        aspectRatio: secondaryAspect,
         mode: result.mode,
-        queued: result.queued,
+        queued: result.queued ?? slidesToGenerate.length,
         message:
           result.mode === "sync"
-            ? "Images generated locally"
-            : "Image generation queued",
+            ? `${secondaryAspect} images generated`
+            : `${secondaryAspect} image generation queued`,
       },
       { status: result.mode === "sync" ? 200 : 202 },
     );

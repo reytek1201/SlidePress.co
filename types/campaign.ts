@@ -16,6 +16,8 @@ export interface Campaign {
   title: string | null;
   target_audience: string | null;
   aspect_ratio: AspectRatio;
+  secondary_aspect_ratio: AspectRatio | null;
+  image_generation_aspect: AspectRatio | null;
   slide_count: number;
   status: CampaignStatus;
   error_message: string | null;
@@ -33,6 +35,16 @@ export interface Slide {
   text_overlay: string | null;
   voiceover_script: string | null;
   image_prompt: string | null;
+  image_url: string | null;
+  fal_request_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SlideImage {
+  id: string;
+  slide_id: string;
+  aspect_ratio: AspectRatio;
   image_url: string | null;
   fal_request_id: string | null;
   created_at: string;
