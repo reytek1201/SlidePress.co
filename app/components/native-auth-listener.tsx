@@ -48,23 +48,37 @@ async function handleNativeAuthUrl(
     return;
   }
 
-  // Identify the user in RevenueCat so IAP purchases are linked to their account.
-  try {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      void configureRevenueCat(user.id);
-    }
-  } catch {
-    // Non-fatal — RC will configure on next app open.
-  }
-
   completeNativeOAuthNavigation(nextPath, navigate);
 }
 
 export default function NativeAuthListener() {
   const router = useRouter();
   const isHandlingRef = useRef(false);
+
+  // Configure RevenueCat for all login paths (Apple, email, Google, biometric restore).
+  useEffect(() => {
+    if (!isNativeAppRuntime()) return;
+
+    const supabase = createClient();
+
+    // Handle any existing session on startup (biometric restore, app re-open).
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.id) void configureRevenueCat(user.id);
+    }).catch(() => {});
+
+    // Handle any new sign-in event (covers Apple, email/password, Google OAuth).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "SIGNED_IN" && session?.user?.id) {
+          void configureRevenueCat(session.user.id);
+        }
+      },
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isNativeAppRuntime()) {
