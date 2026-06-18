@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/utils/supabase/admin";
-import { getStripe, tierFromPriceId } from "@/utils/stripe";
+import {
+  getStripe,
+  resolvePriceId,
+  resolveTier,
+} from "@/utils/stripe";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
@@ -22,11 +26,15 @@ async function markEventProcessed(eventId: string): Promise<boolean> {
 async function upsertCustomer(
   userId: string,
   customerId: string,
+  subscriptionId?: string,
 ): Promise<void> {
   const admin = createAdminClient();
   await admin
     .from("usage_balances")
-    .update({ stripe_customer_id: customerId })
+    .update({
+      stripe_customer_id: customerId,
+      ...(subscriptionId ? { stripe_subscription_id: subscriptionId } : {}),
+    })
     .eq("user_id", userId);
 }
 
@@ -61,6 +69,12 @@ async function getUserIdFromCustomer(
   return data?.user_id ?? null;
 }
 
+function subscriptionPeriodEnd(
+  subscription: Stripe.Subscription & { current_period_end?: number },
+): number | null {
+  return subscription.current_period_end ?? null;
+}
+
 // ─── Event handlers ───────────────────────────────────────────────────────────
 
 async function handleCheckoutCompleted(
@@ -70,6 +84,8 @@ async function handleCheckoutCompleted(
   const customerId =
     typeof session.customer === "string" ? session.customer : null;
   const tier = session.metadata?.tier as string | undefined;
+  const subscriptionId =
+    typeof session.subscription === "string" ? session.subscription : null;
 
   if (!userId || !customerId || !tier) {
     throw new Error(
@@ -77,17 +93,27 @@ async function handleCheckoutCompleted(
     );
   }
 
-  await upsertCustomer(userId, customerId);
+  await upsertCustomer(userId, customerId, subscriptionId ?? undefined);
 
   const stripe = getStripe();
-  const sub = await stripe.subscriptions.retrieve(
+  const sub = (await stripe.subscriptions.retrieve(
     session.subscription as string,
-  ) as Stripe.Subscription & { current_period_end?: number };
+  )) as Stripe.Subscription & { current_period_end?: number };
 
-  await applyTier(userId, tier, sub.current_period_end ?? null);
+  await applyTier(userId, tier, subscriptionPeriodEnd(sub));
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
+  // Only refill on subscription invoices — ignore one-off charges.
+  const billingReason = invoice.billing_reason;
+  if (
+    billingReason !== "subscription_create" &&
+    billingReason !== "subscription_cycle" &&
+    billingReason !== "subscription_update"
+  ) {
+    return;
+  }
+
   const customerId =
     typeof invoice.customer === "string" ? invoice.customer : null;
   if (!customerId) return;
@@ -95,13 +121,49 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
   const userId = await getUserIdFromCustomer(customerId);
   if (!userId) return;
 
-  const lineItem = invoice.lines.data[0] as {
-    price?: { id?: string } | null;
-    period?: { end?: number } | null;
-  } | undefined;
-  const priceId = lineItem?.price?.id ?? null;
-  const tier = priceId ? (tierFromPriceId(priceId) ?? "free") : "free";
-  const periodEnd = lineItem?.period?.end ?? null;
+  // Prefer the subscription line item over the first line (may be proration).
+  const subscriptionLine =
+    invoice.lines.data.find((line) => line.subscription) ??
+    invoice.lines.data[0];
+
+  const lineWithPrice = subscriptionLine as
+    | { price?: string | { id: string } | null; period?: { end?: number } | null }
+    | undefined;
+
+  const priceId = resolvePriceId(lineWithPrice?.price);
+
+  let tier = resolveTier(
+    priceId,
+    (invoice as Stripe.Invoice & { subscription_details?: { metadata?: Stripe.Metadata } })
+      .subscription_details?.metadata,
+  );
+
+  // Fallback: fetch subscription metadata if line-item price wasn't enough.
+  const subscriptionId =
+    (typeof subscriptionLine?.subscription === "string"
+      ? subscriptionLine.subscription
+      : null) ??
+    (typeof (invoice as Stripe.Invoice & { subscription?: string }).subscription ===
+    "string"
+      ? (invoice as Stripe.Invoice & { subscription: string }).subscription
+      : null);
+
+  if (!tier && subscriptionId) {
+    const sub = (await getStripe().subscriptions.retrieve(
+      subscriptionId,
+    )) as Stripe.Subscription;
+    tier = resolveTier(
+      resolvePriceId(
+        sub.items.data[0]?.price as string | { id: string } | null | undefined,
+      ),
+      sub.metadata,
+    );
+  }
+
+  // Never downgrade to free on an unrecognised price — skip instead.
+  if (!tier) return;
+
+  const periodEnd = lineWithPrice?.period?.end ?? null;
 
   await applyTier(userId, tier, periodEnd);
 }
@@ -109,6 +171,11 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
 async function handleSubscriptionUpdated(
   subscription: Stripe.Subscription & { current_period_end?: number },
 ): Promise<void> {
+  // Only apply entitlements for live subscriptions. Downgrades happen on deleted.
+  if (subscription.status !== "active" && subscription.status !== "trialing") {
+    return;
+  }
+
   const customerId =
     typeof subscription.customer === "string" ? subscription.customer : null;
   if (!customerId) return;
@@ -116,10 +183,16 @@ async function handleSubscriptionUpdated(
   const userId = await getUserIdFromCustomer(customerId);
   if (!userId) return;
 
-  const priceId = (subscription.items.data[0]?.price as { id?: string } | undefined)?.id ?? null;
-  const tier = priceId ? (tierFromPriceId(priceId) ?? "free") : "free";
+  const priceId = resolvePriceId(
+    subscription.items.data[0]?.price as string | { id: string } | null | undefined,
+  );
 
-  await applyTier(userId, tier, subscription.current_period_end ?? null);
+  const tier = resolveTier(priceId, subscription.metadata);
+
+  // Never downgrade to free on an unrecognised price — skip instead.
+  if (!tier) return;
+
+  await applyTier(userId, tier, subscriptionPeriodEnd(subscription));
 }
 
 async function handleSubscriptionDeleted(
@@ -187,7 +260,9 @@ export async function POST(request: Request) {
 
       case "customer.subscription.updated":
         await handleSubscriptionUpdated(
-          event.data.object as Stripe.Subscription & { current_period_end?: number },
+          event.data.object as Stripe.Subscription & {
+            current_period_end?: number;
+          },
         );
         break;
 
@@ -198,7 +273,6 @@ export async function POST(request: Request) {
         break;
 
       default:
-        // Ignore unregistered event types.
         break;
     }
   } catch (handlerError) {

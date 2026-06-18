@@ -34,6 +34,35 @@ export function tierFromPriceId(priceId: string): "creator" | "agency" | null {
   return null;
 }
 
+/** Stripe webhooks often send price as a string ID, not an expanded object. */
+export function resolvePriceId(
+  price: string | { id: string } | null | undefined,
+): string | null {
+  if (!price) return null;
+  return typeof price === "string" ? price : (price.id ?? null);
+}
+
+/** Read tier from subscription/checkout metadata set during Checkout. */
+export function tierFromMetadata(
+  metadata: Stripe.Metadata | null | undefined,
+): "creator" | "agency" | null {
+  const tier = metadata?.tier;
+  if (tier === "creator" || tier === "agency") return tier;
+  return null;
+}
+
+/** Resolve tier from price ID, falling back to metadata. Returns null if unknown. */
+export function resolveTier(
+  priceId: string | null,
+  metadata?: Stripe.Metadata | null,
+): "creator" | "agency" | null {
+  if (priceId) {
+    const fromPrice = tierFromPriceId(priceId);
+    if (fromPrice) return fromPrice;
+  }
+  return tierFromMetadata(metadata);
+}
+
 /** App URL — used for Checkout success/cancel redirects. */
 export function getAppUrl(): string {
   return (
