@@ -130,10 +130,13 @@ export default function CampaignVideoPanel({
       )}
 
       <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-        {isSilentPreset
-          ? "Silent video includes on-screen captions from your voiceover scripts."
-          : TTS_VIDEO_EXPORT_DISCLOSURE}{" "}
-        {TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}
+        {isSilentPreset ? (
+          "No voiceover — slides timed to your scripts with crossfade transitions."
+        ) : (
+          <>
+            {TTS_VIDEO_EXPORT_DISCLOSURE} {TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}
+          </>
+        )}
       </p>
     </div>
   );

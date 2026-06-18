@@ -13,13 +13,13 @@ export const VIDEO_EXPORT_PRESETS: VideoExportPresetConfig[] = [
     id: "quick_reel",
     label: "Quick Reel",
     description:
-      "AI narration with Ken Burns motion and crossfade transitions — ready for Reels, Shorts, and TikTok.",
+      "AI narration with crossfade transitions — ready for Reels, Shorts, and TikTok.",
   },
   {
     id: "silent_captions",
-    label: "Silent + captions",
+    label: "Silent video",
     description:
-      "No voiceover — on-screen captions from your scripts for mute-friendly posts.",
+      "No voiceover — slides timed to your scripts with crossfade transitions.",
   },
 ];
 
