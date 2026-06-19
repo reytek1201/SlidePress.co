@@ -56,6 +56,23 @@ export function buildYouTubeAuthUrl(state: string): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
+export function buildYouTubeUploadAuthUrl(state: string): string {
+  const { clientId, redirectUri } = getYouTubeOAuthConfig();
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: YOUTUBE_UPLOAD_SCOPE,
+    access_type: "offline",
+    include_granted_scopes: "true",
+    prompt: "consent",
+    state,
+  });
+
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
 export interface YouTubeTokenResponse {
   access_token: string;
   refresh_token?: string;
