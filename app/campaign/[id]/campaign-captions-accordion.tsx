@@ -1,16 +1,21 @@
 "use client";
 
-import type { PlatformCaption } from "@/types/captions";
+import type { CaptionCopyField, PlatformCaption } from "@/types/captions";
 import {
+  captionCopyKey,
   formatHashtagsForDisplay,
+  MAX_HASHTAGS,
   PLATFORM_LABELS,
 } from "@/types/captions";
 import { useState } from "react";
 
 interface CampaignCaptionsAccordionProps {
   captions: PlatformCaption[];
-  copiedPlatform: string | null;
-  onCopyCaption: (platformCaption: PlatformCaption) => void;
+  copiedCopyKey: string | null;
+  onCopyCaptionField: (
+    platformCaption: PlatformCaption,
+    field: CaptionCopyField
+  ) => void;
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -32,10 +37,80 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
+function CopyButton({
+  label,
+  copied,
+  onClick,
+}: {
+  label: string;
+  copied: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-secondary-foreground transition hover:border-ring/60 hover:text-foreground sm:px-3 sm:py-1.5 sm:text-xs"
+    >
+      {copied ? "Copied" : label}
+    </button>
+  );
+}
+
+function PlatformCopyButtons({
+  platformCaption,
+  copiedCopyKey,
+  onCopyCaptionField,
+}: {
+  platformCaption: PlatformCaption;
+  copiedCopyKey: string | null;
+  onCopyCaptionField: CampaignCaptionsAccordionProps["onCopyCaptionField"];
+}) {
+  const isCopied = (field: CaptionCopyField) =>
+    copiedCopyKey === captionCopyKey(platformCaption.platform, field);
+
+  if (platformCaption.platform === "youtube_shorts") {
+    return (
+      <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
+        <CopyButton
+          label="Copy title"
+          copied={isCopied("title")}
+          onClick={() => onCopyCaptionField(platformCaption, "title")}
+        />
+        <CopyButton
+          label="Copy description"
+          copied={isCopied("description")}
+          onClick={() => onCopyCaptionField(platformCaption, "description")}
+        />
+        <CopyButton
+          label="Copy hashtags"
+          copied={isCopied("hashtags")}
+          onClick={() => onCopyCaptionField(platformCaption, "hashtags")}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2">
+      <CopyButton
+        label="Copy caption"
+        copied={isCopied("caption")}
+        onClick={() => onCopyCaptionField(platformCaption, "caption")}
+      />
+      <CopyButton
+        label="Copy hashtags"
+        copied={isCopied("hashtags")}
+        onClick={() => onCopyCaptionField(platformCaption, "hashtags")}
+      />
+    </div>
+  );
+}
+
 export default function CampaignCaptionsAccordion({
   captions,
-  copiedPlatform,
-  onCopyCaption,
+  copiedCopyKey,
+  onCopyCaptionField,
 }: CampaignCaptionsAccordionProps) {
   const [sectionOpen, setSectionOpen] = useState(false);
   const [openPlatform, setOpenPlatform] = useState<string | null>(null);
@@ -55,7 +130,8 @@ export default function CampaignCaptionsAccordion({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">Post copy</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {captions.length} platforms · expand to review hooks and hashtags
+            {captions.length} platforms · copy title, caption, or hashtags per
+            platform
           </p>
         </div>
         <ChevronIcon open={sectionOpen} />
@@ -65,13 +141,14 @@ export default function CampaignCaptionsAccordion({
         <div className="border-t border-border">
           {captions.map((platformCaption, index) => {
             const isOpen = openPlatform === platformCaption.platform;
+            const isYouTube = platformCaption.platform === "youtube_shorts";
 
             return (
               <section
                 key={platformCaption.id}
                 className={index > 0 ? "border-t border-border" : undefined}
               >
-                <div className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-3">
+                <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:px-5 sm:py-3">
                   <button
                     type="button"
                     onClick={() => togglePlatform(platformCaption.platform)}
@@ -83,30 +160,25 @@ export default function CampaignCaptionsAccordion({
                       {PLATFORM_LABELS[platformCaption.platform]}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onCopyCaption(platformCaption)}
-                    className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] font-medium text-secondary-foreground transition hover:border-ring/60 hover:text-foreground sm:px-3 sm:py-1.5 sm:text-xs"
-                  >
-                    {copiedPlatform === platformCaption.platform
-                      ? "Copied"
-                      : "Copy"}
-                  </button>
+                  <PlatformCopyButtons
+                    platformCaption={platformCaption}
+                    copiedCopyKey={copiedCopyKey}
+                    onCopyCaptionField={onCopyCaptionField}
+                  />
                 </div>
 
                 {isOpen && (
                   <div className="space-y-3 border-t border-border/60 px-3 pb-4 pt-3 sm:space-y-4 sm:px-5 sm:pb-5 sm:pt-4 md:px-6">
-                    {platformCaption.platform === "youtube_shorts" &&
-                      platformCaption.title && (
-                        <div>
-                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Title
-                          </p>
-                          <p className="mt-2 text-sm font-semibold text-foreground">
-                            {platformCaption.title}
-                          </p>
-                        </div>
-                      )}
+                    {isYouTube && platformCaption.title && (
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Title
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {platformCaption.title}
+                        </p>
+                      </div>
+                    )}
 
                     {platformCaption.hook && (
                       <div>
@@ -121,7 +193,7 @@ export default function CampaignCaptionsAccordion({
 
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Caption
+                        {isYouTube ? "Description" : "Caption"}
                       </p>
                       <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-secondary-foreground sm:leading-7">
                         {platformCaption.caption}
@@ -131,7 +203,7 @@ export default function CampaignCaptionsAccordion({
                     {platformCaption.hashtags.length > 0 && (
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Hashtags
+                          Hashtags ({Math.min(platformCaption.hashtags.length, MAX_HASHTAGS)})
                         </p>
                         <p className="mt-2 text-sm leading-6 text-sky-300">
                           {formatHashtagsForDisplay(platformCaption.hashtags)}

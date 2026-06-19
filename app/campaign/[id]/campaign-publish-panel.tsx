@@ -7,7 +7,7 @@ import CampaignYouTubePublishPanel from "@/app/campaign/[id]/campaign-youtube-pu
 import CampaignNarrationPanel from "@/app/campaign/[id]/campaign-narration-panel";
 import CampaignVideoLockedPanel from "@/app/campaign/[id]/campaign-video-locked-panel";
 import CampaignVideoPanel from "@/app/campaign/[id]/campaign-video-panel";
-import type { PlatformCaption } from "@/types/captions";
+import type { CaptionCopyField, PlatformCaption } from "@/types/captions";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
 import type { AspectRatio } from "@/types/campaign";
@@ -26,7 +26,7 @@ interface CampaignPublishPanelProps {
   canGenerateCaptions: boolean;
   isGeneratingCaptions: boolean;
   captionsMessage: string | null;
-  copiedPlatform: string | null;
+  copiedCopyKey: string | null;
   copiedAllCaptions: boolean;
   isNativeApp: boolean;
   preferredVoicePersona: VoicePersona;
@@ -52,7 +52,10 @@ interface CampaignPublishPanelProps {
   youtubeAlreadyPublished?: boolean;
   campaignStatus: string;
   onGenerateCaptions: () => void;
-  onCopyCaption: (platformCaption: PlatformCaption) => void;
+  onCopyCaptionField: (
+    platformCaption: PlatformCaption,
+    field: CaptionCopyField
+  ) => void;
   onCopyAllCaptions: () => void;
   onPersonaChange: (persona: VoicePersona) => void;
   onVoiceQualityChange: (voiceQuality: VoiceQuality) => void;
@@ -77,7 +80,7 @@ export default function CampaignPublishPanel({
   canGenerateCaptions,
   isGeneratingCaptions,
   captionsMessage,
-  copiedPlatform,
+  copiedCopyKey,
   copiedAllCaptions,
   isNativeApp,
   preferredVoicePersona,
@@ -103,7 +106,7 @@ export default function CampaignPublishPanel({
   youtubeAlreadyPublished = false,
   campaignStatus,
   onGenerateCaptions,
-  onCopyCaption,
+  onCopyCaptionField,
   onCopyAllCaptions,
   onPersonaChange,
   onVoiceQualityChange,
@@ -216,8 +219,8 @@ export default function CampaignPublishPanel({
           ) : (
             <CampaignCaptionsAccordion
               captions={sortedCaptions}
-              copiedPlatform={copiedPlatform}
-              onCopyCaption={onCopyCaption}
+              copiedCopyKey={copiedCopyKey}
+              onCopyCaptionField={onCopyCaptionField}
             />
           )}
         </div>

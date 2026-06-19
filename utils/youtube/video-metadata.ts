@@ -1,5 +1,5 @@
 import type { PlatformCaption } from "@/types/captions";
-import { normalizeHashtag } from "@/types/captions";
+import { limitHashtags, normalizeHashtag } from "@/types/captions";
 
 export interface YouTubeVideoMetadata {
   title: string;
@@ -14,7 +14,7 @@ export function buildYouTubeVideoMetadata(
   caption: PlatformCaption,
 ): YouTubeVideoMetadata {
   const title = (caption.title ?? caption.hook ?? "Short").trim();
-  const hashtags = caption.hashtags.map(normalizeHashtag).join(" ");
+  const hashtags = limitHashtags(caption.hashtags).map(normalizeHashtag).join(" ");
   const description = [caption.caption.trim(), hashtags]
     .filter(Boolean)
     .join("\n\n");

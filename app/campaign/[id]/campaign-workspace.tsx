@@ -2,11 +2,12 @@
 
 import { createClient } from "@/utils/supabase/client";
 import type { AspectRatio, Campaign, Slide, SlideImage } from "@/types/campaign";
-import type { PlatformCaption } from "@/types/captions";
+import type { CaptionCopyField, PlatformCaption } from "@/types/captions";
 import type { UsageSummary } from "@/types/usage";
 import {
+  captionCopyKey,
   formatAllCaptionsForCopy,
-  formatCaptionForCopy,
+  formatCaptionFieldForCopy,
   sortCaptionsByPlatform,
 } from "@/types/captions";
 import {
@@ -131,7 +132,7 @@ export default function CampaignWorkspace({
     slideIndex: number;
     imageUrl: string;
   } | null>(null);
-  const [copiedPlatform, setCopiedPlatform] = useState<string | null>(null);
+  const [copiedCopyKey, setCopiedCopyKey] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewInitialIndex, setPreviewInitialIndex] = useState(0);
   const [isSavingAllPhotos, setIsSavingAllPhotos] = useState(false);
@@ -1055,8 +1056,8 @@ export default function CampaignWorkspace({
     canGenerateCaptions,
     isGeneratingCaptions,
     captionsMessage,
-    copiedPlatform,
-    copiedAllCaptions: copiedPlatform === "all",
+    copiedCopyKey,
+    copiedAllCaptions: copiedCopyKey === "all",
     isNativeApp: isNativeApp === true,
     preferredVoicePersona,
     voiceQuality,
@@ -1081,7 +1082,7 @@ export default function CampaignWorkspace({
     youtubeAlreadyPublished: youtubePublishFlow.alreadyPublished,
     campaignStatus: campaign.status,
     onGenerateCaptions: handleGenerateCaptions,
-    onCopyCaption: handleCopyCaption,
+    onCopyCaptionField: handleCopyCaptionField,
     onCopyAllCaptions: handleCopyAllCaptions,
     onPersonaChange: (persona: VoicePersona) => void handleVoicePersonaChange(persona),
     onVoiceQualityChange: setVoiceQuality,
@@ -1139,11 +1140,16 @@ export default function CampaignWorkspace({
     }
   }
 
-  async function handleCopyCaption(platformCaption: PlatformCaption) {
+  async function handleCopyCaptionField(
+    platformCaption: PlatformCaption,
+    field: CaptionCopyField
+  ) {
     try {
-      await navigator.clipboard.writeText(formatCaptionForCopy(platformCaption));
-      setCopiedPlatform(platformCaption.platform);
-      window.setTimeout(() => setCopiedPlatform(null), 2000);
+      await navigator.clipboard.writeText(
+        formatCaptionFieldForCopy(platformCaption, field)
+      );
+      setCopiedCopyKey(captionCopyKey(platformCaption.platform, field));
+      window.setTimeout(() => setCopiedCopyKey(null), 2000);
     } catch {
       setError("Could not copy to clipboard");
     }
@@ -1152,8 +1158,8 @@ export default function CampaignWorkspace({
   async function handleCopyAllCaptions() {
     try {
       await navigator.clipboard.writeText(formatAllCaptionsForCopy(captions));
-      setCopiedPlatform("all");
-      window.setTimeout(() => setCopiedPlatform(null), 2000);
+      setCopiedCopyKey("all");
+      window.setTimeout(() => setCopiedCopyKey(null), 2000);
     } catch {
       setError("Could not copy to clipboard");
     }
@@ -1373,7 +1379,7 @@ export default function CampaignWorkspace({
     isSavingAllPhotos,
     saveAllPhotosProgress,
     savedAllPhotos,
-    copiedAllCaptions: copiedPlatform === "all",
+    copiedAllCaptions: copiedCopyKey === "all",
     videoExportReady,
     hasVideoCredits,
     hasVideoExport: youtubePublishFlow.hasVideoExport,

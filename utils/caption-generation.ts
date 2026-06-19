@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { Campaign, Slide } from "@/types/campaign";
 import type { PlatformType } from "@/types/captions";
-import { PLATFORM_ORDER } from "@/types/captions";
+import { MAX_HASHTAGS, PLATFORM_ORDER } from "@/types/captions";
 import { aspectRatioContext } from "@/utils/campaign-generation";
 import { slideNarrativeGuidance } from "@/types/slides";
 
@@ -9,7 +9,7 @@ export const PlatformCaptionOutputSchema = z.object({
   platform: z.enum(["tiktok", "instagram", "youtube_shorts"]),
   hook: z.string().min(1).optional(),
   caption: z.string().min(80),
-  hashtags: z.array(z.string().min(1)).min(1).max(20),
+  hashtags: z.array(z.string().min(1)).min(1).max(MAX_HASHTAGS),
   title: z.string().min(1).optional(),
 });
 
@@ -130,7 +130,10 @@ function normalizePlatformEntry(raw: unknown, index: number) {
     typeof entry.title === "string" && entry.title.trim()
       ? entry.title.trim()
       : undefined;
-  const hashtags = coerceHashtags(entry.hashtags ?? entry.tags);
+  const hashtags = coerceHashtags(entry.hashtags ?? entry.tags).slice(
+    0,
+    MAX_HASHTAGS
+  );
 
   return {
     platform,
@@ -208,7 +211,7 @@ export function buildCaptionsPrompt(campaign: Campaign, slides: Slide[]): string
     "Write deep, publish-ready captions and hashtag sets for TikTok, Instagram, and YouTube Shorts.",
     `Synthesize the full ${slideCount}-slide narrative into cohesive post copy — do not copy slide overlay text verbatim.`,
     "Each caption should feel written by a human creator who understands the audience's pain, desire, and objections.",
-    "Use evergreen niche hashtags without the # prefix in the JSON array. Do not invent fake trending tags.",
+    `Use exactly ${MAX_HASHTAGS} evergreen niche hashtags per platform without the # prefix in the JSON array. Do not invent fake trending tags.`,
     "",
     "Depth requirements:",
     `- Reference the campaign story arc across slides (${slideNarrativeGuidance(slideCount)})`,
@@ -217,9 +220,9 @@ export function buildCaptionsPrompt(campaign: Campaign, slides: Slide[]): string
     "- Avoid generic filler like 'link in bio' without context; make CTAs specific to the topic",
     "",
     "Platform rules:",
-    "- tiktok: scroll-stopping hook (1-2 lines), then 3-5 short punchy sentences in casual voice, 4-6 hashtags, under 2200 chars total",
-    "- instagram: strong first-line hook, 5-8 sentences with line breaks, carousel-friendly storytelling, soft CTA, 8-15 hashtags",
-    "- youtube_shorts: SEO title (max 60 chars), optional hook line, 3-5 sentences as description with keywords, 5-10 hashtags",
+    `- tiktok: scroll-stopping hook (1-2 lines), then 3-5 short punchy sentences in casual voice, exactly ${MAX_HASHTAGS} hashtags, under 2200 chars total`,
+    `- instagram: strong first-line hook, 5-8 sentences with line breaks, carousel-friendly storytelling, soft CTA, exactly ${MAX_HASHTAGS} hashtags`,
+    `- youtube_shorts: SEO title (max 60 chars), optional hook line, 3-5 sentences as description with keywords, exactly ${MAX_HASHTAGS} hashtags`,
     "",
     `Campaign title: ${campaign.title ?? "Untitled"}`,
     `Topic: ${campaign.topic}`,
@@ -231,9 +234,9 @@ export function buildCaptionsPrompt(campaign: Campaign, slides: Slide[]): string
     "",
     "Return JSON exactly in this shape:",
     '{ "platforms": [',
-    '  { "platform": "tiktok", "hook": "...", "caption": "...", "hashtags": ["tag1", "tag2", "tag3"] },',
-    '  { "platform": "instagram", "hook": "...", "caption": "...", "hashtags": ["tag1", "tag2", "tag3"] },',
-    '  { "platform": "youtube_shorts", "title": "...", "hook": "...", "caption": "...", "hashtags": ["tag1", "tag2", "tag3"] }',
+    `  { "platform": "tiktok", "hook": "...", "caption": "...", "hashtags": ["tag1", "tag2", "tag3", "tag4", "tag5"] },`,
+    `  { "platform": "instagram", "hook": "...", "caption": "...", "hashtags": ["tag1", "tag2", "tag3", "tag4", "tag5"] },`,
+    `  { "platform": "youtube_shorts", "title": "...", "hook": "...", "caption": "...", "hashtags": ["tag1", "tag2", "tag3", "tag4", "tag5"] }`,
     "] }",
   ].join("\n");
 }
@@ -245,7 +248,9 @@ export function normalizeCaptionOutput(
     platform: output.platform,
     hook: output.hook ?? null,
     caption: output.caption.trim(),
-    hashtags: output.hashtags.map((tag) => tag.replace(/^#/, "").trim()),
+    hashtags: output.hashtags
+      .map((tag) => tag.replace(/^#/, "").trim())
+      .slice(0, MAX_HASHTAGS),
     title: output.title?.trim() ?? null,
   };
 }
