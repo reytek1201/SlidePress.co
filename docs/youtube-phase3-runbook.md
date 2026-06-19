@@ -2,24 +2,28 @@
 
 **Epic:** [#27 Direct Platform Posting](https://github.com/reytek1201/SlidePress.co/issues/27) · **Issue:** [#31 Phase 3](https://github.com/reytek1201/SlidePress.co/issues/31)
 
+**Status (June 2026):** Phases 0–2 shipped. Phase 3 in progress — **Google OAuth verification submitted** (awaiting approval, ~1–3 weeks). Closed beta works for OAuth **test users** only until approved.
+
 Phases 0–2 are shipped in code. Phase 3 is **operational**: Google review, quota, privacy, and QA before marketing “Post to YouTube Shorts” broadly.
 
 ---
 
 ## Prerequisites
 
-- [ ] `platform_connections` migration applied
-- [ ] `platform_posts` migration applied
-- [ ] `platform_posts_export_unique` migration applied (dedupes test rows + adds unique index)
-- [ ] `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REDIRECT_URI` set on Vercel
-- [ ] Latest `main` deployed to `https://www.slidepress.co`
-- [ ] Privacy policy live with YouTube section (`/privacy`)
+- [x] `platform_connections` migration applied
+- [x] `platform_posts` migration applied
+- [x] `platform_posts_export_unique` migration applied (dedupes test rows + adds unique index)
+- [x] `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_REDIRECT_URI` set on Vercel
+- [x] Latest `main` deployed to `https://www.slidepress.co`
+- [x] Privacy policy live with YouTube section (`/privacy`)
 
 ---
 
 ## Google OAuth verification (`youtube.upload`)
 
 **Why:** `youtube.upload` is a **sensitive scope**. Only test users on your OAuth consent screen can grant upload until Google approves the app.
+
+**Current:** Submitted for verification with scope justification + unlisted YouTube demo video. Keep **Testing** mode and test users until Google approves.
 
 ### Consent screen checklist
 
@@ -42,10 +46,10 @@ Phases 0–2 are shipped in code. Phase 3 is **operational**: Google review, quo
 
 ### Submission package
 
-1. **Privacy policy** — documents YouTube data access, retention, deletion (see `/privacy`)
-2. **Demo video** (~2 min) — sign in → Settings → Connect YouTube → campaign with 9:16 export → Post to YouTube Shorts → show published Short
-3. **Scope justification** — “Upload user-authored campaign videos to their own YouTube channel as Shorts”
-4. **Limited use** — SlidePress uses YouTube API data only to post on behalf of the signed-in user; no resale, no ads targeting
+- [x] **Privacy policy** — documents YouTube data access, retention, deletion (see `/privacy`)
+- [x] **Demo video** — sign in → Connect YouTube → campaign with 9:16 export → Post to YouTube Shorts → published Short (unlisted on YouTube)
+- [x] **Scope justification** — submitted in Google Cloud verification form
+- [x] **Limited use** — SlidePress uses YouTube API data only to post on behalf of the signed-in user
 
 **Where to submit:** [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → OAuth consent screen → **Publish app** / **Submit for verification**
 
@@ -54,6 +58,13 @@ Phases 0–2 are shipped in code. Phase 3 is **operational**: Google review, quo
 ### Test users (until verified)
 
 Add emails under OAuth consent screen → **Test users**. They can connect and publish; other Google accounts see `access_denied`.
+
+### After approval
+
+1. OAuth consent screen → **Publish app** / Production
+2. Test with a Google account **not** on the test users list
+3. Confirm consent no longer requires Advanced → unsafe
+4. Market **Post to YouTube Shorts** publicly
 
 ---
 
@@ -66,6 +77,8 @@ Add emails under OAuth consent screen → **Test users**. They can connect and p
 | Default daily quota | 10,000 units (~6 uploads/day) |
 
 **Request increase:** Google Cloud Console → APIs & Services → YouTube Data API v3 → **Quotas** → request higher `Queries per day`.
+
+- [ ] Quota increase requested (optional until >~6 uploads/day)
 
 Plan capacity before marketing direct posting.
 
@@ -90,28 +103,28 @@ Run on **web** and **native app** (Capacitor loads production URL).
 
 ### Connect & disconnect
 
-- [ ] Settings → Connected accounts → **Connect YouTube** → channel name appears
-- [ ] OAuth callback works on iOS (signed state in URL; no `youtube=error`)
+- [x] Settings → Connected accounts → **Connect YouTube** → channel name appears
+- [x] OAuth callback works on iOS (signed state in URL; no `youtube=error`)
 - [ ] **Disconnect YouTube** revokes token and clears connection
 - [ ] Reconnect after disconnect works
 
 ### Upload permission (testing mode)
 
-- [ ] Publish without upload scope → **Grant upload permission** CTA
-- [ ] `/api/platforms/youtube/upload-authorize` adds `youtube.upload` scope
-- [ ] Second publish succeeds after grant
+- [x] Publish without upload scope → **Grant upload permission** CTA
+- [x] `/api/platforms/youtube/upload-authorize` adds `youtube.upload` scope
+- [x] Second publish succeeds after grant
 
 ### Publish flow
 
-- [ ] Campaign with `youtube_shorts` captions + completed 9:16 video export
-- [ ] Publish panel shows **Post to YouTube Shorts**
-- [ ] Upload completes; **View on YouTube** opens Short
-- [ ] Video is **unlisted** by default (unless `YOUTUBE_PUBLISH_PRIVACY` overridden)
-- [ ] Title/description match caption fields
+- [x] Campaign with `youtube_shorts` captions + completed 9:16 video export
+- [x] Publish panel shows **Post to YouTube Shorts**
+- [x] Upload completes; **View on YouTube** opens Short
+- [x] Video is **unlisted** by default (unless `YOUTUBE_PUBLISH_PRIVACY` overridden)
+- [x] Title/description match caption fields
 
 ### Idempotency
 
-- [ ] Tap **Post** again on same export → **Already on YouTube** (no duplicate upload)
+- [x] Tap **Post** again on same export → **Already on YouTube** (no duplicate upload)
 - [ ] New 9:16 export → publish allowed again
 
 ### Error paths
@@ -140,10 +153,10 @@ Run on **web** and **native app** (Capacitor loads production URL).
 
 ## Launch criteria
 
-- [ ] OAuth verification **approved** (or explicit beta with test users only)
+- [ ] OAuth verification **approved** (submitted — in review)
 - [ ] Quota sufficient for expected daily uploads
-- [ ] QA checklist signed off on web + iOS
-- [ ] `docs/client-features.md` reflects live YouTube posting
+- [ ] QA checklist signed off on web + iOS (core publish path ✅; edge cases pending)
+- [x] `docs/client-features.md` reflects live YouTube posting
 - [ ] Remove or soften “export only” language in marketing once verified
 
 ---

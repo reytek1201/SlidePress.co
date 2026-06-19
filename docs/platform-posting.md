@@ -4,13 +4,13 @@
 
 **GitHub epic:** [Epic — Direct Platform Posting](https://github.com/reytek1201/SlidePress.co/issues/27)
 
-**Current state:** Export MP4 / images + copy captions, plus **direct YouTube Shorts posting** (connect in Settings, publish from campaign). TikTok and Instagram remain manual export. See `docs/client-features.md`.
+**Current state:** **YouTube Shorts direct posting** shipped (connect in Settings, publish from campaign). OAuth verification **under Google review** — public users need to be on OAuth test users until approved. TikTok and Instagram remain manual export. See `docs/client-features.md` and [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md).
 
 **Platform order (easiest → hardest):**
 
 | Rank | Platform | Content type | Issue |
 |------|----------|--------------|-------|
-| 1 | YouTube Shorts | 9:16 MP4 + title/description/hashtags | #28–#31 |
+| 1 | YouTube Shorts | 9:16 MP4 + title/description/hashtags | #28–#30 ✅ · #31 🚧 |
 | 2 | TikTok | 9:16 MP4 + caption/hashtags | #32 |
 | 3 | Instagram Reels | 9:16 MP4 + caption/hashtags | #33 |
 | 4 | Instagram Carousel | 4:5 multi-image + caption/hashtags | #34 |
@@ -94,7 +94,7 @@ YouTube is first because: single MP4 asset, mature resumable upload API, caption
 
 **Exit criteria:** User completes full flow from campaign workspace without leaving SlidePress (except to view published Short on YouTube).
 
-### Phase 3 — Verification & launch ([#31](https://github.com/reytek1201/SlidePress.co/issues/31)) 🚧
+### Phase 3 — Verification & launch ([#31](https://github.com/reytek1201/SlidePress.co/issues/31)) 🚧 *OAuth under review*
 
 **Goal:** Production-ready for TestFlight / web users.
 
@@ -102,15 +102,15 @@ YouTube is first because: single MP4 asset, mature resumable upload API, caption
 
 | Task | Status |
 |------|--------|
-| Google OAuth verification | Submit `youtube.upload` for review |
-| Quota | Request increase if default 10k units/day is tight (~1600 units per upload) |
+| Google OAuth verification | ✅ Submitted — awaiting Google approval (~1–3 weeks) |
+| Quota | Optional — request increase if default 10k units/day is tight (~1600 units per upload) |
 | Privacy policy | ✅ YouTube data access documented at `/privacy` |
 | Account deletion | ✅ Revokes YouTube tokens + deletes `platform_connections` |
 | Duplicate publish guard | ✅ Idempotent per campaign export |
-| QA checklist | See runbook |
+| QA checklist | Core publish path ✅ — disconnect, account deletion, error paths pending |
 | Docs | ✅ `docs/client-features.md` updated |
 
-**Exit criteria:** OAuth verification approved (or in review with staging test users); QA checklist signed off.
+**Exit criteria:** OAuth verification approved; remaining QA signed off; publish to Production on consent screen.
 
 ---
 

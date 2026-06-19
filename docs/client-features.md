@@ -144,7 +144,7 @@ Processing runs on the server (TTS → slide compose → audio merge). Cached na
 - **View on YouTube** link after publish; same export cannot be posted twice (duplicate guard)
 - Disconnect YouTube anytime in Settings; account deletion revokes tokens and removes publish history
 
-*Google OAuth verification for public users is in progress — see `docs/youtube-phase3-runbook.md`.*
+*Google OAuth verification submitted (June 2026) — public users until approved must be added as OAuth **test users** in Google Cloud. See `docs/youtube-phase3-runbook.md`.*
 
 ### Export
 
@@ -233,7 +233,7 @@ Processing runs on the server (TTS → slide compose → audio merge). Cached na
 |------|--------|
 | **Paid tiers & billing** | Stripe subscriptions, higher video/narration limits — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14) |
 | **On-screen video captions** | Deferred — export MP4 + platform captions; burned-in captions not in current build |
-| **Direct platform posting** | **YouTube Shorts** live (connect + publish); TikTok / Instagram next — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md) |
+| **Direct platform posting** | **YouTube Shorts** shipped; OAuth verification under review; TikTok / Instagram next — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md) |
 | **Voice library browser** | Curated personas today (warm / energetic / professional) |
 
 ### Why video export matters (marketing angle)
@@ -248,7 +248,7 @@ Processing runs on the server (TTS → slide compose → audio merge). Cached na
 
 - Full voice library browser (we’ll curate a small set of great voices)
 - Direct upload to TikTok / Instagram (export MP4 + captions; you post manually today)
-- YouTube posting for users outside Google OAuth test list until verification completes
+- YouTube posting for users outside Google OAuth **test users** list until Google verification completes
 - 4:5 video before 9:16 Reels quality is solid
 
 *Internal tracking: GitHub epic [#1](https://github.com/reytek1201/SlidePress.co/issues/1) (ElevenLabs: Narration & Video Export).*
@@ -272,6 +272,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | **6A** | **ElevenLabs narration & video** — voice preview, narration ZIP, MP4 export (4:5 + 9:16), presets, studio voice, narration cache |
 | **6A+** | **Voiceover editing** — inline script edit, AI rewrite sheet, regenerate slide sheet |
 | **6B** | **Dual format** — one campaign, optional second aspect (confirm upsell), per-format preview/export |
+| **6C** | **YouTube Shorts posting** — connect, upload API, Publish UI ✅; Google OAuth verification 🚧 |
 
 ### Phase 5 — Mobile app (Capacitor) ✅ (largely complete)
 
@@ -321,7 +322,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 **6C — Business scale** *(in progress)*
 
 - **Usage tiers & billing** — paid plans with higher caps (Stripe) — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14)
-- **Direct platform posting** — **YouTube Shorts** ✅ (Phases 0–2); verification & launch 🚧 — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/platform-posting.md`](platform-posting.md) · [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md)
+- **Direct platform posting** — **YouTube Shorts** ✅ Phases 0–2 shipped; Phase 3 🚧 OAuth under review — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/platform-posting.md`](platform-posting.md) · [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md)
 - **TikTok / Instagram** — after YouTube verification ([#32](https://github.com/reytek1201/SlidePress.co/issues/32)–[#34](https://github.com/reytek1201/SlidePress.co/issues/34))
 - **On-screen video captions** — burned-in captions (deferred from beta)
 
