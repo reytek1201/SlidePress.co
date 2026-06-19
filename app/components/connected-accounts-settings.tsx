@@ -74,12 +74,38 @@ export default function ConnectedAccountsSettings() {
     }
 
     if (youtubeStatus === "denied") {
-      setError("YouTube connection was cancelled.");
+      const reason = searchParams.get("reason");
+      setError(
+        reason
+          ? `YouTube connection was denied: ${reason}`
+          : "YouTube connection was cancelled.",
+      );
       return;
     }
 
     if (youtubeStatus === "error") {
-      setError("Could not connect YouTube. Try again.");
+      const reason = searchParams.get("reason");
+      const reasonMessages: Record<string, string> = {
+        state:
+          "Connection timed out or was interrupted. Try Connect YouTube again.",
+        session_mismatch:
+          "Signed in as a different SlidePress account. Sign out and try again.",
+        missing_code: "Google did not return an authorization code. Try again.",
+        database:
+          "Server database is not ready for YouTube connections. Run the platform_connections migration in Supabase.",
+        channel:
+          "No YouTube channel found on that Google account. Create one at youtube.com first.",
+        token:
+          "Google token exchange failed. Check YouTube Client ID and secret in Vercel.",
+        connect: "Could not start YouTube connection. Check server configuration.",
+        unknown: "Could not connect YouTube. Try again.",
+      };
+
+      setError(
+        reason && reasonMessages[reason]
+          ? reasonMessages[reason]
+          : reasonMessages.unknown,
+      );
     }
   }, [loadStatus, searchParams]);
 

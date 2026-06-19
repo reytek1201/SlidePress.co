@@ -3,30 +3,18 @@ import {
   getYouTubeConnectionRow,
   upsertYouTubeConnection,
 } from "@/utils/youtube/connection-store";
-import {
-  exchangeYouTubeCode,
-  fetchYouTubeChannel,
-  YOUTUBE_OAUTH_STATE_COOKIE,
-} from "@/utils/youtube/oauth";
+import { exchangeYouTubeCode, fetchYouTubeChannel } from "@/utils/youtube/oauth";
+import { verifyYouTubeOAuthState } from "@/utils/youtube/oauth-state";
 import { getAppUrl } from "@/utils/stripe";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
 
 function redirectToSettings(query: string): NextResponse {
-  const appUrl = getAppUrl();
-  const response = NextResponse.redirect(
-    `${appUrl}/settings/connected-accounts?${query}`,
-  );
+  return NextResponse.redirect(`${getAppUrl()}/settings/connected-accounts?${query}`);
+}
 
-  response.cookies.set(YOUTUBE_OAUTH_STATE_COOKIE, "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
-  });
-
-  return response;
+function redirectWithError(reason: string): NextResponse {
+  return redirectToSettings(`youtube=error&reason=${encodeURIComponent(reason)}`);
 }
 
 export async function GET(request: NextRequest) {
@@ -34,19 +22,26 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const oauthError = searchParams.get("error");
+  const oauthErrorDescription = searchParams.get("error_description");
 
   if (oauthError) {
-    return redirectToSettings("youtube=denied");
+    const detail = oauthErrorDescription
+      ? `youtube=denied&reason=${encodeURIComponent(oauthErrorDescription)}`
+      : "youtube=denied";
+    return redirectToSettings(detail);
   }
 
   if (!code || !state) {
-    return redirectToSettings("youtube=error");
+    return redirectWithError("missing_code");
   }
 
-  const storedState = request.cookies.get(YOUTUBE_OAUTH_STATE_COOKIE)?.value;
+  let userId: string;
 
-  if (!storedState || storedState !== state) {
-    return redirectToSettings("youtube=error");
+  try {
+    userId = verifyYouTubeOAuthState(state);
+  } catch (error) {
+    console.error("YouTube OAuth state verification failed:", error);
+    return redirectWithError("state");
   }
 
   try {
@@ -57,16 +52,16 @@ export async function GET(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return redirectToSettings("youtube=error");
+    if (!authError && user && user.id !== userId) {
+      return redirectWithError("session_mismatch");
     }
 
     const tokens = await exchangeYouTubeCode(code);
     const channel = await fetchYouTubeChannel(tokens.access_token);
-    const existing = await getYouTubeConnectionRow(user.id);
+    const existing = await getYouTubeConnectionRow(userId);
 
     await upsertYouTubeConnection({
-      userId: user.id,
+      userId,
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token ?? null,
       expiresInSeconds: tokens.expires_in,
@@ -74,7 +69,7 @@ export async function GET(request: NextRequest) {
       existingRefreshToken: existing?.refresh_token,
     });
 
-    const saved = await getYouTubeConnectionRow(user.id);
+    const saved = await getYouTubeConnectionRow(userId);
 
     if (saved) {
       await ensureFreshYouTubeAccessToken(saved);
@@ -83,6 +78,21 @@ export async function GET(request: NextRequest) {
     return redirectToSettings("youtube=connected");
   } catch (error) {
     console.error("YouTube OAuth callback error:", error);
-    return redirectToSettings("youtube=error");
+
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+
+    if (message.includes("platform_connections") || message.includes("relation")) {
+      return redirectWithError("database");
+    }
+
+    if (message.includes("channel")) {
+      return redirectWithError("channel");
+    }
+
+    if (message.includes("token") || message.includes("oauth")) {
+      return redirectWithError("token");
+    }
+
+    return redirectWithError("unknown");
   }
 }

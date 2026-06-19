@@ -48,8 +48,8 @@ export function buildYouTubeAuthUrl(state: string): string {
     response_type: "code",
     scope: youtubeConnectScopeString(),
     access_type: "offline",
-    include_granted_scopes: "true",
-    prompt: "consent",
+    include_granted_scopes: "false",
+    prompt: "consent select_account",
     state,
   });
 
@@ -187,5 +187,3 @@ export async function revokeYouTubeToken(token: string): Promise<void> {
     throw new Error(text || "Failed to revoke YouTube token");
   }
 }
-
-export const YOUTUBE_OAUTH_STATE_COOKIE = "youtube_oauth_state";
