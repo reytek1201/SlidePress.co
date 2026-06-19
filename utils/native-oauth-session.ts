@@ -113,14 +113,40 @@ export async function completeNativeAuthCallback(
   return { error, nextPath: callback.next };
 }
 
-export function navigateAfterAuth(
+async function waitForServerSession(
+  maxAttempts = 6,
+  delayMs = 200,
+): Promise<void> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+    try {
+      const response = await fetch("/api/auth/check", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (response.ok) {
+        const data = (await response.json()) as { authenticated?: boolean };
+        if (data.authenticated) {
+          return;
+        }
+      }
+    } catch {
+      // Network error — keep retrying
+    }
+  }
+  // Timed out — navigate anyway; the page will redirect if needed.
+}
+
+export async function navigateAfterAuth(
   nextPath: string,
   navigate: (path: string) => void,
 ) {
-  // Full page load ensures Supabase auth cookies are sent on the next
-  // server render. Client-side router navigation can race ahead of cookies
-  // being persisted in the Capacitor WebView (seen after Apple sign-in).
+  // On WKWebView (iOS), cookies from a fetch() response are not always
+  // committed to the cookie store before the next navigation fires, even
+  // when the fetch is fully awaited. Poll the server auth check endpoint
+  // until the session is visible, then navigate.
   if (Capacitor.isNativePlatform()) {
+    await waitForServerSession();
     window.location.replace(nextPath);
     return;
   }
@@ -128,9 +154,9 @@ export function navigateAfterAuth(
   navigate(nextPath);
 }
 
-export function completeNativeOAuthNavigation(
+export async function completeNativeOAuthNavigation(
   nextPath: string,
   navigate: (path: string) => void,
 ) {
-  navigateAfterAuth(nextPath, navigate);
+  await navigateAfterAuth(nextPath, navigate);
 }

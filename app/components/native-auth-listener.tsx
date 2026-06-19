@@ -51,7 +51,7 @@ async function handleNativeAuthUrl(
   }
 
   setNativeOAuthInProgress(false);
-  completeNativeOAuthNavigation(nextPath, navigate);
+  await completeNativeOAuthNavigation(nextPath, navigate);
 }
 
 export default function NativeAuthListener() {

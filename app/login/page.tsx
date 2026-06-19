@@ -6,6 +6,7 @@ import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import { useIsIosNative } from "@/app/hooks/use-is-ios-native";
 import { brandLogoSrc } from "@/utils/site-metadata";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
+import { isNativeOAuthInProgress } from "@/utils/native-oauth-in-progress";
 import { buildNativeOAuthRedirectUrl } from "@/utils/native-oauth";
 import { legalPageHref } from "@/utils/legal-back-target";
 import {
@@ -108,10 +109,30 @@ function LoginForm() {
     let active = true;
     hasNavigated.current = false;
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (active && user) {
-        authNavigate(resolveNextPath());
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!active || !user) return;
+
+      // On native, skip auto-redirect if OAuth is in progress (NativeAuthListener
+      // owns navigation). Also verify the server sees the session before
+      // navigating, to avoid the /campaigns → /login loop when cookies haven't
+      // propagated yet.
+      if (isNativeAppRuntime()) {
+        if (isNativeOAuthInProgress()) return;
+
+        try {
+          const res = await fetch("/api/auth/check", {
+            credentials: "include",
+            cache: "no-store",
+          });
+          if (!res.ok) return;
+          const data = (await res.json()) as { authenticated?: boolean };
+          if (!data.authenticated) return;
+        } catch {
+          return;
+        }
       }
+
+      authNavigate(resolveNextPath());
     });
 
     const {
@@ -214,7 +235,7 @@ function LoginForm() {
           return;
         }
 
-        completeNativeOAuthNavigation(next, authNavigate);
+        await completeNativeOAuthNavigation(next, authNavigate);
         return;
       }
 
