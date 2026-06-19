@@ -142,8 +142,8 @@ export default function ConnectedAccountsSettings() {
             </div>
 
             <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              Connect your YouTube channel to post Shorts directly from
-              SlidePress. Uses a separate Google authorization from sign-in.
+              Connect your YouTube channel to post Shorts from SlidePress. Upload
+              permission is requested when you publish (after Google app verification).
             </p>
 
             {connection ? (

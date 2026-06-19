@@ -1,9 +1,17 @@
 import { getAppUrl } from "@/utils/stripe";
 
-const YOUTUBE_SCOPES = [
-  "https://www.googleapis.com/auth/youtube.upload",
+/** Scopes requested when connecting a channel (Settings). */
+export const YOUTUBE_CONNECT_SCOPES = [
   "https://www.googleapis.com/auth/youtube.readonly",
-].join(" ");
+] as const;
+
+/** Added at publish time (Phase 1) — requires Google OAuth verification. */
+export const YOUTUBE_UPLOAD_SCOPE =
+  "https://www.googleapis.com/auth/youtube.upload";
+
+function youtubeConnectScopeString(): string {
+  return YOUTUBE_CONNECT_SCOPES.join(" ");
+}
 
 export function getYouTubeRedirectUri(): string {
   return (
@@ -38,7 +46,7 @@ export function buildYouTubeAuthUrl(state: string): string {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: YOUTUBE_SCOPES,
+    scope: youtubeConnectScopeString(),
     access_type: "offline",
     include_granted_scopes: "true",
     prompt: "consent",
