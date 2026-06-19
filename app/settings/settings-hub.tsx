@@ -4,6 +4,7 @@ import {
   AboutIcon,
   AccountIcon,
   BrandIcon,
+  ConnectedAccountsIcon,
   DevIcon,
   NotificationsIcon,
   SecurityIcon,
@@ -142,6 +143,11 @@ export default function SettingsHub({ user }: SettingsHubProps) {
                   label="Usage"
                   value={usageTrailing}
                   icon={<UsageIcon />}
+                />
+                <SettingsListRow
+                  href="/settings/connected-accounts"
+                  label="Connected accounts"
+                  icon={<ConnectedAccountsIcon />}
                 />
               </SettingsListGroup>
             </div>

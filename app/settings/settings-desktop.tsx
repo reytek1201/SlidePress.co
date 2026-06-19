@@ -1,5 +1,6 @@
 "use client";
 
+import ConnectedAccountsSettings from "@/app/components/connected-accounts-settings";
 import BrandsSettingsDesktop from "@/app/components/brands-settings-desktop";
 import BiometricSettings from "@/app/components/biometric-settings";
 import PasswordResetForm from "@/app/components/password-reset-form";
@@ -67,6 +68,13 @@ export default function SettingsDesktop({
             </SettingsSection>
 
             <PushTestSection />
+
+            <SettingsSection
+              title="Connected accounts"
+              description="Link social platforms to publish directly from SlidePress."
+            >
+              <ConnectedAccountsSettings />
+            </SettingsSection>
 
             <UsageSettings variant="card" />
 

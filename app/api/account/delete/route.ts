@@ -2,6 +2,7 @@ import {
   deleteUserReferenceStorage,
   deleteUserTtsCacheStorage,
 } from "@/utils/delete-user-storage";
+import { revokeAndDeleteYouTubeConnection } from "@/utils/youtube/connection-store";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
 
     try {
+      await revokeAndDeleteYouTubeConnection(user.id);
       await deleteUserReferenceStorage(admin, user.id);
       await deleteUserTtsCacheStorage(admin, user.id);
     } catch (storageError) {

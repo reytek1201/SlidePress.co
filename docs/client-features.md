@@ -221,7 +221,7 @@ Processing runs on the server (TTS → slide compose → audio merge). Cached na
 |------|--------|
 | **Paid tiers & billing** | Stripe subscriptions, higher video/narration limits — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14) |
 | **On-screen video captions** | Deferred — export MP4 + platform captions; burned-in captions not in current build |
-| **Direct platform posting** | Export MP4 + copy caption; you post manually |
+| **Direct platform posting** | Export MP4 + copy caption today — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) (YouTube first) |
 | **Voice library browser** | Curated personas today (warm / energetic / professional) |
 
 ### Why video export matters (marketing angle)
@@ -308,7 +308,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 **6C — Business scale** *(next)*
 
 - **Usage tiers & billing** — paid plans with higher caps (Stripe) — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14)
-- **Direct platform posting** — optional upload to TikTok / Instagram / YouTube (later)
+- **Direct platform posting** — YouTube Shorts first, then TikTok / Instagram — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/platform-posting.md`](platform-posting.md)
 - **On-screen video captions** — burned-in captions (deferred from beta)
 
 ### Not planned for v1
