@@ -262,8 +262,7 @@ export default function CampaignTikTokPublishPanel({
   }
 
   const needsPublishScope =
-    (readiness?.connected && !readiness.hasPublishScope) ||
-    (error?.includes("Posting permission required") ?? false);
+    Boolean(readiness?.connected && !readiness.hasPublishScope);
 
   let helperText = "Post your 9:16 Quick Reel with your TikTok caption.";
 

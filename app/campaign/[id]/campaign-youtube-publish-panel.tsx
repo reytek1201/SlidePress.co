@@ -293,8 +293,7 @@ export default function CampaignYouTubePublishPanel({
   }
 
   const needsUploadScope =
-    (readiness?.connected && !readiness.hasUploadScope) ||
-    (error?.includes("Upload permission required") ?? false);
+    Boolean(readiness?.connected && !readiness.hasUploadScope);
 
   let helperText = "Post your 9:16 Quick Reel with YouTube Shorts caption.";
 
