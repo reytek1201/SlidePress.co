@@ -5,6 +5,13 @@ export class TikTokPublishScopeError extends Error {
   }
 }
 
+export class TikTokUnauditedPrivacyError extends Error {
+  constructor() {
+    super("TikTok unaudited apps require SELF_ONLY privacy");
+    this.name = "TikTokUnauditedPrivacyError";
+  }
+}
+
 interface TikTokApiError {
   code?: string;
   message?: string;
@@ -32,9 +39,7 @@ function assertTikTokApiOk<T>(
     }
 
     if (code === "unaudited_client_can_only_post_to_private_accounts") {
-      throw new Error(
-        "TikTok sandbox apps can only post privately. Set TIKTOK_PUBLISH_PRIVACY=SELF_ONLY and try again.",
-      );
+      throw new TikTokUnauditedPrivacyError();
     }
 
     if (code && code !== "ok") {
@@ -322,18 +327,44 @@ export async function publishTikTokVideo(input: {
 }): Promise<TikTokPublishResult> {
   const videoBuffer = await downloadVideo(input.videoUrl);
   const creator = await queryTikTokCreatorInfo(input.accessToken);
-  const privacyLevel = pickPrivacyLevel(
+  let privacyLevel = pickPrivacyLevel(
     creator.privacyLevelOptions,
     input.privacyPreference,
   );
 
-  const { publishId, uploadUrl } = await initTikTokFileUploadPost({
-    accessToken: input.accessToken,
-    videoSize: videoBuffer.byteLength,
-    title: input.title,
-    creator,
-    privacyLevel,
-  });
+  let publishId: string;
+  let uploadUrl: string;
+
+  try {
+    ({ publishId, uploadUrl } = await initTikTokFileUploadPost({
+      accessToken: input.accessToken,
+      videoSize: videoBuffer.byteLength,
+      title: input.title,
+      creator,
+      privacyLevel,
+    }));
+  } catch (error) {
+    if (
+      error instanceof TikTokUnauditedPrivacyError &&
+      privacyLevel !== "SELF_ONLY" &&
+      creator.privacyLevelOptions.includes("SELF_ONLY")
+    ) {
+      privacyLevel = "SELF_ONLY";
+      ({ publishId, uploadUrl } = await initTikTokFileUploadPost({
+        accessToken: input.accessToken,
+        videoSize: videoBuffer.byteLength,
+        title: input.title,
+        creator,
+        privacyLevel,
+      }));
+    } else if (error instanceof TikTokUnauditedPrivacyError) {
+      throw new Error(
+        "TikTok sandbox apps can only post privately. Posts will appear as visible only to you until app review passes.",
+      );
+    } else {
+      throw error;
+    }
+  }
 
   await uploadVideoToTikTok(uploadUrl, videoBuffer);
 
