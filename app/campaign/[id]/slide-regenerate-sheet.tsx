@@ -35,6 +35,8 @@ export interface SlideRegenerateOptions {
   snapProductUrl?: string;
   feedback?: RegenerateFeedbackChipId[];
   notes?: string;
+  textOverlay?: string;
+  headlineChanged?: boolean;
 }
 
 interface SlideRegenerateSheetProps {
@@ -45,7 +47,7 @@ interface SlideRegenerateSheetProps {
   isNativeApp: boolean;
   userId: string;
   headline: string;
-  onRegenerate: (options: SlideRegenerateOptions) => void;
+  onRegenerate: (options: SlideRegenerateOptions) => void | Promise<void>;
   onError: (message: string) => void;
 }
 
@@ -146,15 +148,23 @@ export default function SlideRegenerateSheet({
   }
 
   function handleSubmit() {
-    onRegenerate({
-      snapProductUrl: snapUploadedUrl ?? undefined,
-      feedback: selectedChipIds.length > 0 ? selectedChipIds : undefined,
-      notes: notes.trim() || undefined,
-    });
-    onClose();
+    void (async () => {
+      try {
+        await onRegenerate({
+          snapProductUrl: snapUploadedUrl ?? undefined,
+          feedback: selectedChipIds.length > 0 ? selectedChipIds : undefined,
+          notes: notes.trim() || undefined,
+        });
+        onClose();
+      } catch {
+        // Parent sets error state; keep sheet open.
+      }
+    })();
   }
 
   const controlsDisabled = disabled || isRegenerating || isSnapping;
+  const showLayoutHint = selectedChipIds.includes("different_layout");
+  const showHeadlineHint = selectedChipIds.includes("fix_headline_text");
 
   if (!open) {
     return null;
@@ -191,7 +201,8 @@ export default function SlideRegenerateSheet({
               </h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 Edit the headline first if the on-slide text should change, then
-                pick what to adjust.
+                pick what to adjust. Unsaved headline edits are saved when you
+                regenerate.
               </p>
             </div>
             <button
@@ -286,6 +297,20 @@ export default function SlideRegenerateSheet({
               );
             })}
           </ul>
+
+          {showHeadlineHint ? (
+            <p className="mt-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs leading-5 text-secondary-foreground">
+              Save the corrected headline above, then regenerate. The image will
+              re-render all on-slide text from your headline.
+            </p>
+          ) : null}
+
+          {showLayoutHint ? (
+            <p className="mt-3 rounded-xl border border-border bg-background/60 px-3 py-2 text-xs leading-5 text-muted-foreground">
+              For a bigger layout change, add specific notes (e.g. product left,
+              headline bottom third).
+            </p>
+          ) : null}
 
           <label className="mt-4 block">
             <span className="text-xs font-medium text-muted-foreground">

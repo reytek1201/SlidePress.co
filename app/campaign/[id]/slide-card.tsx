@@ -10,7 +10,7 @@ import {
   saveSlideImageToPhotos,
   shareSlideImage,
 } from "@/utils/native-slide-export";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import SlideOverlayEditor from "./slide-overlay-editor";
 import SlideRegenerateSheet, {
   type SlideRegenerateOptions,
@@ -35,7 +35,7 @@ interface SlideCardProps {
   onRegenerate: (
     slideId: string,
     options?: SlideRegenerateOptions,
-  ) => void;
+  ) => void | Promise<void>;
   onError: (message: string) => void;
 }
 
@@ -62,8 +62,14 @@ const SlideCard = memo(function SlideCard({
   const [suggestVoiceoverMatch, setSuggestVoiceoverMatch] = useState(false);
   const [suggestRegenerateImage, setSuggestRegenerateImage] = useState(false);
   const [regenerateSheetOpen, setRegenerateSheetOpen] = useState(false);
+  const [headlineDraft, setHeadlineDraft] = useState(slide.text_overlay ?? "");
+  const [headlineNeedsImageSync, setHeadlineNeedsImageSync] = useState(false);
 
   const regenerateDisabled = isAnySlideGenerating && !isRegenerating;
+
+  useEffect(() => {
+    setHeadlineDraft(slide.text_overlay ?? "");
+  }, [slide.text_overlay]);
 
   const handleSaveToPhotos = useCallback(async () => {
     if (!slide.image_url) return;
@@ -114,11 +120,53 @@ const SlideCard = memo(function SlideCard({
   }, [slide.image_url, slide.slide_index, onError]);
 
   const handleRegenerate = useCallback(
-    (options: SlideRegenerateOptions) => {
-      onRegenerate(slide.id, options);
+    async (options: SlideRegenerateOptions) => {
+      let textOverlay = slide.text_overlay?.trim() ?? "";
+      let headlineChanged =
+        headlineNeedsImageSync ||
+        options.feedback?.includes("fix_headline_text") === true;
+
+      const draft = headlineDraft.trim();
+      if (draft && draft !== textOverlay) {
+        const response = await fetch(`/api/slides/${slide.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text_overlay: draft }),
+        });
+
+        const data = (await response.json()) as {
+          success: boolean;
+          error?: string;
+          slide?: { text_overlay: string | null };
+        };
+
+        if (!response.ok || !data.success) {
+          onError(data.error ?? "Failed to save headline before regenerating");
+          return;
+        }
+
+        textOverlay = data.slide?.text_overlay?.trim() ?? draft;
+        onSlideUpdated(slide.id, { text_overlay: textOverlay });
+        headlineChanged = true;
+        setHeadlineNeedsImageSync(false);
+      }
+
+      await onRegenerate(slide.id, {
+        ...options,
+        textOverlay,
+        headlineChanged,
+      });
       setSuggestRegenerateImage(false);
     },
-    [slide.id, onRegenerate],
+    [
+      headlineDraft,
+      headlineNeedsImageSync,
+      onError,
+      onRegenerate,
+      onSlideUpdated,
+      slide.id,
+      slide.text_overlay,
+    ],
   );
 
   const handleOpenPreview = useCallback(() => {
@@ -221,14 +269,17 @@ const SlideCard = memo(function SlideCard({
             slideId={slide.id}
             value={slide.text_overlay ?? ""}
             disabled={regenerateDisabled || isRegenerating}
+            onDraftChange={setHeadlineDraft}
             onSaved={(textOverlay) => {
               const headlineChanged =
                 textOverlay.trim() !== (slide.text_overlay ?? "").trim();
               onSlideUpdated(slide.id, { text_overlay: textOverlay });
+              setHeadlineDraft(textOverlay);
               if (headlineChanged) {
                 setSuggestVoiceoverMatch(true);
                 if (slide.image_url) {
                   setSuggestRegenerateImage(true);
+                  setHeadlineNeedsImageSync(true);
                 }
               }
             }}

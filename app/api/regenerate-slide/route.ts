@@ -43,6 +43,7 @@ const RequestSchema = z.object({
   feedback: z.array(z.enum(REGENERATE_FEEDBACK_CHIP_IDS)).max(4).default([]),
   notes: z.string().trim().max(300).optional(),
   text_overlay: TextOverlayInputSchema.optional(),
+  headlineChanged: z.boolean().optional(),
   snapProductUrl: z.string().url().optional(),
   aspectRatio: z.enum(["4:5", "9:16"]).optional(),
 });
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
       feedback,
       notes,
       text_overlay: textOverlay,
+      headlineChanged,
       snapProductUrl,
       aspectRatio: aspectRatioInput,
     } = parsedInput.data;
@@ -216,7 +218,7 @@ export async function POST(request: Request) {
       typedCampaign,
       feedbackChipIds,
       notes,
-      { isRegeneration: true },
+      { isRegeneration: true, headlineChanged },
     );
 
     if (!prompt) {

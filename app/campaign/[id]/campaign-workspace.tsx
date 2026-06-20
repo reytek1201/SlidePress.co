@@ -1314,7 +1314,13 @@ export default function CampaignWorkspace({
 
   const handleRegenerateSlide = useCallback(async (
     slideId: string,
-    options?: { snapProductUrl?: string; feedback?: string[]; notes?: string },
+    options?: {
+      snapProductUrl?: string;
+      feedback?: string[];
+      notes?: string;
+      textOverlay?: string;
+      headlineChanged?: boolean;
+    },
   ) => {
     setError(null);
     skipPublishAutoNavRef.current = true;
@@ -1322,7 +1328,10 @@ export default function CampaignWorkspace({
 
     try {
       const slide = displaySlides.find((entry) => entry.id === slideId);
-      const textOverlay = slide?.text_overlay?.trim() || undefined;
+      const textOverlay =
+        options?.textOverlay?.trim() ||
+        slide?.text_overlay?.trim() ||
+        undefined;
 
       const response = await fetch("/api/regenerate-slide", {
         method: "POST",
@@ -1331,6 +1340,7 @@ export default function CampaignWorkspace({
           slideId,
           aspectRatio: activeAspectRatio,
           text_overlay: textOverlay,
+          headlineChanged: options?.headlineChanged === true,
           ...(options?.feedback?.length ? { feedback: options.feedback } : {}),
           ...(options?.notes ? { notes: options.notes } : {}),
           ...(options?.snapProductUrl ? { snapProductUrl: options.snapProductUrl } : {}),
