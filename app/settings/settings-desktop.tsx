@@ -1,5 +1,6 @@
 "use client";
 
+import DeleteAccountSection from "@/app/components/delete-account-section";
 import ConnectedAccountsSettings from "@/app/components/connected-accounts-settings";
 import BrandsSettingsDesktop from "@/app/components/brands-settings-desktop";
 import BiometricSettings from "@/app/components/biometric-settings";
@@ -44,7 +45,12 @@ export default function SettingsDesktop({
               </SettingsSection>
             ) : null}
 
-            <AccountSettings user={user} showSignOut variant="card" />
+            <AccountSettings
+              user={user}
+              showSignOut
+              showDeleteAccount={false}
+              variant="card"
+            />
 
             <SettingsSection
               title="Brands"
@@ -79,6 +85,8 @@ export default function SettingsDesktop({
             <UsageSettings variant="card" />
 
             <SettingsAboutContent variant="card" />
+
+            <DeleteAccountSection alignEnd />
           </div>
         </div>
       </main>

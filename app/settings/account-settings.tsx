@@ -16,6 +16,7 @@ interface AccountSettingsProps {
   user: User;
   showPasswordReset?: boolean;
   showSignOut?: boolean;
+  showDeleteAccount?: boolean;
   variant?: "card" | "plain";
 }
 
@@ -23,6 +24,7 @@ export default function AccountSettings({
   user,
   showPasswordReset = false,
   showSignOut = true,
+  showDeleteAccount = true,
   variant = "card",
 }: AccountSettingsProps) {
   const supabase = createClient();
@@ -114,9 +116,11 @@ export default function AccountSettings({
         </div>
       )}
 
-      <div className="mt-10">
-        <DeleteAccountSection />
-      </div>
+      {showDeleteAccount ? (
+        <div className="mt-10">
+          <DeleteAccountSection />
+        </div>
+      ) : null}
     </>
   );
 

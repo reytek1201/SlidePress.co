@@ -5,7 +5,14 @@ import { clearBiometricSession } from "@/utils/biometric-session";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function DeleteAccountSection() {
+interface DeleteAccountSectionProps {
+  /** Pin the collapsed trigger to the bottom-right (desktop settings). */
+  alignEnd?: boolean;
+}
+
+export default function DeleteAccountSection({
+  alignEnd = false,
+}: DeleteAccountSectionProps) {
   const supabase = createClient();
   const router = useRouter();
 
@@ -54,7 +61,11 @@ export default function DeleteAccountSection() {
   }
 
   return (
-    <section className="border-t border-border pt-6 md:pt-8">
+    <section
+      className={`border-t border-border pt-6 md:pt-8 ${
+        alignEnd ? "flex flex-col items-end" : ""
+      }`}
+    >
       {!expanded ? (
         <button
           type="button"
@@ -64,7 +75,11 @@ export default function DeleteAccountSection() {
           Account deletion…
         </button>
       ) : (
-        <div className="rounded-2xl border border-red-900/40 bg-red-950/10 p-6 sm:p-8">
+        <div
+          className={`rounded-2xl border border-red-900/40 bg-red-950/10 p-6 sm:p-8 ${
+            alignEnd ? "w-full" : ""
+          }`}
+        >
           <h2 className="text-sm font-semibold text-foreground">Danger zone</h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
             Permanently delete your SlidePress account, all campaigns, brand
