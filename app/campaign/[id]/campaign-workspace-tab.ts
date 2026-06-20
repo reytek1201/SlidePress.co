@@ -5,6 +5,16 @@ import type {
 
 export type CampaignWorkspaceTab = "slides" | "publish" | "details";
 
+export function parseCampaignWorkspaceTab(
+  value: string | null | undefined,
+): CampaignWorkspaceTab | null {
+  if (value === "slides" || value === "publish" || value === "details") {
+    return value;
+  }
+
+  return null;
+}
+
 export const CAMPAIGN_WORKSPACE_TABS: {
   id: CampaignWorkspaceTab;
   label: string;

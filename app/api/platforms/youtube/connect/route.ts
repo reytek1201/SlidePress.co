@@ -2,9 +2,13 @@ import { getAppUrl } from "@/utils/stripe";
 import { createClient } from "@/utils/supabase/server";
 import { buildYouTubeAuthUrl, getYouTubeOAuthConfig } from "@/utils/youtube/oauth";
 import { createYouTubeOAuthState } from "@/utils/youtube/oauth-state";
-import { NextResponse } from "next/server";
+import { buildOAuthErrorRedirect } from "@/utils/platforms/oauth-return";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const returnTo = searchParams.get("returnTo");
+
   try {
     const supabase = await createClient();
 
@@ -21,7 +25,10 @@ export async function GET() {
 
     getYouTubeOAuthConfig();
 
-    const state = createYouTubeOAuthState(user.id);
+    const state = createYouTubeOAuthState(user.id, {
+      returnTo,
+      intent: "connect",
+    });
     const authUrl = buildYouTubeAuthUrl(state);
 
     return NextResponse.redirect(authUrl);
@@ -29,7 +36,11 @@ export async function GET() {
     console.error("YouTube connect error:", error);
 
     return NextResponse.redirect(
-      `${getAppUrl()}/settings/connected-accounts?youtube=error&reason=${encodeURIComponent("connect")}`,
+      buildOAuthErrorRedirect({
+        platform: "youtube",
+        reason: "connect",
+        returnTo: returnTo ?? undefined,
+      }),
     );
   }
 }

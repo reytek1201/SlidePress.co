@@ -8,17 +8,13 @@ import {
   fetchTikTokUserInfo,
 } from "@/utils/tiktok/oauth";
 import { verifyTikTokOAuthState } from "@/utils/tiktok/oauth-state";
-import { getAppUrl } from "@/utils/stripe";
+import {
+  buildOAuthErrorRedirect,
+  buildOAuthSuccessRedirect,
+} from "@/utils/platforms/oauth-return";
+import { hasTikTokPublishScope } from "@/utils/platforms/scopes";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
-
-function redirectToSettings(query: string): NextResponse {
-  return NextResponse.redirect(`${getAppUrl()}/settings/connected-accounts?${query}`);
-}
-
-function redirectWithError(reason: string): NextResponse {
-  return redirectToSettings(`tiktok=error&reason=${encodeURIComponent(reason)}`);
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -27,25 +23,42 @@ export async function GET(request: NextRequest) {
   const oauthError = searchParams.get("error");
   const oauthErrorDescription = searchParams.get("error_description");
 
-  if (oauthError) {
-    const detail = oauthErrorDescription
-      ? `tiktok=denied&reason=${encodeURIComponent(oauthErrorDescription)}`
-      : "tiktok=denied";
-    return redirectToSettings(detail);
-  }
-
-  if (!code || !state) {
-    return redirectWithError("missing_code");
-  }
-
-  let userId: string;
+  let oauthState;
 
   try {
-    userId = verifyTikTokOAuthState(state);
-  } catch (error) {
-    console.error("TikTok OAuth state verification failed:", error);
-    return redirectWithError("state");
+    oauthState = state ? verifyTikTokOAuthState(state) : null;
+  } catch {
+    oauthState = null;
   }
+
+  const returnTo = oauthState?.returnTo;
+  const intent = oauthState?.intent ?? "connect";
+
+  if (oauthError) {
+    const reason = oauthErrorDescription
+      ? `denied:${oauthErrorDescription}`
+      : "denied";
+
+    return NextResponse.redirect(
+      buildOAuthErrorRedirect({
+        platform: "tiktok",
+        reason,
+        returnTo,
+      }),
+    );
+  }
+
+  if (!code || !state || !oauthState) {
+    return NextResponse.redirect(
+      buildOAuthErrorRedirect({
+        platform: "tiktok",
+        reason: !oauthState ? "state" : "missing_code",
+        returnTo,
+      }),
+    );
+  }
+
+  const userId = oauthState.userId;
 
   try {
     const supabase = await createClient();
@@ -56,7 +69,13 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!authError && user && user.id !== userId) {
-      return redirectWithError("session_mismatch");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "tiktok",
+          reason: "session_mismatch",
+          returnTo,
+        }),
+      );
     }
 
     const tokens = await exchangeTikTokCode(code);
@@ -69,33 +88,75 @@ export async function GET(request: NextRequest) {
       refreshToken: tokens.refresh_token ?? null,
       expiresInSeconds: tokens.expires_in,
       user: profile,
+      scopes: tokens.scope,
       existingRefreshToken: existing?.refresh_token,
+      existingScopes: existing?.scopes,
     });
 
-    const saved = await getTikTokConnectionRow(userId);
+    let saved = await getTikTokConnectionRow(userId);
 
     if (saved) {
-      await ensureFreshTikTokAccessToken(saved);
+      saved = await ensureFreshTikTokAccessToken(saved);
     }
 
-    return redirectToSettings("tiktok=connected");
+    if (intent === "publish" && !hasTikTokPublishScope(saved?.scopes ?? tokens.scope)) {
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "tiktok",
+          reason: "scope",
+          returnTo,
+        }),
+      );
+    }
+
+    return NextResponse.redirect(
+      buildOAuthSuccessRedirect({
+        platform: "tiktok",
+        intent,
+        returnTo,
+      }),
+    );
   } catch (error) {
     console.error("TikTok OAuth callback error:", error);
 
     const message = error instanceof Error ? error.message.toLowerCase() : "";
 
     if (message.includes("platform_connections") || message.includes("relation")) {
-      return redirectWithError("database");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "tiktok",
+          reason: "database",
+          returnTo,
+        }),
+      );
     }
 
     if (message.includes("tiktok account") || message.includes("user")) {
-      return redirectWithError("account");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "tiktok",
+          reason: "account",
+          returnTo,
+        }),
+      );
     }
 
     if (message.includes("token") || message.includes("oauth")) {
-      return redirectWithError("token");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "tiktok",
+          reason: "token",
+          returnTo,
+        }),
+      );
     }
 
-    return redirectWithError("unknown");
+    return NextResponse.redirect(
+      buildOAuthErrorRedirect({
+        platform: "tiktok",
+        reason: "unknown",
+        returnTo,
+      }),
+    );
   }
 }

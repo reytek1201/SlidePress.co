@@ -2,15 +2,18 @@
 
 import CampaignYouTubeReadinessChecklist from "@/app/campaign/[id]/campaign-youtube-readiness-checklist";
 import { getYouTubePublishErrorMessage } from "@/utils/youtube/publish-errors";
+import { buildPlatformAuthorizeUrl } from "@/utils/platforms/oauth-return";
 import type { PlatformConnectionPublic } from "@/types/platform-connection";
 import type { PlatformPostPublic } from "@/types/platform-post";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 interface PublishReadinessResponse {
   success: boolean;
   connected: boolean;
   connection: PlatformConnectionPublic | null;
+  hasUploadScope: boolean;
   hasYoutubeCaption: boolean;
   hasVideoExport: boolean;
   currentExportId: string | null;
@@ -97,6 +100,8 @@ export default function CampaignYouTubePublishPanel({
   canGenerateCaptions = false,
   isGeneratingCaptions = false,
 }: CampaignYouTubePublishPanelProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [readiness, setReadiness] = useState<PublishReadinessResponse | null>(
     null,
   );
@@ -106,6 +111,11 @@ export default function CampaignYouTubePublishPanel({
   const [error, setError] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const publishInFlightRef = useRef(false);
+  const campaignReturnPath = `/campaign/${campaignId}?tab=publish`;
+  const uploadAuthorizeUrl = buildPlatformAuthorizeUrl(
+    "/api/platforms/youtube/upload-authorize",
+    campaignReturnPath,
+  );
 
   const loadReadiness = useCallback(async () => {
     if (!hasYoutubeCaptions) {
@@ -149,6 +159,32 @@ export default function CampaignYouTubePublishPanel({
   useEffect(() => {
     void loadReadiness();
   }, [loadReadiness, refreshKey]);
+
+  useEffect(() => {
+    const scopeGranted = searchParams.get("youtube_scope") === "granted";
+    const oauthError = searchParams.get("youtube_error");
+
+    if (!scopeGranted && !oauthError) {
+      return;
+    }
+
+    if (scopeGranted) {
+      setError(null);
+      setMessage("Upload permission granted. You can post to YouTube now.");
+      void loadReadiness();
+    } else if (oauthError === "scope") {
+      setError(
+        "YouTube did not grant upload permission. Try again, or confirm your Google account is on the OAuth test users list.",
+      );
+    } else if (oauthError) {
+      setError("Could not complete YouTube authorization. Try again.");
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("youtube_scope");
+    url.searchParams.delete("youtube_error");
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [loadReadiness, router, searchParams]);
 
   async function handlePublish() {
     if (publishInFlightRef.current || isPublishing) {
@@ -257,7 +293,8 @@ export default function CampaignYouTubePublishPanel({
   }
 
   const needsUploadScope =
-    error?.includes("Upload permission required") ?? false;
+    (readiness?.connected && !readiness.hasUploadScope) ||
+    (error?.includes("Upload permission required") ?? false);
 
   let helperText = "Post your 9:16 Quick Reel with YouTube Shorts caption.";
 
@@ -309,7 +346,7 @@ export default function CampaignYouTubePublishPanel({
           <button
             type="button"
             onClick={() => {
-              window.location.href = "/api/platforms/youtube/upload-authorize";
+              window.location.href = uploadAuthorizeUrl;
             }}
             className="btn-primary w-full py-2.5 text-sm sm:w-auto sm:px-6"
           >

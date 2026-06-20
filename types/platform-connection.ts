@@ -14,6 +14,7 @@ export interface PlatformConnectionRow {
   platform: PlatformConnectionPlatform;
   access_token: string;
   refresh_token: string | null;
+  scopes: string | null;
   expires_at: string;
   account_external_id: string;
   account_label: string;

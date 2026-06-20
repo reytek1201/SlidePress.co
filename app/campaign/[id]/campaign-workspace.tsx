@@ -40,6 +40,7 @@ import CampaignSlidesMobileView from "@/app/campaign/[id]/campaign-slides-mobile
 import CampaignTitleEditor from "@/app/campaign/[id]/campaign-title-editor";
 import {
   isMobileWorkspaceLayout,
+  parseCampaignWorkspaceTab,
   type CampaignWorkspaceTab,
 } from "@/app/campaign/[id]/campaign-workspace-tab";
 import CampaignBackLink from "@/app/components/campaign-back-link";
@@ -53,6 +54,7 @@ import {
   shareCampaignZip,
 } from "@/utils/native-slide-export";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
@@ -96,6 +98,7 @@ export default function CampaignWorkspace({
   brandName = null,
   initialPreferredVoicePersona = "warm",
 }: CampaignWorkspaceProps) {
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [campaign, setCampaign] = useState(initialCampaign);
   const [slides, setSlides] = useState(initialSlides);
@@ -172,6 +175,14 @@ export default function CampaignWorkspace({
   const slideFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideIdsRef = useRef(new Set(initialSlides.map((slide) => slide.id)));
+
+  useEffect(() => {
+    const tab = parseCampaignWorkspaceTab(searchParams.get("tab"));
+
+    if (tab) {
+      setWorkspaceTab(tab);
+    }
+  }, [searchParams]);
 
   const imageIndex = useMemo(
     () => indexSlideImages(slideImages),

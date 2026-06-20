@@ -1,15 +1,18 @@
 "use client";
 
 import { getTikTokPublishErrorMessage } from "@/utils/tiktok/publish-errors";
+import { buildPlatformAuthorizeUrl } from "@/utils/platforms/oauth-return";
 import type { PlatformConnectionPublic } from "@/types/platform-connection";
 import type { PlatformPostPublic } from "@/types/platform-post";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 interface PublishReadinessResponse {
   success: boolean;
   connected: boolean;
   connection: PlatformConnectionPublic | null;
+  hasPublishScope: boolean;
   hasTiktokCaption: boolean;
   hasVideoExport: boolean;
   currentExportId: string | null;
@@ -87,6 +90,8 @@ export default function CampaignTikTokPublishPanel({
   imagesComplete = false,
   hasCaptions = false,
 }: CampaignTikTokPublishPanelProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [readiness, setReadiness] = useState<PublishReadinessResponse | null>(
     null,
   );
@@ -96,6 +101,11 @@ export default function CampaignTikTokPublishPanel({
   const [error, setError] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const publishInFlightRef = useRef(false);
+  const campaignReturnPath = `/campaign/${campaignId}?tab=publish`;
+  const publishAuthorizeUrl = buildPlatformAuthorizeUrl(
+    "/api/platforms/tiktok/publish-authorize",
+    campaignReturnPath,
+  );
 
   const loadReadiness = useCallback(async () => {
     if (!hasCaptions) {
@@ -139,6 +149,32 @@ export default function CampaignTikTokPublishPanel({
   useEffect(() => {
     void loadReadiness();
   }, [loadReadiness, refreshKey]);
+
+  useEffect(() => {
+    const scopeGranted = searchParams.get("tiktok_scope") === "granted";
+    const oauthError = searchParams.get("tiktok_error");
+
+    if (!scopeGranted && !oauthError) {
+      return;
+    }
+
+    if (scopeGranted) {
+      setError(null);
+      setMessage("Posting permission granted. You can post to TikTok now.");
+      void loadReadiness();
+    } else if (oauthError === "scope") {
+      setError(
+        "TikTok did not grant posting permission. Try again, or check your TikTok app sandbox settings.",
+      );
+    } else if (oauthError) {
+      setError("Could not complete TikTok authorization. Try again.");
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tiktok_scope");
+    url.searchParams.delete("tiktok_error");
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [loadReadiness, router, searchParams]);
 
   async function handlePublish() {
     if (publishInFlightRef.current || isPublishing) {
@@ -226,7 +262,8 @@ export default function CampaignTikTokPublishPanel({
   }
 
   const needsPublishScope =
-    error?.includes("Posting permission required") ?? false;
+    (readiness?.connected && !readiness.hasPublishScope) ||
+    (error?.includes("Posting permission required") ?? false);
 
   let helperText = "Post your 9:16 Quick Reel with your TikTok caption.";
 
@@ -257,6 +294,9 @@ export default function CampaignTikTokPublishPanel({
         <li>{readiness.hasVideoExport ? "✓" : "○"} 9:16 video export ready</li>
         <li>{readiness.connected ? "✓" : "○"} TikTok account connected</li>
         <li>
+          {readiness.hasPublishScope ? "✓" : "○"} TikTok posting permission
+        </li>
+        <li>
           {readiness.alreadyPublished || publishedUrl ? "✓" : "○"} Posted to
           TikTok
         </li>
@@ -281,7 +321,7 @@ export default function CampaignTikTokPublishPanel({
           <button
             type="button"
             onClick={() => {
-              window.location.href = "/api/platforms/tiktok/publish-authorize";
+              window.location.href = publishAuthorizeUrl;
             }}
             className="btn-primary w-full py-2.5 text-sm sm:w-auto sm:px-6"
           >

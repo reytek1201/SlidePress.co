@@ -5,17 +5,13 @@ import {
 } from "@/utils/youtube/connection-store";
 import { exchangeYouTubeCode, fetchYouTubeChannel } from "@/utils/youtube/oauth";
 import { verifyYouTubeOAuthState } from "@/utils/youtube/oauth-state";
-import { getAppUrl } from "@/utils/stripe";
+import {
+  buildOAuthErrorRedirect,
+  buildOAuthSuccessRedirect,
+} from "@/utils/platforms/oauth-return";
+import { hasYouTubeUploadScope } from "@/utils/platforms/scopes";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse, type NextRequest } from "next/server";
-
-function redirectToSettings(query: string): NextResponse {
-  return NextResponse.redirect(`${getAppUrl()}/settings/connected-accounts?${query}`);
-}
-
-function redirectWithError(reason: string): NextResponse {
-  return redirectToSettings(`youtube=error&reason=${encodeURIComponent(reason)}`);
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -24,25 +20,42 @@ export async function GET(request: NextRequest) {
   const oauthError = searchParams.get("error");
   const oauthErrorDescription = searchParams.get("error_description");
 
-  if (oauthError) {
-    const detail = oauthErrorDescription
-      ? `youtube=denied&reason=${encodeURIComponent(oauthErrorDescription)}`
-      : "youtube=denied";
-    return redirectToSettings(detail);
-  }
-
-  if (!code || !state) {
-    return redirectWithError("missing_code");
-  }
-
-  let userId: string;
+  let oauthState;
 
   try {
-    userId = verifyYouTubeOAuthState(state);
-  } catch (error) {
-    console.error("YouTube OAuth state verification failed:", error);
-    return redirectWithError("state");
+    oauthState = state ? verifyYouTubeOAuthState(state) : null;
+  } catch {
+    oauthState = null;
   }
+
+  const returnTo = oauthState?.returnTo;
+  const intent = oauthState?.intent ?? "connect";
+
+  if (oauthError) {
+    const reason = oauthErrorDescription
+      ? `denied:${oauthErrorDescription}`
+      : "denied";
+
+    return NextResponse.redirect(
+      buildOAuthErrorRedirect({
+        platform: "youtube",
+        reason,
+        returnTo,
+      }),
+    );
+  }
+
+  if (!code || !state || !oauthState) {
+    return NextResponse.redirect(
+      buildOAuthErrorRedirect({
+        platform: "youtube",
+        reason: !oauthState ? "state" : "missing_code",
+        returnTo,
+      }),
+    );
+  }
+
+  const userId = oauthState.userId;
 
   try {
     const supabase = await createClient();
@@ -53,7 +66,13 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!authError && user && user.id !== userId) {
-      return redirectWithError("session_mismatch");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "youtube",
+          reason: "session_mismatch",
+          returnTo,
+        }),
+      );
     }
 
     const tokens = await exchangeYouTubeCode(code);
@@ -66,33 +85,77 @@ export async function GET(request: NextRequest) {
       refreshToken: tokens.refresh_token ?? null,
       expiresInSeconds: tokens.expires_in,
       channel,
+      scopes: tokens.scope,
       existingRefreshToken: existing?.refresh_token,
+      existingScopes: existing?.scopes,
     });
 
-    const saved = await getYouTubeConnectionRow(userId);
+    let saved = await getYouTubeConnectionRow(userId);
 
     if (saved) {
-      await ensureFreshYouTubeAccessToken(saved);
+      saved = await ensureFreshYouTubeAccessToken(saved);
     }
 
-    return redirectToSettings("youtube=connected");
+    const mergedScopes = saved?.scopes ?? tokens.scope;
+
+    if (intent === "publish" && !hasYouTubeUploadScope(mergedScopes)) {
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "youtube",
+          reason: "scope",
+          returnTo,
+        }),
+      );
+    }
+
+    return NextResponse.redirect(
+      buildOAuthSuccessRedirect({
+        platform: "youtube",
+        intent,
+        returnTo,
+      }),
+    );
   } catch (error) {
     console.error("YouTube OAuth callback error:", error);
 
     const message = error instanceof Error ? error.message.toLowerCase() : "";
 
     if (message.includes("platform_connections") || message.includes("relation")) {
-      return redirectWithError("database");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "youtube",
+          reason: "database",
+          returnTo,
+        }),
+      );
     }
 
     if (message.includes("channel")) {
-      return redirectWithError("channel");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "youtube",
+          reason: "channel",
+          returnTo,
+        }),
+      );
     }
 
     if (message.includes("token") || message.includes("oauth")) {
-      return redirectWithError("token");
+      return NextResponse.redirect(
+        buildOAuthErrorRedirect({
+          platform: "youtube",
+          reason: "token",
+          returnTo,
+        }),
+      );
     }
 
-    return redirectWithError("unknown");
+    return NextResponse.redirect(
+      buildOAuthErrorRedirect({
+        platform: "youtube",
+        reason: "unknown",
+        returnTo,
+      }),
+    );
   }
 }

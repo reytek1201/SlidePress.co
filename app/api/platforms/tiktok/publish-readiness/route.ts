@@ -1,4 +1,5 @@
-import { getTikTokConnectionPublic } from "@/utils/tiktok/connection-store";
+import { getTikTokConnectionPublic, getTikTokConnectionRow } from "@/utils/tiktok/connection-store";
+import { hasTikTokPublishScope } from "@/utils/platforms/scopes";
 import { resolveVerticalVideoExport } from "@/utils/platforms/resolve-video-export";
 import {
   getPlatformPostForCampaignExport,
@@ -47,6 +48,8 @@ export async function GET(request: Request) {
     }
 
     const connection = await getTikTokConnectionPublic(user.id);
+    const connectionRow = await getTikTokConnectionRow(user.id);
+    const hasPublishScope = hasTikTokPublishScope(connectionRow?.scopes);
 
     const { data: caption } = await supabase
       .from("platform_captions")
@@ -90,6 +93,7 @@ export async function GET(request: Request) {
       success: true,
       connected: Boolean(connection),
       connection,
+      hasPublishScope,
       hasTiktokCaption: Boolean(caption),
       hasVideoExport,
       currentExportId,
@@ -98,6 +102,7 @@ export async function GET(request: Request) {
       profileUrl,
       canPublish:
         Boolean(connection) &&
+        hasPublishScope &&
         Boolean(caption) &&
         hasVideoExport &&
         !alreadyPublished &&

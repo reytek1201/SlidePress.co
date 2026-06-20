@@ -5,9 +5,13 @@ import {
   getTikTokOAuthConfig,
 } from "@/utils/tiktok/oauth";
 import { createTikTokOAuthState } from "@/utils/tiktok/oauth-state";
-import { NextResponse } from "next/server";
+import { buildOAuthErrorRedirect } from "@/utils/platforms/oauth-return";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const returnTo = searchParams.get("returnTo");
+
   try {
     const supabase = await createClient();
 
@@ -24,7 +28,10 @@ export async function GET() {
 
     getTikTokOAuthConfig();
 
-    const state = createTikTokOAuthState(user.id);
+    const state = createTikTokOAuthState(user.id, {
+      returnTo,
+      intent: "publish",
+    });
     const authUrl = buildTikTokPublishAuthUrl(state);
 
     return NextResponse.redirect(authUrl);
@@ -32,7 +39,11 @@ export async function GET() {
     console.error("TikTok publish authorize error:", error);
 
     return NextResponse.redirect(
-      `${getAppUrl()}/settings/connected-accounts?tiktok=error&reason=${encodeURIComponent("connect")}`,
+      buildOAuthErrorRedirect({
+        platform: "tiktok",
+        reason: "connect",
+        returnTo: returnTo ?? undefined,
+      }),
     );
   }
 }

@@ -2,6 +2,7 @@ import type {
   PlatformConnectionPublic,
   PlatformConnectionRow,
 } from "@/types/platform-connection";
+import { mergeScopeStrings } from "@/utils/platforms/scopes";
 import { createAdminClient } from "@/utils/supabase/admin";
 import {
   refreshYouTubeAccessToken,
@@ -54,7 +55,9 @@ export async function upsertYouTubeConnection(input: {
   refreshToken: string | null;
   expiresInSeconds: number;
   channel: YouTubeChannelInfo;
+  scopes?: string | null;
   existingRefreshToken?: string | null;
+  existingScopes?: string | null;
 }): Promise<PlatformConnectionPublic> {
   const admin = createAdminClient();
   const expiresAt = new Date(
@@ -63,6 +66,7 @@ export async function upsertYouTubeConnection(input: {
 
   const refreshToken =
     input.refreshToken ?? input.existingRefreshToken ?? null;
+  const scopes = mergeScopeStrings(input.existingScopes, input.scopes);
 
   const { data, error } = await admin
     .from("platform_connections")
@@ -72,6 +76,7 @@ export async function upsertYouTubeConnection(input: {
         platform: "youtube",
         access_token: input.accessToken,
         refresh_token: refreshToken,
+        scopes: scopes || null,
         expires_at: expiresAt,
         account_external_id: input.channel.channelId,
         account_label: input.channel.title,
@@ -126,6 +131,7 @@ export async function ensureFreshYouTubeAccessToken(
     .update({
       access_token: refreshed.access_token,
       refresh_token: refreshed.refresh_token ?? row.refresh_token,
+      scopes: mergeScopeStrings(row.scopes, refreshed.scope) || null,
       expires_at: expiresAt,
     })
     .eq("id", row.id)

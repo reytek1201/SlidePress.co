@@ -3,7 +3,8 @@ import {
   getPlatformPostForCampaignExport,
   isPlatformPostInFlight,
 } from "@/utils/youtube/platform-post-store";
-import { getYouTubeConnectionPublic } from "@/utils/youtube/connection-store";
+import { getYouTubeConnectionPublic, getYouTubeConnectionRow } from "@/utils/youtube/connection-store";
+import { hasYouTubeUploadScope } from "@/utils/platforms/scopes";
 import { resolveYouTubeVideoExport } from "@/utils/youtube/resolve-video-export";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
@@ -48,6 +49,8 @@ export async function GET(request: Request) {
     }
 
     const connection = await getYouTubeConnectionPublic(user.id);
+    const connectionRow = await getYouTubeConnectionRow(user.id);
+    const hasUploadScope = hasYouTubeUploadScope(connectionRow?.scopes);
 
     const { data: caption } = await supabase
       .from("platform_captions")
@@ -93,6 +96,7 @@ export async function GET(request: Request) {
       success: true,
       connected: Boolean(connection),
       connection,
+      hasUploadScope,
       hasYoutubeCaption: Boolean(caption),
       hasVideoExport,
       currentExportId,
@@ -101,6 +105,7 @@ export async function GET(request: Request) {
       watchUrl,
       canPublish:
         Boolean(connection) &&
+        hasUploadScope &&
         Boolean(caption) &&
         hasVideoExport &&
         !alreadyPublished &&

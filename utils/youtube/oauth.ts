@@ -63,7 +63,7 @@ export function buildYouTubeUploadAuthUrl(state: string): string {
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: YOUTUBE_UPLOAD_SCOPE,
+    scope: [youtubeConnectScopeString(), YOUTUBE_UPLOAD_SCOPE].join(" "),
     access_type: "offline",
     include_granted_scopes: "true",
     prompt: "consent",
