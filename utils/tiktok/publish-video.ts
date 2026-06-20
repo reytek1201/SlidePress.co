@@ -27,14 +27,22 @@ function assertTikTokApiOk<T>(
       throw new TikTokPublishScopeError();
     }
 
+    if (code === "spam_risk_too_many_posts") {
+      throw new Error("TikTok daily post limit reached. Try again tomorrow.");
+    }
+
     if (code === "unaudited_client_can_only_post_to_private_accounts") {
       throw new Error(
-        "TikTok sandbox apps can only post privately. Reconnect with posting permission and use a private privacy level.",
+        "TikTok sandbox apps can only post privately. Set TIKTOK_PUBLISH_PRIVACY=SELF_ONLY and try again.",
       );
     }
 
-    if (code === "spam_risk_too_many_posts") {
-      throw new Error("TikTok daily post limit reached. Try again tomorrow.");
+    if (code && code !== "ok") {
+      throw new Error(
+        message === "TikTok API request failed"
+          ? `TikTok API error: ${code}`
+          : `${message} (${code})`,
+      );
     }
 
     throw new Error(message);
@@ -179,7 +187,7 @@ async function initTikTokFileUploadPost(input: {
           disable_duet: input.creator.duetDisabled,
           disable_stitch: input.creator.stitchDisabled,
           brand_content_toggle: false,
-          brand_organic_toggle: true,
+          brand_organic_toggle: false,
         },
         source_info: {
           source: "FILE_UPLOAD",
