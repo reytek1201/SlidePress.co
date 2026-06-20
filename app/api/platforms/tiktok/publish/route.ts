@@ -3,22 +3,18 @@ import {
   getPlatformPostForCampaignExport,
   isPlatformPostInFlight,
   updatePlatformPost,
-} from "@/utils/youtube/platform-post-store";
+} from "@/utils/platform-post-store";
+import { resolveVerticalVideoExport } from "@/utils/platforms/resolve-video-export";
 import {
-  ensureFreshYouTubeAccessToken,
-  getYouTubeConnectionRow,
-} from "@/utils/youtube/connection-store";
-import { resolveYouTubeVideoExport } from "@/utils/youtube/resolve-video-export";
+  ensureFreshTikTokAccessToken,
+  getTikTokConnectionRow,
+} from "@/utils/tiktok/connection-store";
+import { TikTokPublishScopeError } from "@/utils/tiktok/publish-video";
+import { publishTikTokVideo } from "@/utils/tiktok/publish-video";
 import {
-  uploadYouTubeShort,
-  YouTubeUploadScopeError,
-} from "@/utils/youtube/upload-short";
-import {
-  buildYouTubeShortsUrl,
-  buildYouTubeVideoMetadata,
-  buildYouTubeWatchUrl,
-  getYouTubePublishPrivacyStatus,
-} from "@/utils/youtube/video-metadata";
+  buildTikTokPostTitle,
+  getTikTokPublishPrivacyPreference,
+} from "@/utils/tiktok/video-metadata";
 import type { PlatformCaption } from "@/types/captions";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
@@ -61,13 +57,13 @@ export async function POST(request: Request) {
 
     const { campaignId, exportId } = parsed.data;
 
-    const connection = await getYouTubeConnectionRow(user.id);
+    const connection = await getTikTokConnectionRow(user.id);
 
     if (!connection) {
       return NextResponse.json(
         {
           success: false,
-          error: "Connect YouTube in Settings before publishing",
+          error: "Connect TikTok in Settings before publishing",
           code: "NOT_CONNECTED",
         },
         { status: 422 },
@@ -91,20 +87,20 @@ export async function POST(request: Request) {
       .from("platform_captions")
       .select("*")
       .eq("campaign_id", campaignId)
-      .eq("platform", "youtube_shorts")
+      .eq("platform", "tiktok")
       .maybeSingle();
 
     if (captionError || !caption) {
       return NextResponse.json(
         {
           success: false,
-          error: "Generate YouTube Shorts captions before publishing",
+          error: "Generate TikTok captions before publishing",
         },
         { status: 422 },
       );
     }
 
-    const videoExport = await resolveYouTubeVideoExport(
+    const videoExport = await resolveVerticalVideoExport(
       supabase,
       campaignId,
       exportId,
@@ -114,7 +110,7 @@ export async function POST(request: Request) {
       user.id,
       campaignId,
       videoExport.id,
-      "youtube",
+      "tiktok",
     );
 
     if (existingPost?.status === "published") {
@@ -122,14 +118,10 @@ export async function POST(request: Request) {
         success: true,
         alreadyPublished: true,
         post: existingPost,
-        video: existingPost.externalId
+        video: existingPost.externalUrl
           ? {
-              id: existingPost.externalId,
-              watchUrl: buildYouTubeWatchUrl(existingPost.externalId),
-              shortsUrl:
-                existingPost.externalUrl ??
-                buildYouTubeShortsUrl(existingPost.externalId),
-              privacyStatus: getYouTubePublishPrivacyStatus(),
+              profileUrl: existingPost.externalUrl,
+              videoUrl: existingPost.externalUrl,
             }
           : undefined,
       });
@@ -139,7 +131,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "This export is already being published to YouTube",
+          error: "This export is already being published to TikTok",
           code: "PUBLISH_IN_PROGRESS",
           post: existingPost,
         },
@@ -153,7 +145,7 @@ export async function POST(request: Request) {
       post = await createPlatformPost({
         userId: user.id,
         campaignId,
-        platform: "youtube",
+        platform: "tiktok",
         exportId: videoExport.id,
         status: "uploading",
       });
@@ -162,7 +154,7 @@ export async function POST(request: Request) {
         user.id,
         campaignId,
         videoExport.id,
-        "youtube",
+        "tiktok",
       );
 
       if (racedPost?.status === "published") {
@@ -170,14 +162,10 @@ export async function POST(request: Request) {
           success: true,
           alreadyPublished: true,
           post: racedPost,
-          video: racedPost.externalId
+          video: racedPost.externalUrl
             ? {
-                id: racedPost.externalId,
-                watchUrl: buildYouTubeWatchUrl(racedPost.externalId),
-                shortsUrl:
-                  racedPost.externalUrl ??
-                  buildYouTubeShortsUrl(racedPost.externalId),
-                privacyStatus: getYouTubePublishPrivacyStatus(),
+                profileUrl: racedPost.externalUrl,
+                videoUrl: racedPost.externalUrl,
               }
             : undefined,
         });
@@ -187,7 +175,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             success: false,
-            error: "This export is already being published to YouTube",
+            error: "This export is already being published to TikTok",
             code: "PUBLISH_IN_PROGRESS",
             post: racedPost,
           },
@@ -200,32 +188,32 @@ export async function POST(request: Request) {
 
     postId = post.id;
 
-    const freshConnection = await ensureFreshYouTubeAccessToken(connection);
-    const metadata = buildYouTubeVideoMetadata(caption as PlatformCaption);
-    const privacyStatus = getYouTubePublishPrivacyStatus();
+    await updatePlatformPost(post.id, { status: "processing" });
 
-    const uploaded = await uploadYouTubeShort({
+    const freshConnection = await ensureFreshTikTokAccessToken(connection);
+    const title = buildTikTokPostTitle(caption as PlatformCaption);
+    const privacyPreference = getTikTokPublishPrivacyPreference();
+
+    const published = await publishTikTokVideo({
       accessToken: freshConnection.access_token,
       videoUrl: videoExport.outputUrl,
-      metadata,
-      privacyStatus,
+      title,
+      privacyPreference,
     });
 
-    const published = await updatePlatformPost(post.id, {
+    const stored = await updatePlatformPost(post.id, {
       status: "published",
-      external_id: uploaded.videoId,
-      external_url: uploaded.shortsUrl,
+      external_id: published.postId ?? published.publishId,
+      external_url: published.videoUrl ?? published.profileUrl,
       error_message: null,
     });
 
     return NextResponse.json({
       success: true,
-      post: published,
+      post: stored,
       video: {
-        id: uploaded.videoId,
-        watchUrl: buildYouTubeWatchUrl(uploaded.videoId),
-        shortsUrl: buildYouTubeShortsUrl(uploaded.videoId),
-        privacyStatus,
+        profileUrl: published.profileUrl,
+        videoUrl: published.videoUrl,
       },
     });
   } catch (error) {
@@ -234,20 +222,20 @@ export async function POST(request: Request) {
         await updatePlatformPost(postId, {
           status: "failed",
           error_message:
-            error instanceof Error ? error.message : "YouTube publish failed",
+            error instanceof Error ? error.message : "TikTok publish failed",
         });
       } catch (updateError) {
         console.error("Failed to mark platform post as failed:", updateError);
       }
     }
 
-    if (error instanceof YouTubeUploadScopeError) {
+    if (error instanceof TikTokPublishScopeError) {
       return NextResponse.json(
         {
           success: false,
           error: error.message,
-          code: "UPLOAD_SCOPE_REQUIRED",
-          authorizeUrl: "/api/platforms/youtube/upload-authorize",
+          code: "PUBLISH_SCOPE_REQUIRED",
+          authorizeUrl: "/api/platforms/tiktok/publish-authorize",
         },
         { status: 403 },
       );

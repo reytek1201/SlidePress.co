@@ -176,9 +176,10 @@ export default async function PrivacyPage({ searchParams }: PrivacyPageProps) {
         </h2>
         <p className="mt-3">
           If you connect a TikTok account, SlidePress requests basic profile
-          access to show your display name. We store OAuth tokens securely on
-          our servers (not in the mobile app). Direct video posting will request
-          additional permissions when that feature is enabled.
+          access to show your display name. When you publish, we request
+          posting permission to upload your campaign video with your TikTok
+          caption. We store OAuth tokens securely on our servers (not in the
+          mobile app) and record publish status per campaign.
         </p>
         <p className="mt-3">
           You can disconnect TikTok anytime in Settings → Connected accounts.

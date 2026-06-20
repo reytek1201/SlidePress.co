@@ -3,6 +3,17 @@ import { getAppUrl } from "@/utils/stripe";
 /** Scopes requested when connecting an account (Settings). */
 export const TIKTOK_CONNECT_SCOPES = ["user.info.basic"] as const;
 
+/** Added at publish time — requires TikTok app approval for public posts. */
+export const TIKTOK_PUBLISH_SCOPE = "video.publish";
+
+function tiktokConnectScopeString(): string {
+  return TIKTOK_CONNECT_SCOPES.join(",");
+}
+
+function tiktokPublishScopeString(): string {
+  return [...TIKTOK_CONNECT_SCOPES, TIKTOK_PUBLISH_SCOPE].join(",");
+}
+
 export function getTikTokRedirectUri(): string {
   return (
     process.env.TIKTOK_REDIRECT_URI?.replace(/\/$/, "") ??
@@ -35,7 +46,21 @@ export function buildTikTokAuthUrl(state: string): string {
   const params = new URLSearchParams({
     client_key: clientKey,
     response_type: "code",
-    scope: TIKTOK_CONNECT_SCOPES.join(","),
+    scope: tiktokConnectScopeString(),
+    redirect_uri: redirectUri,
+    state,
+  });
+
+  return `https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`;
+}
+
+export function buildTikTokPublishAuthUrl(state: string): string {
+  const { clientKey, redirectUri } = getTikTokOAuthConfig();
+
+  const params = new URLSearchParams({
+    client_key: clientKey,
+    response_type: "code",
+    scope: tiktokPublishScopeString(),
     redirect_uri: redirectUri,
     state,
   });

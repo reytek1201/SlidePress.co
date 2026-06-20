@@ -319,7 +319,7 @@ export default function ConnectedAccountsSettings() {
       <PlatformConnectionCard
         platform="tiktok"
         title="TikTok"
-        description="Connect your TikTok account to post videos from SlidePress. Posting permission will be requested when direct publish ships."
+        description="Connect your TikTok account to post videos from SlidePress. Posting permission is requested the first time you publish."
         accountLabel="Account"
         icon={<TikTokIcon />}
         connection={tiktokConnection}

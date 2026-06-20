@@ -1,10 +1,9 @@
-import { buildYouTubeWatchUrl } from "@/utils/youtube/video-metadata";
+import { getTikTokConnectionPublic } from "@/utils/tiktok/connection-store";
+import { resolveVerticalVideoExport } from "@/utils/platforms/resolve-video-export";
 import {
   getPlatformPostForCampaignExport,
   isPlatformPostInFlight,
-} from "@/utils/youtube/platform-post-store";
-import { getYouTubeConnectionPublic } from "@/utils/youtube/connection-store";
-import { resolveYouTubeVideoExport } from "@/utils/youtube/resolve-video-export";
+} from "@/utils/platform-post-store";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -47,13 +46,13 @@ export async function GET(request: Request) {
       );
     }
 
-    const connection = await getYouTubeConnectionPublic(user.id);
+    const connection = await getTikTokConnectionPublic(user.id);
 
     const { data: caption } = await supabase
       .from("platform_captions")
       .select("id")
       .eq("campaign_id", campaignId)
-      .eq("platform", "youtube_shorts")
+      .eq("platform", "tiktok")
       .maybeSingle();
 
     let hasVideoExport = false;
@@ -61,10 +60,10 @@ export async function GET(request: Request) {
     let postForCurrentExport = null;
     let alreadyPublished = false;
     let isUploading = false;
-    let watchUrl: string | null = null;
+    let profileUrl: string | null = null;
 
     try {
-      const videoExport = await resolveYouTubeVideoExport(supabase, campaignId);
+      const videoExport = await resolveVerticalVideoExport(supabase, campaignId);
       hasVideoExport = true;
       currentExportId = videoExport.id;
 
@@ -72,7 +71,7 @@ export async function GET(request: Request) {
         user.id,
         campaignId,
         videoExport.id,
-        "youtube",
+        "tiktok",
       );
 
       alreadyPublished = postForCurrentExport?.status === "published";
@@ -80,10 +79,8 @@ export async function GET(request: Request) {
         ? isPlatformPostInFlight(postForCurrentExport.status)
         : false;
 
-      if (alreadyPublished && postForCurrentExport?.externalId) {
-        watchUrl =
-          postForCurrentExport.externalUrl ??
-          buildYouTubeWatchUrl(postForCurrentExport.externalId);
+      if (alreadyPublished && postForCurrentExport?.externalUrl) {
+        profileUrl = postForCurrentExport.externalUrl;
       }
     } catch {
       hasVideoExport = false;
@@ -93,12 +90,12 @@ export async function GET(request: Request) {
       success: true,
       connected: Boolean(connection),
       connection,
-      hasYoutubeCaption: Boolean(caption),
+      hasTiktokCaption: Boolean(caption),
       hasVideoExport,
       currentExportId,
       alreadyPublished,
       isUploading,
-      watchUrl,
+      profileUrl,
       canPublish:
         Boolean(connection) &&
         Boolean(caption) &&

@@ -5,7 +5,7 @@ export type PlatformPostStatus =
   | "published"
   | "failed";
 
-export type PlatformPostPlatform = "youtube";
+export type PlatformPostPlatform = "youtube" | "tiktok";
 
 export interface PlatformPostPublic {
   id: string;

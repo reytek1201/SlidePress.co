@@ -3,6 +3,7 @@
 import CampaignLockedNotice from "@/app/campaign/[id]/campaign-locked-notice";
 import CampaignCaptionsAccordion from "@/app/campaign/[id]/campaign-captions-accordion";
 import CampaignExportPanel from "@/app/campaign/[id]/campaign-export-panel";
+import CampaignTikTokPublishPanel from "@/app/campaign/[id]/campaign-tiktok-publish-panel";
 import CampaignYouTubePublishPanel from "@/app/campaign/[id]/campaign-youtube-publish-panel";
 import CampaignNarrationPanel from "@/app/campaign/[id]/campaign-narration-panel";
 import CampaignVideoLockedPanel from "@/app/campaign/[id]/campaign-video-locked-panel";
@@ -301,6 +302,25 @@ export default function CampaignPublishPanel({
             onGenerateCaptions={onGenerateCaptions}
             canGenerateCaptions={canGenerateCaptions}
             isGeneratingCaptions={isGeneratingCaptions}
+          />
+        </div>
+      )}
+
+      {imagesComplete && captionsReady && (
+        <div
+          id="section-tiktok-publish"
+          className="mt-6 scroll-mt-32 sm:mt-8 md:scroll-mt-40"
+        >
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs">
+            Step 4 · TikTok
+          </p>
+
+          <CampaignTikTokPublishPanel
+            campaignId={campaignId}
+            disabled={disabled}
+            refreshKey={youtubePublishRefreshKey}
+            imagesComplete={imagesComplete}
+            hasCaptions={captionsReady}
           />
         </div>
       )}

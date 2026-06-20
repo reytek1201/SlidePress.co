@@ -154,10 +154,13 @@ YOUTUBE_CLIENT_ID=
 YOUTUBE_CLIENT_SECRET=
 YOUTUBE_REDIRECT_URI=https://www.slidepress.co/api/platforms/youtube/callback
 
-# TikTok OAuth (Login Kit)
+# TikTok OAuth (Login Kit + Content Posting API)
 TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
 TIKTOK_REDIRECT_URI=https://www.slidepress.co/api/platforms/tiktok/callback
+
+# Optional — default SELF_ONLY (required for unaudited/sandbox apps)
+TIKTOK_PUBLISH_PRIVACY=SELF_ONLY
 
 # Optional: encrypt platform tokens at rest
 PLATFORM_TOKEN_ENCRYPTION_KEY=
