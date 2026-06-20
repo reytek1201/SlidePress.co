@@ -176,6 +176,7 @@ export default function CampaignWorkspace({
     initialSlides.length > 0 &&
       initialSlides.every((slide) => slide.image_url),
   );
+  const skipPublishAutoNavRef = useRef(false);
   const lastUserScrollAtRef = useRef(0);
   const isGeneratingImagesRef = useRef(false);
   const pendingSlideUpdatesRef = useRef<Map<string, Slide>>(new Map());
@@ -483,15 +484,19 @@ export default function CampaignWorkspace({
 
   useEffect(() => {
     if (imagesComplete && !prevImagesCompleteRef.current) {
-      setWorkspaceTab("publish");
-      setPublishTabHint(
-        "Images ready — generate captions to continue to video and YouTube.",
-      );
+      if (!skipPublishAutoNavRef.current) {
+        setWorkspaceTab("publish");
+        setPublishTabHint(
+          "Images ready — generate captions to continue to video and YouTube.",
+        );
 
-      if (captions.length === 0 && shouldShowCaptionsPrompt(campaign.id)) {
-        setActionsSheetOpen(false);
-        setCaptionsPromptOpen(true);
+        if (captions.length === 0 && shouldShowCaptionsPrompt(campaign.id)) {
+          setActionsSheetOpen(false);
+          setCaptionsPromptOpen(true);
+        }
       }
+
+      skipPublishAutoNavRef.current = false;
     }
 
     prevImagesCompleteRef.current = imagesComplete;
@@ -1312,6 +1317,7 @@ export default function CampaignWorkspace({
     options?: { snapProductUrl?: string; feedback?: string[]; notes?: string },
   ) => {
     setError(null);
+    skipPublishAutoNavRef.current = true;
     setRegeneratingSlideId(slideId);
 
     try {
