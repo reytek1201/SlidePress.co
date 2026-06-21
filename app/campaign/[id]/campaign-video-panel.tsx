@@ -13,12 +13,23 @@ import {
   type VideoExportPreset,
 } from "@/utils/video-export-presets";
 
+export interface LastVideoExportInfo {
+  id: string;
+  outputUrl: string;
+  createdAt: string;
+  preset: VideoExportPreset | null;
+}
+
 interface CampaignVideoPanelProps {
-  canExportVideo: boolean;
+  showVideoPanel: boolean;
+  canStartNewExport: boolean;
   aspectRatioLabel: string;
   disabled?: boolean;
   isExportingVideo?: boolean;
+  isDownloadingLastExport?: boolean;
   videoExportMessage?: string | null;
+  videoExportError?: string | null;
+  lastVideoExport?: LastVideoExportInfo | null;
   videoPreset: VideoExportPreset;
   voiceQuality: VoiceQuality;
   dualFormatEnabled?: boolean;
@@ -29,14 +40,27 @@ interface CampaignVideoPanelProps {
   onPresetChange: (preset: VideoExportPreset) => void;
   onVoiceQualityChange: (voiceQuality: VoiceQuality) => void;
   onExportVideo: () => void;
+  onDownloadLastExport?: () => void;
+}
+
+function formatLastExportDate(iso: string): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
 }
 
 export default function CampaignVideoPanel({
-  canExportVideo,
+  showVideoPanel,
+  canStartNewExport,
   aspectRatioLabel,
   disabled = false,
   isExportingVideo = false,
+  isDownloadingLastExport = false,
   videoExportMessage = null,
+  videoExportError = null,
+  lastVideoExport = null,
   videoPreset,
   voiceQuality,
   dualFormatEnabled = false,
@@ -47,10 +71,14 @@ export default function CampaignVideoPanel({
   onPresetChange,
   onVoiceQualityChange,
   onExportVideo,
+  onDownloadLastExport,
 }: CampaignVideoPanelProps) {
-  if (!canExportVideo) {
+  if (!showVideoPanel) {
     return null;
   }
+
+  const exportControlsDisabled =
+    disabled || isExportingVideo || isDownloadingLastExport || !canStartNewExport;
 
   const isSilentPreset = videoPreset === "silent_captions";
   const showFormatChooser =
@@ -98,7 +126,7 @@ export default function CampaignVideoPanel({
             {(["4:5", "9:16"] as const).map((aspectRatio) => {
               const isActive = videoExportAspectRatio === aspectRatio;
               const formatDisabled =
-                disabled || isExportingVideo || isFormatDisabled(aspectRatio);
+                exportControlsDisabled || isFormatDisabled(aspectRatio);
 
               return (
                 <button
@@ -149,7 +177,7 @@ export default function CampaignVideoPanel({
             <button
               key={preset.id}
               type="button"
-              disabled={disabled || isExportingVideo}
+              disabled={exportControlsDisabled}
               onClick={() => onPresetChange(preset.id)}
               className={`rounded-xl border px-3 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
                 isActive
@@ -184,7 +212,7 @@ export default function CampaignVideoPanel({
                 <button
                   key={option.id}
                   type="button"
-                  disabled={disabled || isExportingVideo}
+                  disabled={exportControlsDisabled}
                   onClick={() => onVoiceQualityChange(option.id)}
                   className={`rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     isActive
@@ -206,12 +234,37 @@ export default function CampaignVideoPanel({
 
       <button
         type="button"
-        disabled={disabled || isExportingVideo}
+        disabled={exportControlsDisabled}
         onClick={onExportVideo}
         className="btn-primary mt-4 w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isExportingVideo ? "Rendering video…" : "Download video"}
+        {isExportingVideo ? "Rendering video…" : "Export video"}
       </button>
+
+      {lastVideoExport && onDownloadLastExport ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            disabled={disabled || isExportingVideo || isDownloadingLastExport}
+            onClick={onDownloadLastExport}
+            className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDownloadingLastExport
+              ? "Downloading last export…"
+              : "Download last export"}
+          </button>
+          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+            Exported {formatLastExportDate(lastVideoExport.createdAt)} — no
+            video credit used.
+          </p>
+        </div>
+      ) : null}
+
+      {videoExportError && (
+        <div className="mt-3 rounded-xl border border-red-900/50 bg-red-950/20 px-3 py-2.5 text-xs text-red-200">
+          {videoExportError}
+        </div>
+      )}
 
       {videoExportMessage && (
         <div className="mt-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5 text-xs text-emerald-200">

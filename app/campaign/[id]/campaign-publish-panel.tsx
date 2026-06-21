@@ -8,7 +8,9 @@ import CampaignTikTokPublishPanel from "@/app/campaign/[id]/campaign-tiktok-publ
 import CampaignYouTubePublishPanel from "@/app/campaign/[id]/campaign-youtube-publish-panel";
 import CampaignNarrationPanel from "@/app/campaign/[id]/campaign-narration-panel";
 import CampaignVideoLockedPanel from "@/app/campaign/[id]/campaign-video-locked-panel";
-import CampaignVideoPanel from "@/app/campaign/[id]/campaign-video-panel";
+import CampaignVideoPanel, {
+  type LastVideoExportInfo,
+} from "@/app/campaign/[id]/campaign-video-panel";
 import type { CaptionCopyField, PlatformCaption } from "@/types/captions";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
@@ -50,7 +52,10 @@ interface CampaignPublishPanelProps {
   exportMessage: string | null;
   audioExportMessage: string | null;
   isExportingVideo: boolean;
+  isDownloadingLastVideoExport?: boolean;
   videoExportMessage: string | null;
+  videoExportError?: string | null;
+  lastVideoExport?: LastVideoExportInfo | null;
   publishRefreshKey?: number;
   onPublishComplete?: () => void;
   onYouTubePublishingChange?: (publishing: boolean) => void;
@@ -72,6 +77,7 @@ interface CampaignPublishPanelProps {
   onDownloadZip: () => void;
   onDownloadNarration: () => void;
   onExportVideo: () => void;
+  onDownloadLastVideoExport?: () => void;
   onSaveAllToPhotos: () => void;
 }
 
@@ -109,7 +115,10 @@ export default function CampaignPublishPanel({
   exportMessage,
   audioExportMessage,
   isExportingVideo,
+  isDownloadingLastVideoExport = false,
   videoExportMessage,
+  videoExportError = null,
+  lastVideoExport = null,
   publishRefreshKey = 0,
   onPublishComplete,
   onYouTubePublishingChange,
@@ -128,10 +137,13 @@ export default function CampaignPublishPanel({
   onDownloadZip,
   onDownloadNarration,
   onExportVideo,
+  onDownloadLastVideoExport,
   onSaveAllToPhotos,
 }: CampaignPublishPanelProps) {
   const captionsReady = sortedCaptions.length > 0 && !isGeneratingCaptions;
   const disabled = campaignStatus === "generating_text";
+  const showVideoPanel =
+    videoExportReady && (hasVideoCredits || Boolean(lastVideoExport));
 
   return (
     <section
@@ -278,13 +290,17 @@ export default function CampaignPublishPanel({
             </CampaignLockedNotice>
           ) : (
             <>
-              {videoExportReady && hasVideoCredits && (
+              {showVideoPanel && (
                 <CampaignVideoPanel
-                  canExportVideo
+                  showVideoPanel
+                  canStartNewExport={hasVideoCredits}
                   aspectRatioLabel={aspectRatioLabel}
                   disabled={disabled}
                   isExportingVideo={isExportingVideo}
+                  isDownloadingLastExport={isDownloadingLastVideoExport}
                   videoExportMessage={videoExportMessage}
+                  videoExportError={videoExportError}
+                  lastVideoExport={lastVideoExport}
                   videoPreset={videoPreset}
                   voiceQuality={voiceQuality}
                   dualFormatEnabled={dualFormatVideoReady}
@@ -295,10 +311,14 @@ export default function CampaignPublishPanel({
                   onPresetChange={onVideoPresetChange}
                   onVoiceQualityChange={onVoiceQualityChange}
                   onExportVideo={onExportVideo}
+                  onDownloadLastExport={onDownloadLastVideoExport}
                 />
               )}
 
-              {videoExportReady && videoCreditsKnown && !hasVideoCredits && (
+              {videoExportReady &&
+                videoCreditsKnown &&
+                !hasVideoCredits &&
+                !lastVideoExport && (
                 <CampaignVideoLockedPanel
                   planLabel={videoPlanLabel}
                   tier={videoTier}

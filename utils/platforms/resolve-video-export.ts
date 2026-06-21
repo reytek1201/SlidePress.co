@@ -1,11 +1,14 @@
 import type { AspectRatio } from "@/types/campaign";
 import { parseVideoExportMetadata } from "@/utils/fal-video";
+import type { VideoExportPreset } from "@/utils/video-export-presets";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface ResolvedVideoExport {
   id: string;
   outputUrl: string;
   aspectRatio: AspectRatio | null;
+  createdAt: string;
+  preset: VideoExportPreset | null;
 }
 
 interface ExportRow {
@@ -37,6 +40,26 @@ export async function resolveVerticalVideoExport(
     return validateExportRow(data as ExportRow);
   }
 
+  const result = await resolveLatestVideoExportForAspect(
+    supabase,
+    campaignId,
+    "9:16",
+  );
+
+  if (!result) {
+    throw new Error(
+      "No completed 9:16 video export found. Export a vertical Quick Reel first.",
+    );
+  }
+
+  return result;
+}
+
+export async function resolveLatestVideoExportForAspect(
+  supabase: SupabaseClient,
+  campaignId: string,
+  aspectRatio: AspectRatio,
+): Promise<ResolvedVideoExport | null> {
   const { data, error } = await supabase
     .from("exports")
     .select("id, output_url, status, export_type, metadata, created_at")
@@ -55,14 +78,28 @@ export async function resolveVerticalVideoExport(
   for (const row of rows) {
     const metadata = parseVideoExportMetadata(row.metadata);
 
-    if (metadata?.aspectRatio === "9:16") {
+    if (exportMatchesAspect(metadata, aspectRatio)) {
       return validateExportRow(row);
     }
   }
 
-  throw new Error(
-    "No completed 9:16 video export found. Export a vertical Quick Reel first.",
-  );
+  return null;
+}
+
+function exportMatchesAspect(
+  metadata: ReturnType<typeof parseVideoExportMetadata>,
+  aspectRatio: AspectRatio,
+): boolean {
+  if (metadata?.aspectRatio === aspectRatio) {
+    return true;
+  }
+
+  // Legacy exports before aspect ratio metadata — all were vertical reels.
+  if (!metadata?.aspectRatio && aspectRatio === "9:16") {
+    return true;
+  }
+
+  return false;
 }
 
 function validateExportRow(row: ExportRow): ResolvedVideoExport {
@@ -80,5 +117,7 @@ function validateExportRow(row: ExportRow): ResolvedVideoExport {
     id: row.id,
     outputUrl: row.output_url,
     aspectRatio: metadata?.aspectRatio ?? null,
+    createdAt: row.created_at,
+    preset: metadata?.preset ?? null,
   };
 }

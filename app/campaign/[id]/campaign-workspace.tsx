@@ -31,6 +31,7 @@ import {
   CampaignActionsSheet,
 } from "@/app/campaign/[id]/campaign-actions-sheet";
 import CampaignPublishPanel from "@/app/campaign/[id]/campaign-publish-panel";
+import type { LastVideoExportInfo } from "@/app/campaign/[id]/campaign-video-panel";
 import CampaignOperationOverlay from "@/app/campaign/[id]/campaign-operation-overlay";
 import { pickActiveCampaignOperation } from "@/utils/campaign-operation-overlay";
 import CampaignCaptionsPrompt, {
@@ -121,6 +122,11 @@ export default function CampaignWorkspace({
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingAudio, setIsExportingAudio] = useState(false);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
+  const [isDownloadingLastVideoExport, setIsDownloadingLastVideoExport] =
+    useState(false);
+  const [lastVideoExport, setLastVideoExport] = useState<LastVideoExportInfo | null>(
+    null,
+  );
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [audioExportMessage, setAudioExportMessage] = useState<string | null>(null);
   const [videoExportMessage, setVideoExportMessage] = useState<string | null>(null);
@@ -299,6 +305,54 @@ export default function CampaignWorkspace({
     allSlidesHaveVoiceoverScripts;
   const hasVideoCredits = usage?.canExportVideo ?? false;
   const videoCreditsKnown = !usageLoading;
+
+  useEffect(() => {
+    if (!videoExportReady) {
+      setLastVideoExport(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadLastVideoExport() {
+      try {
+        const params = new URLSearchParams({
+          campaignId: campaign.id,
+          aspectRatio: videoExportAspectRatio,
+        });
+        const response = await fetch(`/api/export-video/latest?${params}`);
+        const data = (await response.json()) as {
+          success?: boolean;
+          export?: LastVideoExportInfo;
+        };
+
+        if (cancelled) {
+          return;
+        }
+
+        if (response.ok && data.success && data.export) {
+          setLastVideoExport(data.export);
+        } else {
+          setLastVideoExport(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setLastVideoExport(null);
+        }
+      }
+    }
+
+    void loadLastVideoExport();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    campaign.id,
+    videoExportAspectRatio,
+    videoExportReady,
+    publishRefreshKey,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -989,8 +1043,68 @@ export default function CampaignWorkspace({
     );
   }
 
-  function getCampaignVideoFilename(): string {
-    return getVideoExportFilename(campaign.title, campaign.id, videoPreset);
+  function getCampaignVideoFilename(preset: VideoExportPreset = videoPreset): string {
+    return getVideoExportFilename(campaign.title, campaign.id, preset);
+  }
+
+  async function deliverCampaignVideoBlob(
+    blob: Blob,
+    filename: string,
+    webSuccessMessage: string,
+  ) {
+    if (canUseNativeSlideExport()) {
+      await shareCampaignVideo(blob, filename);
+      setVideoExportMessage(
+        `Use the share sheet to save your video. ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`,
+      );
+    } else {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+
+      setVideoExportMessage(`${webSuccessMessage} ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`);
+    }
+  }
+
+  async function handleDownloadLastVideoExport() {
+    if (!lastVideoExport) {
+      return;
+    }
+
+    setError(null);
+    setVideoExportMessage(null);
+    setVideoExportError(null);
+    setIsDownloadingLastVideoExport(true);
+
+    try {
+      const videoResponse = await fetch(lastVideoExport.outputUrl);
+
+      if (!videoResponse.ok) {
+        throw new Error(
+          "This export is no longer available. Export a new video to generate a fresh copy.",
+        );
+      }
+
+      const blob = await videoResponse.blob();
+      const preset = lastVideoExport.preset ?? videoPreset;
+      const filename = getCampaignVideoFilename(preset);
+      await deliverCampaignVideoBlob(blob, filename, "Last export downloaded.");
+    } catch (downloadError) {
+      const message =
+        downloadError instanceof Error
+          ? downloadError.message
+          : "Something went wrong";
+
+      setError(message);
+      setVideoExportError(message);
+    } finally {
+      setIsDownloadingLastVideoExport(false);
+    }
   }
 
   async function handleExportVideo() {
@@ -1065,8 +1179,8 @@ export default function CampaignWorkspace({
       setVideoExportStage("compose_slides");
 
       const outputUrl = await pollVideoExport(data.exportId, setVideoExportStage);
+      setPublishRefreshKey((current) => current + 1);
       if (videoExportAspectRatio === "9:16") {
-        setPublishRefreshKey((current) => current + 1);
         setWorkspaceTab("publish");
         requestAnimationFrame(() => {
           scrollToCampaignSection("section-publish");
@@ -1081,26 +1195,7 @@ export default function CampaignWorkspace({
       }
 
       const blob = await videoResponse.blob();
-
-      if (canUseNativeSlideExport()) {
-        await shareCampaignVideo(blob, filename);
-        setVideoExportMessage(
-          `Use the share sheet to save your video. ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`,
-        );
-      } else {
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        URL.revokeObjectURL(url);
-
-        setVideoExportMessage(
-          `Video downloaded. ${TTS_VIDEO_EXPORT_SUCCESS_DISCLOSURE}`,
-        );
-      }
+      await deliverCampaignVideoBlob(blob, filename, "Video downloaded.");
     } catch (exportError) {
       const message =
         exportError instanceof Error
@@ -1172,7 +1267,10 @@ export default function CampaignWorkspace({
     exportMessage,
     audioExportMessage,
     isExportingVideo,
+    isDownloadingLastVideoExport,
     videoExportMessage,
+    videoExportError,
+    lastVideoExport,
     publishRefreshKey,
     publishTabHint,
     hasVideoExport: publishFlow.hasVideoExport,
@@ -1191,6 +1289,7 @@ export default function CampaignWorkspace({
     onDownloadZip: handleDownloadZip,
     onDownloadNarration: handleDownloadNarration,
     onExportVideo: handleExportVideo,
+    onDownloadLastVideoExport: handleDownloadLastVideoExport,
     onSaveAllToPhotos: handleSaveAllToPhotos,
   };
 
