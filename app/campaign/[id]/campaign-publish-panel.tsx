@@ -6,6 +6,7 @@ import CampaignCaptionsAccordion from "@/app/campaign/[id]/campaign-captions-acc
 import CampaignExportPanel from "@/app/campaign/[id]/campaign-export-panel";
 import CampaignTikTokPublishPanel from "@/app/campaign/[id]/campaign-tiktok-publish-panel";
 import CampaignInstagramPublishPanel from "@/app/campaign/[id]/campaign-instagram-publish-panel";
+import CampaignInstagramCarouselPublishPanel from "@/app/campaign/[id]/campaign-instagram-carousel-publish-panel";
 import CampaignYouTubePublishPanel from "@/app/campaign/[id]/campaign-youtube-publish-panel";
 import CampaignNarrationPanel from "@/app/campaign/[id]/campaign-narration-panel";
 import CampaignVideoLockedPanel from "@/app/campaign/[id]/campaign-video-locked-panel";
@@ -17,7 +18,7 @@ import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
 import type { AspectRatio } from "@/types/campaign";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
-import type { VerticalFormatPublishState } from "@/utils/slide-aspect-images";
+import type { VerticalFormatPublishState, CarouselFormatPublishState } from "@/utils/slide-aspect-images";
 
 interface CampaignPublishPanelProps {
   campaignId: string;
@@ -41,6 +42,7 @@ interface CampaignPublishPanelProps {
   aspectRatioLabel: string;
   dualFormatVideoReady?: boolean;
   verticalFormatPublishState?: VerticalFormatPublishState;
+  carouselFormatPublishState?: CarouselFormatPublishState;
   videoExportAspectRatio?: AspectRatio;
   onAddVerticalFormat?: () => void;
   brandId: string | null;
@@ -62,6 +64,7 @@ interface CampaignPublishPanelProps {
   onYouTubePublishingChange?: (publishing: boolean) => void;
   onTikTokPublishingChange?: (publishing: boolean) => void;
   onInstagramPublishingChange?: (publishing: boolean) => void;
+  onInstagramCarouselPublishingChange?: (publishing: boolean) => void;
   publishTabHint?: string | null;
   hasVideoExport?: boolean;
   youtubeAlreadyPublished?: boolean;
@@ -105,6 +108,7 @@ export default function CampaignPublishPanel({
   aspectRatioLabel,
   dualFormatVideoReady = false,
   verticalFormatPublishState = "not_applicable",
+  carouselFormatPublishState = "not_applicable",
   videoExportAspectRatio,
   onAddVerticalFormat,
   brandId,
@@ -126,6 +130,7 @@ export default function CampaignPublishPanel({
   onYouTubePublishingChange,
   onTikTokPublishingChange,
   onInstagramPublishingChange,
+  onInstagramCarouselPublishingChange,
   publishTabHint = null,
   hasVideoExport = false,
   youtubeAlreadyPublished = false,
@@ -399,6 +404,28 @@ export default function CampaignPublishPanel({
             verticalFormatPublishState={verticalFormatPublishState}
             onPublishComplete={onPublishComplete}
             onPublishingChange={onInstagramPublishingChange}
+          />
+        </div>
+      )}
+
+      {imagesComplete && captionsReady && (
+        <div
+          id="section-instagram-carousel-publish"
+          className="mt-6 scroll-mt-32 sm:mt-8 md:scroll-mt-40"
+        >
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs">
+            Step 6 · Instagram Carousel
+          </p>
+
+          <CampaignInstagramCarouselPublishPanel
+            campaignId={campaignId}
+            disabled={disabled}
+            refreshKey={publishRefreshKey}
+            imagesComplete={imagesComplete}
+            hasCaptions={captionsReady}
+            carouselFormatPublishState={carouselFormatPublishState}
+            onPublishComplete={onPublishComplete}
+            onPublishingChange={onInstagramCarouselPublishingChange}
           />
         </div>
       )}

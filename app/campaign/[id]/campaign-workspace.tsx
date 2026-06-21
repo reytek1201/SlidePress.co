@@ -73,6 +73,7 @@ import {
 } from "@/utils/video-export-stages";
 import {
   getVerticalFormatPublishState,
+  getCarouselFormatPublishState,
   indexSlideImages,
   mergeSlidesWithAspect,
   otherAspectRatio,
@@ -120,6 +121,8 @@ export default function CampaignWorkspace({
   const [isPublishingYouTube, setIsPublishingYouTube] = useState(false);
   const [isPublishingTikTok, setIsPublishingTikTok] = useState(false);
   const [isPublishingInstagram, setIsPublishingInstagram] = useState(false);
+  const [isPublishingInstagramCarousel, setIsPublishingInstagramCarousel] =
+    useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingAudio, setIsExportingAudio] = useState(false);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
@@ -281,6 +284,16 @@ export default function CampaignWorkspace({
   const verticalFormatPublishState = useMemo(
     () =>
       getVerticalFormatPublishState({
+        slides,
+        campaign,
+        imageIndex,
+        primaryImagesComplete,
+      }),
+    [slides, campaign, imageIndex, primaryImagesComplete],
+  );
+  const carouselFormatPublishState = useMemo(
+    () =>
+      getCarouselFormatPublishState({
         slides,
         campaign,
         imageIndex,
@@ -1218,6 +1231,7 @@ export default function CampaignWorkspace({
         isPublishingYouTube,
         isPublishingTikTok,
         isPublishingInstagram,
+        isPublishingInstagramCarousel,
         isGeneratingCaptions,
         isGeneratingFormat,
         isExportingAudio,
@@ -1229,6 +1243,7 @@ export default function CampaignWorkspace({
       isPublishingYouTube,
       isPublishingTikTok,
       isPublishingInstagram,
+      isPublishingInstagramCarousel,
       isGeneratingCaptions,
       isGeneratingFormat,
       isExportingAudio,
@@ -1258,6 +1273,7 @@ export default function CampaignWorkspace({
     aspectRatioLabel: formatAspectRatio(videoExportAspectRatio),
     dualFormatVideoReady,
     verticalFormatPublishState,
+    carouselFormatPublishState,
     videoExportAspectRatio,
     onAddVerticalFormat: () => setAddFormatSheetOpen(true),
     brandId: campaign.brand_id,
@@ -1282,6 +1298,7 @@ export default function CampaignWorkspace({
     onYouTubePublishingChange: setIsPublishingYouTube,
     onTikTokPublishingChange: setIsPublishingTikTok,
     onInstagramPublishingChange: setIsPublishingInstagram,
+    onInstagramCarouselPublishingChange: setIsPublishingInstagramCarousel,
     campaignStatus: campaign.status,
     onGenerateCaptions: handleGenerateCaptions,
     onCopyCaptionField: handleCopyCaptionField,

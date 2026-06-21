@@ -161,8 +161,41 @@ export function getVerticalFormatPublishState(input: {
   return "not_applicable";
 }
 
-export function verticalFormatPublishBlocked(
-  state: VerticalFormatPublishState,
+export type CarouselFormatPublishState =
+  | "ready"
+  | "needs_add"
+  | "generating"
+  | "not_applicable";
+
+export function getCarouselFormatPublishState(input: {
+  slides: Slide[];
+  campaign: Pick<Campaign, "aspect_ratio" | "secondary_aspect_ratio">;
+  imageIndex: SlideImageIndex;
+  primaryImagesComplete: boolean;
+}): CarouselFormatPublishState {
+  const { slides, campaign, imageIndex, primaryImagesComplete } = input;
+
+  if (slidesCompleteForAspect(slides, "4:5", campaign, imageIndex)) {
+    return "ready";
+  }
+
+  if (campaign.secondary_aspect_ratio === "4:5") {
+    return "generating";
+  }
+
+  if (
+    primaryImagesComplete &&
+    campaign.aspect_ratio === "9:16" &&
+    !campaign.secondary_aspect_ratio
+  ) {
+    return "needs_add";
+  }
+
+  return "not_applicable";
+}
+
+export function carouselFormatPublishBlocked(
+  state: CarouselFormatPublishState,
 ): boolean {
   return state === "needs_add" || state === "generating";
 }

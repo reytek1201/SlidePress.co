@@ -126,6 +126,18 @@ YouTube is first because: single MP4 asset, mature resumable upload API, caption
 
 ---
 
+## Instagram Carousel ([#34](https://github.com/reytek1201/SlidePress.co/issues/34))
+
+**Content:** 4:5 slide images (2–10) + `instagram` caption.
+
+**Status (June 2026):** Carousel publish API + campaign panel shipped (dev/tester accounts). Meta app review pending for public users.
+
+**Depends on:** Instagram Reels path (#33) for shared Meta app, OAuth, and account-linking UX.
+
+**Key work:** Child image containers → parent carousel container → poll → publish; 4:5 slide image URLs from Fal CDN.
+
+---
+
 ## Instagram Reels ([#33](https://github.com/reytek1201/SlidePress.co/issues/33))
 
 **Content:** 9:16 MP4 + `instagram` caption.
@@ -135,16 +147,6 @@ YouTube is first because: single MP4 asset, mature resumable upload API, caption
 **Blockers:** Meta app review for `instagram_content_publish`; user must have **Instagram Professional** account linked to a **Facebook Page**.
 
 **Key work:** Meta OAuth (`instagram_content_publish`, `pages_show_list`), container create → poll → publish for Reels, public video URL hosting during publish.
-
----
-
-## Instagram Carousel ([#34](https://github.com/reytek1201/SlidePress.co/issues/34))
-
-**Content:** 4:5 slide images (3–7) + `instagram` caption.
-
-**Hardest** because of multi-image container orchestration (child containers → parent carousel → publish) on top of full Meta requirements.
-
-**Depends on:** Instagram Reels path (#33) for shared Meta app, OAuth, and account-linking UX.
 
 ---
 

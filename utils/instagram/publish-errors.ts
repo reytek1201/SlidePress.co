@@ -31,11 +31,25 @@ export function getInstagramPublishErrorMessage(error: string): string {
   }
 
   if (normalized.includes("already being published")) {
-    return "This export is already being published to Instagram.";
+    return normalized.includes("carousel")
+      ? "This carousel is already being published to Instagram."
+      : "This export is already being published to Instagram.";
+  }
+
+  if (normalized.includes("4:5 slide images are not ready")) {
+    return "4:5 slide images are not ready yet. Finish generating slides, then try again.";
+  }
+
+  if (normalized.includes("instagram carousels need at least")) {
+    return "Instagram carousels need at least 2 slides with images.";
+  }
+
+  if (normalized.includes("instagram carousels support at most")) {
+    return "Instagram carousels support at most 10 slides.";
   }
 
   if (normalized.includes("timed out waiting for instagram")) {
-    return "Instagram is still processing your video. Check your profile in a few minutes.";
+    return "Instagram is still processing your post. Check your profile in a few minutes.";
   }
 
   if (normalized.includes("could not fetch") && normalized.includes("video")) {

@@ -352,13 +352,13 @@ export async function maybeSendVideoExportReadyPush(
   );
 }
 
-function platformPublishLabel(platform: string): string {
+function platformPublishLabel(platform: string, exportId: string | null): string {
   if (platform === "youtube") {
     return "YouTube Shorts";
   }
 
   if (platform === "instagram") {
-    return "Instagram Reels";
+    return exportId ? "Instagram Reels" : "Instagram Carousel";
   }
 
   return "TikTok";
@@ -375,7 +375,9 @@ export async function maybeSendPlatformPublishPush(
 
   const { data: postPreview, error: previewError } = await supabase
     .from("platform_posts")
-    .select("id, user_id, campaign_id, platform, status, publish_notified_at")
+    .select(
+      "id, user_id, campaign_id, platform, export_id, status, publish_notified_at",
+    )
     .eq("id", postId)
     .maybeSingle();
 
@@ -403,7 +405,7 @@ export async function maybeSendPlatformPublishPush(
     .eq("id", postId)
     .in("status", ["published", "failed"])
     .is("publish_notified_at", null)
-    .select("user_id, campaign_id, platform, status")
+    .select("user_id, campaign_id, platform, export_id, status")
     .maybeSingle();
 
   if (claimError || !post) {
@@ -421,7 +423,10 @@ export async function maybeSendPlatformPublishPush(
   }
 
   const campaignTitle = campaign.title?.trim() || "Your campaign";
-  const platformLabel = platformPublishLabel(post.platform);
+  const platformLabel = platformPublishLabel(
+    post.platform,
+    (post as { export_id?: string | null }).export_id ?? null,
+  );
 
   if (post.status === "published") {
     await sendPushToUser(

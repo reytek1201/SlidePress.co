@@ -12,7 +12,7 @@ export async function createPlatformPost(input: {
   userId: string;
   campaignId: string;
   platform: PlatformPostPlatform;
-  exportId: string;
+  exportId?: string | null;
   status?: PlatformPostStatus;
 }): Promise<PlatformPostPublic> {
   const admin = createAdminClient();
@@ -23,7 +23,7 @@ export async function createPlatformPost(input: {
       user_id: input.userId,
       campaign_id: input.campaignId,
       platform: input.platform,
-      export_id: input.exportId,
+      export_id: input.exportId ?? null,
       status: input.status ?? "pending",
     })
     .select("*")
@@ -126,6 +126,31 @@ export async function getPlatformPostForCampaignExport(
     .eq("campaign_id", campaignId)
     .eq("export_id", exportId)
     .eq("platform", platform)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? toPlatformPostPublic(data as PlatformPostRow) : null;
+}
+
+export async function getPlatformPostForCampaignCarousel(
+  userId: string,
+  campaignId: string,
+  platform: PlatformPostPlatform = "instagram",
+): Promise<PlatformPostPublic | null> {
+  const admin = createAdminClient();
+
+  const { data, error } = await admin
+    .from("platform_posts")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("campaign_id", campaignId)
+    .eq("platform", platform)
+    .is("export_id", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

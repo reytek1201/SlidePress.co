@@ -1,0 +1,409 @@
+"use client";
+
+import CampaignInstagramCarouselReadinessChecklist from "@/app/campaign/[id]/campaign-instagram-carousel-readiness-checklist";
+import { getInstagramPublishErrorMessage } from "@/utils/instagram/publish-errors";
+import { buildPlatformAuthorizeUrl } from "@/utils/platforms/oauth-return";
+import type { CarouselFormatPublishState } from "@/utils/slide-aspect-images";
+import type { PlatformConnectionPublic } from "@/types/platform-connection";
+import type { PlatformPostPublic } from "@/types/platform-post";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+
+interface PublishReadinessResponse {
+  success: boolean;
+  connected: boolean;
+  connection: PlatformConnectionPublic | null;
+  hasPublishScope: boolean;
+  hasInstagramCaption: boolean;
+  hasCarouselSlides: boolean;
+  slideCount: number;
+  slideCountValid: boolean;
+  alreadyPublished: boolean;
+  isUploading: boolean;
+  canPublish: boolean;
+  postForCarousel: PlatformPostPublic | null;
+  error?: string;
+}
+
+interface PublishResponse {
+  success: boolean;
+  alreadyPublished?: boolean;
+  error?: string;
+  code?: string;
+  authorizeUrl?: string;
+  post?: PlatformPostPublic;
+  carousel?: {
+    permalink: string;
+  };
+}
+
+interface CampaignInstagramCarouselPublishPanelProps {
+  campaignId: string;
+  disabled?: boolean;
+  refreshKey?: number;
+  imagesComplete?: boolean;
+  hasCaptions?: boolean;
+  carouselFormatPublishState?: CarouselFormatPublishState;
+  onPublishComplete?: () => void;
+  onPublishingChange?: (publishing: boolean) => void;
+}
+
+function InstagramIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-4 w-4 text-pink-500"
+      aria-hidden
+    >
+      <path d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4A5.8 5.8 0 0 1 16.2 22H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8A3.6 3.6 0 0 0 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6A3.6 3.6 0 0 0 16.4 4H7.6m9.65 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10m0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" />
+    </svg>
+  );
+}
+
+function InstagramCarouselPanelShell({
+  helperText,
+  children,
+}: {
+  helperText: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-background/40 p-4 sm:rounded-xl sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70">
+          <InstagramIcon />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-foreground">
+            Instagram Carousel
+          </h3>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            {helperText}
+          </p>
+        </div>
+      </div>
+      {children ? <div className="mt-4">{children}</div> : null}
+    </div>
+  );
+}
+
+export default function CampaignInstagramCarouselPublishPanel({
+  campaignId,
+  disabled = false,
+  refreshKey = 0,
+  imagesComplete = false,
+  hasCaptions = false,
+  carouselFormatPublishState = "not_applicable",
+  onPublishComplete,
+  onPublishingChange,
+}: CampaignInstagramCarouselPublishPanelProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [readiness, setReadiness] = useState<PublishReadinessResponse | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const publishInFlightRef = useRef(false);
+  const campaignReturnPath = `/campaign/${campaignId}?tab=publish`;
+  const publishAuthorizeUrl = buildPlatformAuthorizeUrl(
+    "/api/platforms/instagram/publish-authorize",
+    campaignReturnPath,
+  );
+
+  const loadReadiness = useCallback(async () => {
+    if (!hasCaptions) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/platforms/instagram/carousel-publish-readiness?campaignId=${encodeURIComponent(campaignId)}`,
+      );
+      const data = (await response.json()) as PublishReadinessResponse;
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error ?? "Failed to load Instagram carousel publish status",
+        );
+      }
+
+      setReadiness(data);
+
+      if (
+        data.postForCarousel?.status === "published" &&
+        data.postForCarousel.externalUrl
+      ) {
+        setPublishedUrl(data.postForCarousel.externalUrl);
+      } else if (!data.alreadyPublished) {
+        setPublishedUrl(null);
+      }
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load Instagram carousel publish status",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [campaignId, hasCaptions]);
+
+  useEffect(() => {
+    void loadReadiness();
+  }, [loadReadiness, refreshKey]);
+
+  useEffect(() => {
+    onPublishingChange?.(
+      isPublishing || Boolean(readiness?.isUploading),
+    );
+  }, [isPublishing, readiness?.isUploading, onPublishingChange]);
+
+  useEffect(() => {
+    return () => {
+      onPublishingChange?.(false);
+    };
+  }, [onPublishingChange]);
+
+  useEffect(() => {
+    const scopeGranted = searchParams.get("instagram_scope") === "granted";
+    const oauthError = searchParams.get("instagram_error");
+
+    if (!scopeGranted && !oauthError) {
+      return;
+    }
+
+    if (scopeGranted) {
+      setError(null);
+      setMessage("Publishing permission granted. You can post to Instagram now.");
+      void loadReadiness();
+    } else if (oauthError === "scope") {
+      setError(
+        "Instagram did not grant publishing permission. Try again and approve all requested access.",
+      );
+    } else if (oauthError) {
+      setError("Could not complete Instagram authorization. Try again.");
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("instagram_scope");
+    url.searchParams.delete("instagram_error");
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [loadReadiness, router, searchParams]);
+
+  async function handlePublish() {
+    if (publishInFlightRef.current || isPublishing) {
+      return;
+    }
+
+    publishInFlightRef.current = true;
+    setIsPublishing(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        "/api/platforms/instagram/carousel-publish",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ campaignId }),
+        },
+      );
+
+      const data = (await response.json()) as PublishResponse;
+
+      if (response.status === 403 && data.code === "PUBLISH_SCOPE_REQUIRED") {
+        setError(
+          "Publishing permission required. Grant access to post to Instagram.",
+        );
+        await loadReadiness();
+        return;
+      }
+
+      if (response.status === 409 && data.code === "PUBLISH_IN_PROGRESS") {
+        setMessage("This carousel is already being published to Instagram.");
+        await loadReadiness();
+        return;
+      }
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          getInstagramPublishErrorMessage(
+            data.error ?? "Failed to publish carousel to Instagram",
+          ),
+        );
+      }
+
+      const permalink =
+        data.carousel?.permalink ?? data.post?.externalUrl ?? null;
+
+      setPublishedUrl(permalink);
+      setMessage(
+        data.alreadyPublished
+          ? "This carousel is already on Instagram."
+          : "Published carousel to Instagram.",
+      );
+      await loadReadiness();
+      onPublishComplete?.();
+    } catch (publishError) {
+      const raw =
+        publishError instanceof Error
+          ? publishError.message
+          : "Failed to publish carousel to Instagram";
+      setError(getInstagramPublishErrorMessage(raw));
+    } finally {
+      publishInFlightRef.current = false;
+      setIsPublishing(false);
+    }
+  }
+
+  if (!imagesComplete || !hasCaptions) {
+    return null;
+  }
+
+  if (loading && !readiness) {
+    return (
+      <InstagramCarouselPanelShell helperText="Checking Instagram carousel publish status…" />
+    );
+  }
+
+  if (!readiness) {
+    return (
+      <InstagramCarouselPanelShell helperText="Could not load Instagram carousel status. Refresh the page and try again.">
+        {error ? (
+          <p className="text-xs text-red-300" role="alert">
+            {error}
+          </p>
+        ) : null}
+      </InstagramCarouselPanelShell>
+    );
+  }
+
+  const needsPublishScope =
+    Boolean(readiness.connected && !readiness.hasPublishScope);
+
+  let helperText =
+    "Post your 4:5 slide carousel with your Instagram caption.";
+
+  if (!readiness.connected) {
+    helperText = "Connect Instagram in Settings, then post your carousel.";
+  } else if (carouselFormatPublishState === "needs_add") {
+    helperText =
+      "Add 4:5 slides first (banner above), then post your carousel to Instagram.";
+  } else if (carouselFormatPublishState === "generating") {
+    helperText =
+      "4:5 slides are generating — post your carousel once they finish.";
+  } else if (!readiness.hasCarouselSlides) {
+    helperText =
+      "Finish generating all 4:5 slide images, then post your carousel.";
+  } else if (!readiness.slideCountValid) {
+    helperText = `Instagram carousels need 2–10 slides. This campaign has ${readiness.slideCount}.`;
+  } else if (readiness.isUploading || isPublishing) {
+    helperText = "Publishing in progress. Keep this page open until it finishes.";
+  } else if (readiness.alreadyPublished || publishedUrl) {
+    helperText =
+      "This carousel is already on Instagram. Create a new campaign to post again.";
+  }
+
+  const canClickPublish =
+    readiness.canPublish &&
+    !disabled &&
+    !isPublishing &&
+    !readiness.isUploading &&
+    !readiness.alreadyPublished &&
+    !needsPublishScope &&
+    carouselFormatPublishState === "ready";
+
+  return (
+    <InstagramCarouselPanelShell helperText={helperText}>
+      <CampaignInstagramCarouselReadinessChecklist
+        hasCaptions={readiness.hasInstagramCaption}
+        hasCarouselSlides={readiness.hasCarouselSlides}
+        connected={readiness.connected}
+        alreadyPublished={readiness.alreadyPublished || Boolean(publishedUrl)}
+      />
+
+      {readiness.connection ? (
+        <p className="mb-4 text-xs text-foreground">
+          Account:{" "}
+          <span className="font-medium">{readiness.connection.accountLabel}</span>
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        {!readiness.connected ? (
+          <Link
+            href="/settings/connected-accounts"
+            className="btn-primary inline-flex w-full items-center justify-center py-2.5 text-sm sm:w-auto sm:px-6"
+          >
+            Connect Instagram
+          </Link>
+        ) : needsPublishScope ? (
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = publishAuthorizeUrl;
+            }}
+            className="btn-primary w-full py-2.5 text-sm sm:w-auto sm:px-6"
+          >
+            Grant publishing permission
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={!canClickPublish}
+            onClick={() => void handlePublish()}
+            className="btn-primary w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6"
+          >
+            {isPublishing || readiness.isUploading
+              ? "Publishing carousel…"
+              : readiness.alreadyPublished
+                ? "Already on Instagram"
+                : "Post carousel to Instagram"}
+          </button>
+        )}
+
+        {publishedUrl ? (
+          <a
+            href={publishedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground sm:w-auto"
+          >
+            View on Instagram
+          </a>
+        ) : null}
+      </div>
+
+      {isPublishing || readiness.isUploading ? (
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          Uploading slides and processing on Instagram. This can take a few
+          minutes — keep this page open.
+        </p>
+      ) : null}
+
+      {message ? (
+        <div className="mt-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5 text-xs text-emerald-200">
+          {message}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="mt-3 rounded-xl border border-red-900/50 bg-red-950/20 px-3 py-2.5 text-xs text-red-300">
+          {error}
+        </div>
+      ) : null}
+    </InstagramCarouselPanelShell>
+  );
+}

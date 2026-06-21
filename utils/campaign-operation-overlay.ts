@@ -15,6 +15,7 @@ export type CampaignOperationKind =
   | "youtube_publish"
   | "tiktok_publish"
   | "instagram_publish"
+  | "instagram_carousel_publish"
   | "narration"
   | "zip"
   | "format_variant";
@@ -185,6 +186,21 @@ export function resolveCampaignOperationOverlay(input: {
         ],
         activeStageIndex: timeBasedStageIndex(elapsedSeconds, [0, 20, 90]),
       };
+    case "instagram_carousel_publish":
+      return {
+        kind,
+        kicker: "Publishing carousel to Instagram",
+        description:
+          "Uploading your slide images and waiting for Instagram to finish processing.",
+        durationHint: "This can take a few minutes.",
+        errorTitle: "Instagram carousel publish failed",
+        stages: [
+          { id: "upload", label: "Uploading slides" },
+          { id: "processing", label: "Processing on Instagram" },
+          { id: "published", label: "Published" },
+        ],
+        activeStageIndex: timeBasedStageIndex(elapsedSeconds, [0, 20, 90]),
+      };
     case "narration":
       return {
         kind,
@@ -235,6 +251,7 @@ export function pickActiveCampaignOperation(input: {
   isPublishingYouTube: boolean;
   isPublishingTikTok: boolean;
   isPublishingInstagram: boolean;
+  isPublishingInstagramCarousel: boolean;
   isGeneratingCaptions: boolean;
   isGeneratingFormat: boolean;
   isExportingAudio: boolean;
@@ -254,6 +271,10 @@ export function pickActiveCampaignOperation(input: {
 
   if (input.isPublishingInstagram) {
     return "instagram_publish";
+  }
+
+  if (input.isPublishingInstagramCarousel) {
+    return "instagram_carousel_publish";
   }
 
   if (input.isGeneratingCaptions) {
