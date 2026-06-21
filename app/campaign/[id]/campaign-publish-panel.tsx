@@ -5,6 +5,7 @@ import CampaignLockedNotice from "@/app/campaign/[id]/campaign-locked-notice";
 import CampaignCaptionsAccordion from "@/app/campaign/[id]/campaign-captions-accordion";
 import CampaignExportPanel from "@/app/campaign/[id]/campaign-export-panel";
 import CampaignTikTokPublishPanel from "@/app/campaign/[id]/campaign-tiktok-publish-panel";
+import CampaignInstagramPublishPanel from "@/app/campaign/[id]/campaign-instagram-publish-panel";
 import CampaignYouTubePublishPanel from "@/app/campaign/[id]/campaign-youtube-publish-panel";
 import CampaignNarrationPanel from "@/app/campaign/[id]/campaign-narration-panel";
 import CampaignVideoLockedPanel from "@/app/campaign/[id]/campaign-video-locked-panel";
@@ -60,6 +61,7 @@ interface CampaignPublishPanelProps {
   onPublishComplete?: () => void;
   onYouTubePublishingChange?: (publishing: boolean) => void;
   onTikTokPublishingChange?: (publishing: boolean) => void;
+  onInstagramPublishingChange?: (publishing: boolean) => void;
   publishTabHint?: string | null;
   hasVideoExport?: boolean;
   youtubeAlreadyPublished?: boolean;
@@ -123,6 +125,7 @@ export default function CampaignPublishPanel({
   onPublishComplete,
   onYouTubePublishingChange,
   onTikTokPublishingChange,
+  onInstagramPublishingChange,
   publishTabHint = null,
   hasVideoExport = false,
   youtubeAlreadyPublished = false,
@@ -202,7 +205,7 @@ export default function CampaignPublishPanel({
           <div className="mt-3 rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-4 py-3">
             <p className="text-sm font-semibold text-emerald-200">Captions ready</p>
             <p className="mt-1 text-sm leading-6 text-emerald-200/90">
-              Export your video next, then post to YouTube or TikTok.
+              Export your video next, then post to YouTube, TikTok, or Instagram.
             </p>
             <button
               type="button"
@@ -374,6 +377,28 @@ export default function CampaignPublishPanel({
             onAddVerticalFormat={onAddVerticalFormat}
             onPublishComplete={onPublishComplete}
             onPublishingChange={onTikTokPublishingChange}
+          />
+        </div>
+      )}
+
+      {imagesComplete && captionsReady && (
+        <div
+          id="section-instagram-publish"
+          className="mt-6 scroll-mt-32 sm:mt-8 md:scroll-mt-40"
+        >
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-xs">
+            Step 5 · Instagram Reels
+          </p>
+
+          <CampaignInstagramPublishPanel
+            campaignId={campaignId}
+            disabled={disabled}
+            refreshKey={publishRefreshKey}
+            imagesComplete={imagesComplete}
+            hasCaptions={captionsReady}
+            verticalFormatPublishState={verticalFormatPublishState}
+            onPublishComplete={onPublishComplete}
+            onPublishingChange={onInstagramPublishingChange}
           />
         </div>
       )}

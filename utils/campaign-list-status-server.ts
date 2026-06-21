@@ -40,7 +40,7 @@ export async function loadCampaignListStatuses(
       .select("campaign_id, platform")
       .in("campaign_id", campaignIds)
       .eq("status", "published")
-      .in("platform", ["youtube", "tiktok"]),
+      .in("platform", ["youtube", "tiktok", "instagram"]),
   ]);
 
   const captionsByCampaign = new Set(

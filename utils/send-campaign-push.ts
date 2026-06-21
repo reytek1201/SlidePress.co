@@ -353,7 +353,15 @@ export async function maybeSendVideoExportReadyPush(
 }
 
 function platformPublishLabel(platform: string): string {
-  return platform === "youtube" ? "YouTube Shorts" : "TikTok";
+  if (platform === "youtube") {
+    return "YouTube Shorts";
+  }
+
+  if (platform === "instagram") {
+    return "Instagram Reels";
+  }
+
+  return "TikTok";
 }
 
 export async function maybeSendPlatformPublishPush(

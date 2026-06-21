@@ -130,7 +130,9 @@ YouTube is first because: single MP4 asset, mature resumable upload API, caption
 
 **Content:** 9:16 MP4 + `instagram` caption.
 
-**Blockers:** Meta app review; user must have **Instagram Professional** account linked to a **Facebook Page**.
+**Status (June 2026):** OAuth + Reels publish API shipped (dev/tester accounts). Meta app review pending for public users.
+
+**Blockers:** Meta app review for `instagram_content_publish`; user must have **Instagram Professional** account linked to a **Facebook Page**.
 
 **Key work:** Meta OAuth (`instagram_content_publish`, `pages_show_list`), container create → poll → publish for Reels, public video URL hosting during publish.
 
