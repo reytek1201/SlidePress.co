@@ -99,28 +99,128 @@ function TikTokIcon() {
   );
 }
 
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${
+        open ? "rotate-180" : ""
+      }`}
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.25a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function countTikTokReadinessSteps(
+  readiness: PublishReadinessResponse,
+  publishedUrl: string | null,
+): { done: number; total: number } {
+  const steps = [
+    readiness.hasTiktokCaption,
+    readiness.hasVideoExport,
+    readiness.connected,
+    readiness.hasPublishScope,
+    readiness.alreadyPublished || Boolean(publishedUrl),
+  ];
+
+  return {
+    done: steps.filter(Boolean).length,
+    total: steps.length,
+  };
+}
+
+function getTikTokTeaserHint(
+  readiness: PublishReadinessResponse,
+  verticalFormatPublishState: VerticalFormatPublishState,
+  publishedUrl: string | null,
+  isPublishing: boolean,
+): string {
+  if (readiness.alreadyPublished || publishedUrl) {
+    return "This export is already on TikTok.";
+  }
+
+  if (readiness.isUploading || isPublishing) {
+    return "Publishing in progress — keep this page open.";
+  }
+
+  if (verticalFormatPublishState === "needs_add") {
+    return "Add 9:16 slides first, then export a vertical Quick Reel.";
+  }
+
+  if (verticalFormatPublishState === "generating") {
+    return "9:16 slides are generating — export when they finish.";
+  }
+
+  if (!readiness.hasVideoExport) {
+    return "Export a 9:16 Quick Reel above to continue.";
+  }
+
+  if (!readiness.connected) {
+    return "Connect TikTok in Settings.";
+  }
+
+  if (!readiness.hasPublishScope) {
+    return "Grant posting permission to publish.";
+  }
+
+  return "Review post settings and publish.";
+}
+
 function TikTokPanelShell({
-  helperText,
   children,
+  compact = false,
 }: {
-  helperText: string;
-  children?: ReactNode;
+  children: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-background/40 p-4 sm:rounded-xl sm:p-5">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70">
-          <TikTokIcon />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-foreground">TikTok</h3>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {helperText}
-          </p>
-        </div>
-      </div>
-      {children ? <div className="mt-4">{children}</div> : null}
+    <div
+      className={`rounded-lg border border-border bg-background/40 sm:rounded-xl ${
+        compact ? "p-3" : "p-4 sm:p-5"
+      }`}
+    >
+      {children}
     </div>
+  );
+}
+
+function TikTokCompactHeader({
+  progressLabel,
+  hint,
+  expanded,
+  onToggle,
+}: {
+  progressLabel: string;
+  hint: string;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      className="flex w-full items-center gap-3 text-left"
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70">
+        <TikTokIcon />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-sm font-semibold text-foreground">TikTok</span>
+          <span className="text-xs text-muted-foreground">{progressLabel}</span>
+        </div>
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{hint}</p>
+      </div>
+      <ChevronIcon open={expanded} />
+    </button>
   );
 }
 
@@ -178,6 +278,7 @@ export default function CampaignTikTokPublishPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
+  const [userExpanded, setUserExpanded] = useState(false);
   const publishInFlightRef = useRef(false);
   const campaignReturnPath = `/campaign/${campaignId}?tab=publish`;
   const publishAuthorizeUrl = buildPlatformAuthorizeUrl(
@@ -255,6 +356,7 @@ export default function CampaignTikTokPublishPanel({
     if (scopeGranted) {
       setError(null);
       setMessage("Posting permission granted. You can post to TikTok now.");
+      setUserExpanded(true);
       void loadReadiness();
     } else if (oauthError === "scope") {
       setError(
@@ -374,15 +476,30 @@ export default function CampaignTikTokPublishPanel({
 
   if (loading && !readiness) {
     return (
-      <TikTokPanelShell helperText="Checking TikTok publish status…" />
+      <TikTokPanelShell compact>
+        <div className="flex items-center gap-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70">
+            <TikTokIcon />
+          </span>
+          <p className="text-xs text-muted-foreground">
+            TikTok · Checking publish status…
+          </p>
+        </div>
+      </TikTokPanelShell>
     );
   }
 
   if (!readiness) {
     return (
-      <TikTokPanelShell helperText="Could not load TikTok status. Refresh the page and try again.">
-        {error ? (
-          <p className="text-xs text-red-300" role="alert">
+      <TikTokPanelShell compact>
+        <TikTokCompactHeader
+          progressLabel="Status unavailable"
+          hint="Could not load TikTok status. Refresh and try again."
+          expanded={userExpanded}
+          onToggle={() => setUserExpanded((current) => !current)}
+        />
+        {userExpanded && error ? (
+          <p className="mt-3 text-xs text-red-300" role="alert">
             {error}
           </p>
         ) : null}
@@ -392,6 +509,32 @@ export default function CampaignTikTokPublishPanel({
 
   const needsPublishScope =
     Boolean(readiness.connected && !readiness.hasPublishScope);
+
+  const showPublishForm =
+    readiness.connected &&
+    readiness.hasPublishScope &&
+    readiness.hasVideoExport &&
+    !readiness.alreadyPublished &&
+    !publishedUrl &&
+    !needsPublishScope;
+
+  const isActivePublish = isPublishing || readiness.isUploading;
+  const isPublished = readiness.alreadyPublished || Boolean(publishedUrl);
+  const forceExpanded = showPublishForm || isActivePublish;
+  const expanded = forceExpanded || userExpanded;
+
+  const { done, total } = countTikTokReadinessSteps(readiness, publishedUrl);
+  const progressLabel = isPublished
+    ? "Posted"
+    : isActivePublish
+      ? "Publishing…"
+      : `${done}/${total} ready`;
+  const teaserHint = getTikTokTeaserHint(
+    readiness,
+    verticalFormatPublishState,
+    publishedUrl,
+    isPublishing,
+  );
 
   let helperText = "Review your post settings, then publish to TikTok.";
 
@@ -406,23 +549,15 @@ export default function CampaignTikTokPublishPanel({
   } else if (!readiness.hasVideoExport) {
     helperText =
       "Export a 9:16 Quick Reel above, then post directly to TikTok.";
-  } else if (readiness.isUploading || isPublishing) {
+  } else if (isActivePublish) {
     helperText = "Publishing in progress. Keep this page open until it finishes.";
-  } else if (readiness.alreadyPublished || publishedUrl) {
+  } else if (isPublished) {
     helperText =
       "This export is already on TikTok. Export a new 9:16 video to post again.";
   } else if (readiness.connected && readiness.hasPublishScope) {
     helperText =
       "Sandbox note: your TikTok account must be Private before posting until app review passes.";
   }
-
-  const showPublishForm =
-    readiness.connected &&
-    readiness.hasPublishScope &&
-    readiness.hasVideoExport &&
-    !readiness.alreadyPublished &&
-    !publishedUrl &&
-    !needsPublishScope;
 
   const canClickPublish =
     showPublishForm &&
@@ -431,14 +566,16 @@ export default function CampaignTikTokPublishPanel({
     !isPublishing &&
     !readiness.isUploading;
 
-  return (
-    <TikTokPanelShell helperText={helperText}>
+  const panelBody = (
+    <>
+      <p className="text-xs leading-5 text-muted-foreground">{helperText}</p>
+
       <CampaignTikTokReadinessChecklist
         hasCaptions={readiness.hasTiktokCaption}
         hasVideoExport={readiness.hasVideoExport}
         connected={readiness.connected}
         hasPublishScope={readiness.hasPublishScope}
-        alreadyPublished={readiness.alreadyPublished || Boolean(publishedUrl)}
+        alreadyPublished={isPublished}
       />
 
       {creator ? (
@@ -680,20 +817,16 @@ export default function CampaignTikTokPublishPanel({
           >
             Grant posting permission
           </button>
-        ) : (
+        ) : showPublishForm ? (
           <button
             type="button"
             disabled={!canClickPublish}
             onClick={() => void handlePublish()}
             className="btn-primary w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6"
           >
-            {isPublishing || readiness.isUploading
-              ? "Publishing to TikTok…"
-              : readiness.alreadyPublished
-                ? "Already on TikTok"
-                : "Post to TikTok"}
+            {isActivePublish ? "Publishing to TikTok…" : "Post to TikTok"}
           </button>
-        )}
+        ) : null}
 
         {publishedUrl ? (
           <a
@@ -707,7 +840,7 @@ export default function CampaignTikTokPublishPanel({
         ) : null}
       </div>
 
-      {isPublishing || readiness.isUploading ? (
+      {isActivePublish ? (
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
           Uploading your video to TikTok and waiting for processing. This can
           take a few minutes — keep this page open.
@@ -725,6 +858,55 @@ export default function CampaignTikTokPublishPanel({
           {error}
         </div>
       ) : null}
+    </>
+  );
+
+  if (!expanded) {
+    return (
+      <TikTokPanelShell compact>
+        <TikTokCompactHeader
+          progressLabel={progressLabel}
+          hint={teaserHint}
+          expanded={false}
+          onToggle={() => setUserExpanded(true)}
+        />
+        {publishedUrl ? (
+          <div className="mt-3 pl-11">
+            <a
+              href={publishedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-semibold text-primary underline-offset-2 hover:underline"
+            >
+              View on TikTok
+            </a>
+          </div>
+        ) : null}
+      </TikTokPanelShell>
+    );
+  }
+
+  return (
+    <TikTokPanelShell>
+      {forceExpanded ? (
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background/70">
+            <TikTokIcon />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold text-foreground">TikTok</h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">{progressLabel}</p>
+          </div>
+        </div>
+      ) : (
+        <TikTokCompactHeader
+          progressLabel={progressLabel}
+          hint={teaserHint}
+          expanded
+          onToggle={() => setUserExpanded(false)}
+        />
+      )}
+      <div className="mt-4 space-y-4">{panelBody}</div>
     </TikTokPanelShell>
   );
 }
