@@ -1,3 +1,4 @@
+import { ensureUserPushNotificationPreferences } from "@/utils/push-notification-preferences";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -60,6 +61,8 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
+
+    await ensureUserPushNotificationPreferences(user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

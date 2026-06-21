@@ -22,9 +22,9 @@ Notifications are **optional** (not an App Store requirement) but high value for
 | Item | Detail |
 |------|--------|
 | Opt-in toggle | Settings → Notifications — “Campaign ready alerts” |
-| Trigger | All slide images finish generating |
-| Deep link | Tap opens `/campaign/{id}` |
-| Infra | APNs + FCM, `push_device_tokens`, `maybeSendCampaignImagesReadyPush` |
+| Trigger | All slide images finish; video export completes; **YouTube/TikTok publish succeeds or fails** |
+| Deep link | Tap opens `/campaign/{id}` (images) or `?tab=publish` (video) |
+| Infra | APNs + FCM, `push_device_tokens`, `maybeSendCampaignImagesReadyPush`, `maybeSendVideoExportReadyPush`, `maybeSendPlatformPublishPush` |
 | Docs | [`docs/capacitor.md`](capacitor.md) → Push notifications |
 
 ### Roadmap
@@ -32,13 +32,14 @@ Notifications are **optional** (not an App Store requirement) but high value for
 | Phase | Scope | Issue | Priority |
 |-------|--------|-------|----------|
 | 0 | Image-ready push | — | ✅ Shipped |
-| 1 | Video export complete | [#41](https://github.com/reytek1201/SlidePress.co/issues/41) | **High** — users currently keep Publish tab open during Fal render |
-| 2 | YouTube / TikTok publish success & failure | [#37](https://github.com/reytek1201/SlidePress.co/issues/37) | **High** — upload can take minutes |
-| 3 | Granular preferences per notification type | [#38](https://github.com/reytek1201/SlidePress.co/issues/38) | Medium — needed before spam risk grows |
+| 1 | Video export complete | [#41](https://github.com/reytek1201/SlidePress.co/issues/41) | ✅ Shipped |
+| 2 | YouTube / TikTok publish success & failure | [#37](https://github.com/reytek1201/SlidePress.co/issues/37) | ✅ Shipped |
+| 3 | Granular notification preferences | [#38](https://github.com/reytek1201/SlidePress.co/issues/38) | ✅ Shipped |
 
 ### Principles
 
-- Opt-in only; server-triggered; dedupe per event; actionable copy with campaign title
+- **Master opt-in** on device; per-type toggles in `user_notification_preferences`
+- Server-triggered; preference check before dedupe claim; actionable copy with campaign title
 - Skip sends when APNs/FCM not configured (app still works)
 
 ### Out of scope
@@ -84,10 +85,7 @@ Multiple campaigns per widget, live thumbnails, posting from widget without open
 
 ## Suggested build order
 
-1. **#41** — video export push (reuses existing push infra; biggest UX win after images)
-2. **#37** — publish complete/failed push
-3. **#38** — preferences before adding more notification types in production
-4. **#39** → **#40** → **#42** — widgets (iOS first, then Android parity)
+1. **#39** → **#40** → **#42** — widgets (iOS first, then Android parity)
 5. **#43** — shortcut widget if Continue widget proves useful
 
 ---

@@ -41,15 +41,21 @@ async function unregisterPushToken(token: string) {
   });
 }
 
-function getCampaignIdFromNotification(
-  action: ActionPerformed,
-): string | null {
+function getCampaignRouteFromNotification(action: ActionPerformed): string | null {
   const data = action.notification.data;
   const campaignId = data?.campaignId;
 
-  return typeof campaignId === "string" && campaignId.length > 0
-    ? campaignId
-    : null;
+  if (typeof campaignId !== "string" || campaignId.length === 0) {
+    return null;
+  }
+
+  const tab = data?.tab;
+
+  if (tab === "publish") {
+    return `/campaign/${campaignId}?tab=publish`;
+  }
+
+  return `/campaign/${campaignId}`;
 }
 
 export default function NativePushListener() {
@@ -141,10 +147,10 @@ export default function NativePushListener() {
     const actionListener = PushNotifications.addListener(
       "pushNotificationActionPerformed",
       (action) => {
-        const campaignId = getCampaignIdFromNotification(action);
+        const route = getCampaignRouteFromNotification(action);
 
-        if (campaignId) {
-          router.push(`/campaign/${campaignId}`);
+        if (route) {
+          router.push(route);
         }
       },
     );

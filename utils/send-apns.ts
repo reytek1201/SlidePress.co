@@ -57,6 +57,10 @@ export async function sendApnsToDevice(
     dataPayload.title = data.title;
   }
 
+  if (data.tab) {
+    dataPayload.tab = data.tab;
+  }
+
   try {
     const apnsNotification = new Notification(
       normalizeDeviceToken(deviceToken),

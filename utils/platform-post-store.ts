@@ -6,6 +6,7 @@ import type {
 } from "@/types/platform-post";
 import { toPlatformPostPublic } from "@/types/platform-post";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { maybeSendPlatformPublishPush } from "@/utils/send-campaign-push";
 
 export async function createPlatformPost(input: {
   userId: string;
@@ -57,7 +58,13 @@ export async function updatePlatformPost(
     throw new Error(error?.message ?? "Failed to update platform post");
   }
 
-  return toPlatformPostPublic(data as PlatformPostRow);
+  const post = toPlatformPostPublic(data as PlatformPostRow);
+
+  if (patch.status === "published" || patch.status === "failed") {
+    await maybeSendPlatformPublishPush(post.id);
+  }
+
+  return post;
 }
 
 export async function getPlatformPostForUser(

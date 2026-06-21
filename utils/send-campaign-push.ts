@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getFirebaseServiceAccount, isFcmConfigured } from "@/utils/fcm-config";
+import { userWantsPushNotification } from "@/utils/push-notification-preferences";
 import { sendApnsToDevice } from "@/utils/send-apns";
 import { isPushConfigured } from "@/utils/push-config";
 import { GoogleAuth } from "google-auth-library";
@@ -9,6 +10,7 @@ const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 export interface PushDataPayload {
   campaignId?: string;
   title?: string;
+  tab?: string;
 }
 
 interface FcmSendResult {
@@ -58,6 +60,10 @@ async function sendFcmToDevice(
 
   if (data.title) {
     dataPayload.title = data.title;
+  }
+
+  if (data.tab) {
+    dataPayload.tab = data.tab;
   }
 
   const response = await fetch(
@@ -220,6 +226,30 @@ export async function maybeSendCampaignImagesReadyPush(
 
   const supabase = createAdminClient();
 
+  const { data: campaignPreview, error: previewError } = await supabase
+    .from("campaigns")
+    .select("user_id, title, status, images_ready_notified_at")
+    .eq("id", campaignId)
+    .maybeSingle();
+
+  if (
+    previewError ||
+    !campaignPreview ||
+    campaignPreview.status !== "completed" ||
+    campaignPreview.images_ready_notified_at
+  ) {
+    return;
+  }
+
+  if (
+    !(await userWantsPushNotification(
+      campaignPreview.user_id,
+      "images_ready",
+    ))
+  ) {
+    return;
+  }
+
   const { data: campaign, error: claimError } = await supabase
     .from("campaigns")
     .update({ images_ready_notified_at: new Date().toISOString() })
@@ -242,4 +272,175 @@ export async function maybeSendCampaignImagesReadyPush(
     campaignId,
     title: campaignTitle,
   });
+}
+
+export async function maybeSendVideoExportReadyPush(
+  exportId: string,
+): Promise<void> {
+  if (!isPushConfigured()) {
+    return;
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: exportPreview, error: previewError } = await supabase
+    .from("exports")
+    .select(
+      "id, campaign_id, export_type, status, output_url, video_ready_notified_at",
+    )
+    .eq("id", exportId)
+    .maybeSingle();
+
+  if (
+    previewError ||
+    !exportPreview ||
+    exportPreview.export_type !== "video" ||
+    exportPreview.status !== "completed" ||
+    !exportPreview.output_url ||
+    exportPreview.video_ready_notified_at
+  ) {
+    return;
+  }
+
+  const { data: campaignPreview, error: campaignPreviewError } = await supabase
+    .from("campaigns")
+    .select("user_id, title")
+    .eq("id", exportPreview.campaign_id)
+    .single();
+
+  if (campaignPreviewError || !campaignPreview) {
+    return;
+  }
+
+  if (
+    !(await userWantsPushNotification(
+      campaignPreview.user_id,
+      "video_export_ready",
+    ))
+  ) {
+    return;
+  }
+
+  const { data: exportRow, error: claimError } = await supabase
+    .from("exports")
+    .update({ video_ready_notified_at: new Date().toISOString() })
+    .eq("id", exportId)
+    .eq("export_type", "video")
+    .eq("status", "completed")
+    .not("output_url", "is", null)
+    .is("video_ready_notified_at", null)
+    .select("campaign_id")
+    .maybeSingle();
+
+  if (claimError || !exportRow) {
+    return;
+  }
+
+  const campaignTitle = campaignPreview.title?.trim() || "Your campaign";
+
+  await sendPushToUser(
+    campaignPreview.user_id,
+    {
+      title: "Video ready",
+      body: `${campaignTitle} — your MP4 is ready to download or publish.`,
+    },
+    {
+      campaignId: exportRow.campaign_id,
+      title: campaignTitle,
+      tab: "publish",
+    },
+  );
+}
+
+function platformPublishLabel(platform: string): string {
+  return platform === "youtube" ? "YouTube Shorts" : "TikTok";
+}
+
+export async function maybeSendPlatformPublishPush(
+  postId: string,
+): Promise<void> {
+  if (!isPushConfigured()) {
+    return;
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: postPreview, error: previewError } = await supabase
+    .from("platform_posts")
+    .select("id, user_id, campaign_id, platform, status, publish_notified_at")
+    .eq("id", postId)
+    .maybeSingle();
+
+  if (
+    previewError ||
+    !postPreview ||
+    (postPreview.status !== "published" && postPreview.status !== "failed") ||
+    postPreview.publish_notified_at
+  ) {
+    return;
+  }
+
+  if (
+    !(await userWantsPushNotification(
+      postPreview.user_id,
+      "platform_publish",
+    ))
+  ) {
+    return;
+  }
+
+  const { data: post, error: claimError } = await supabase
+    .from("platform_posts")
+    .update({ publish_notified_at: new Date().toISOString() })
+    .eq("id", postId)
+    .in("status", ["published", "failed"])
+    .is("publish_notified_at", null)
+    .select("user_id, campaign_id, platform, status")
+    .maybeSingle();
+
+  if (claimError || !post) {
+    return;
+  }
+
+  const { data: campaign, error: campaignError } = await supabase
+    .from("campaigns")
+    .select("title")
+    .eq("id", post.campaign_id)
+    .single();
+
+  if (campaignError || !campaign) {
+    return;
+  }
+
+  const campaignTitle = campaign.title?.trim() || "Your campaign";
+  const platformLabel = platformPublishLabel(post.platform);
+
+  if (post.status === "published") {
+    await sendPushToUser(
+      post.user_id,
+      {
+        title: `Published to ${platformLabel}`,
+        body: `${campaignTitle} is live on ${platformLabel}.`,
+      },
+      {
+        campaignId: post.campaign_id,
+        title: campaignTitle,
+        tab: "publish",
+      },
+    );
+    return;
+  }
+
+  await sendPushToUser(
+    post.user_id,
+    {
+      title: `${platformLabel} publish failed`,
+      body: `${campaignTitle} — tap to open Publish and try again.`,
+    },
+    {
+      campaignId: post.campaign_id,
+      title: campaignTitle,
+      tab: "publish",
+    },
+  );
 }

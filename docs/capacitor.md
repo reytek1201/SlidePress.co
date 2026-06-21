@@ -261,7 +261,9 @@ Notify users in the **native app** when every slide image in a campaign is ready
 
 **Client:** Users opt in under **Settings → Notifications**. `NativePushListener` registers the device token only after opt-in and sign-in. Tapping a notification opens the campaign workspace.
 
-**Server:** When a campaign transitions to `completed`, `maybeSendCampaignImagesReadyPush` sends one push per registered device (deduped via `campaigns.images_ready_notified_at`):
+**Server:** When a campaign transitions to `completed`, `maybeSendCampaignImagesReadyPush` sends one push per registered device (deduped via `campaigns.images_ready_notified_at`). When a **video export** completes, `maybeSendVideoExportReadyPush` fires once per export (deduped via `exports.video_ready_notified_at`) and deep-links to the Publish tab. When a **YouTube or TikTok publish** reaches `published` or `failed`, `maybeSendPlatformPublishPush` fires once per `platform_posts` row (deduped via `publish_notified_at`). All types respect per-user toggles in `user_notification_preferences` (Settings → Notifications).
+
+**Preferences API:** `GET` / `PATCH` / `PUT` `/api/push/preferences`
 
 - **iOS** — direct **APNs** (`apns2`) using the Capacitor APNs device token
 - **Android** — **FCM** HTTP v1 using the FCM registration token

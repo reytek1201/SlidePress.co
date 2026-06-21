@@ -11,6 +11,7 @@ import {
 } from "@/utils/fal-video";
 import { includesVideoNarration } from "@/utils/complete-video-export";
 import { runComposeSlidesStage } from "@/utils/compose-video-export-stage";
+import { maybeSendVideoExportReadyPush } from "@/utils/send-campaign-push";
 
 interface ProcessingExportRow {
   id: string;
@@ -47,6 +48,8 @@ async function completeVideoExport(
       fal_request_id: null,
     })
     .eq("id", exportId);
+
+  await maybeSendVideoExportReadyPush(exportId);
 }
 
 /**
