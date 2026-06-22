@@ -142,6 +142,8 @@ The native auth client stores the PKCE verifier in **localStorage** (survives Ch
 
 Google uses browser OAuth + deep link. Apple on iOS uses the native Sign in with Apple sheet and `signInWithIdToken` (bundle ID `co.slidepress.app`).
 
+**Platform connect (YouTube, TikTok, Instagram):** Same browser + deep-link pattern. Connect opens Safari / Chrome Custom Tab; after OAuth the server redirects to `co.slidepress.app://platforms/callback?next=...` and the app returns to Settings or the campaign publish tab.
+
 **Password reset flow:**
 1. Forgot password email links to `co.slidepress.app://auth/callback` (native) with session tokens
 2. App applies the session and opens **Settings** with a new-password form (`/settings?reset=1`)
@@ -155,11 +157,13 @@ co.slidepress.app://auth/callback
 co.slidepress.app://**
 ```
 
+Platform OAuth deep links use `co.slidepress.app://platforms/callback` (handled automatically; no extra Supabase config).
+
 Keep the existing web callbacks (`https://www.slidepress.co/auth/callback`, `http://localhost:3000/auth/callback`).
 
 ### Native rebuild (required)
 
-Deep link URL schemes are in `ios/App/App/Info.plist` and `android/app/src/main/AndroidManifest.xml`. After pulling these changes:
+Deep link URL schemes are in `ios/App/App/Info.plist` and `android/app/src/main/AndroidManifest.xml` (`auth/callback` for sign-in, `platforms/callback` for YouTube/TikTok/Instagram connect). After pulling these changes:
 
 ```bash
 npm run cap:sync

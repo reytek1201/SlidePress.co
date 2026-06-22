@@ -7,6 +7,7 @@ import { verifyYouTubeOAuthState } from "@/utils/youtube/oauth-state";
 import {
   buildOAuthErrorRedirect,
   buildOAuthSuccessRedirect,
+  platformOAuthRedirectContext,
 } from "@/utils/platforms/oauth-return";
 import { hasYouTubeUploadScope } from "@/utils/platforms/scopes";
 import { assertPlatformConnectAllowed } from "@/utils/platform-connection-limits";
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     oauthState = null;
   }
 
-  const returnTo = oauthState?.returnTo;
+  const redirectContext = platformOAuthRedirectContext(oauthState);
   const intent = oauthState?.intent ?? "connect";
 
   if (oauthError) {
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "youtube",
         reason,
-        returnTo,
+        ...redirectContext,
       }),
     );
   }
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "youtube",
         reason: !oauthState ? "state" : "missing_code",
-        returnTo,
+        ...redirectContext,
       }),
     );
   }
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "session_mismatch",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -93,14 +94,14 @@ export async function GET(request: NextRequest) {
       existingScopes: existing?.scopes,
     });
 
-    let saved = await getYouTubeConnectionRow(userId);
+    const saved = await getYouTubeConnectionRow(userId);
 
     if (intent === "publish" && !hasYouTubeUploadScope(saved?.scopes ?? tokens.scope)) {
       return NextResponse.redirect(
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "scope",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
       buildOAuthSuccessRedirect({
         platform: "youtube",
         intent,
-        returnTo,
+        ...redirectContext,
       }),
     );
   } catch (error) {
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "platform_limit",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -132,7 +133,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "database",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -142,7 +143,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "channel",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -152,7 +153,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "token",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -161,7 +162,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "youtube",
         reason: "unknown",
-        returnTo,
+        ...redirectContext,
       }),
     );
   }

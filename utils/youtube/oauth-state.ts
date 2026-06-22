@@ -13,6 +13,7 @@ export interface YouTubeOAuthStatePayload {
   nonce: string;
   returnTo?: string;
   intent: PlatformOAuthIntent;
+  native?: boolean;
 }
 
 function signPayload(payloadB64: string): string {
@@ -25,6 +26,7 @@ export function createYouTubeOAuthState(
   options?: {
     returnTo?: string | null;
     intent?: PlatformOAuthIntent;
+    native?: boolean;
   },
 ): string {
   const payload: YouTubeOAuthStatePayload = {
@@ -38,6 +40,10 @@ export function createYouTubeOAuthState(
 
   if (safeReturnTo) {
     payload.returnTo = safeReturnTo;
+  }
+
+  if (options?.native) {
+    payload.native = true;
   }
 
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -73,5 +79,6 @@ export function verifyYouTubeOAuthState(state: string): YouTubeOAuthStatePayload
     nonce: payload.nonce ?? "",
     returnTo: resolveSafeReturnPath(payload.returnTo),
     intent: payload.intent === "publish" ? "publish" : "connect",
+    native: payload.native === true,
   };
 }

@@ -2,6 +2,8 @@
 
 import CampaignYouTubeReadinessChecklist from "@/app/campaign/[id]/campaign-youtube-readiness-checklist";
 import PlatformTierUpgradeNotice from "@/app/campaign/[id]/platform-tier-upgrade-notice";
+import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
+import { navigatePlatformOAuth } from "@/utils/native-platform-oauth-flow";
 import { getYouTubePublishErrorMessage } from "@/utils/youtube/publish-errors";
 import { buildPlatformAuthorizeUrl } from "@/utils/platforms/oauth-return";
 import type { VerticalFormatPublishState } from "@/utils/slide-aspect-images";
@@ -114,6 +116,7 @@ export default function CampaignYouTubePublishPanel({
 }: CampaignYouTubePublishPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isNativeApp = useIsNativeApp();
   const [readiness, setReadiness] = useState<PublishReadinessResponse | null>(
     null,
   );
@@ -398,7 +401,10 @@ export default function CampaignYouTubePublishPanel({
           <button
             type="button"
             onClick={() => {
-              window.location.href = uploadAuthorizeUrl;
+              navigatePlatformOAuth(uploadAuthorizeUrl, isNativeApp === true, (nextPath) => {
+                router.replace(nextPath);
+                router.refresh();
+              });
             }}
             className="btn-primary w-full py-2.5 text-sm sm:w-auto sm:px-6"
           >

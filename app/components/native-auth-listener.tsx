@@ -9,6 +9,7 @@ import {
   getNativeAuthCallbackKey,
   parseNativeAuthCallback,
 } from "@/utils/native-oauth";
+import { parseNativePlatformCallbackUrl } from "@/utils/platforms/oauth-return";
 import { setNativeOAuthInProgress } from "@/utils/native-oauth-in-progress";
 import { createClient } from "@/utils/supabase/client";
 import { configureRevenueCat } from "@/utils/revenuecat";
@@ -57,6 +58,24 @@ function unmarkCallbackHandled(key: string): void {
   } catch {
     // sessionStorage unavailable — best effort.
   }
+}
+
+async function handleNativePlatformCallbackUrl(
+  url: string,
+  navigate: (path: string) => void,
+) {
+  const callback = parseNativePlatformCallbackUrl(url);
+  if (!callback) {
+    return;
+  }
+
+  try {
+    await Browser.close();
+  } catch {
+    // Browser may already be closed.
+  }
+
+  navigate(callback.nextPath);
 }
 
 async function handleNativeAuthUrl(
@@ -133,13 +152,18 @@ export default function NativeAuthListener() {
       router.refresh();
     }
 
-    async function onAuthUrl(url: string) {
+    async function onAppUrl(url: string) {
       if (isHandlingRef.current) {
         return;
       }
 
       isHandlingRef.current = true;
       try {
+        if (parseNativePlatformCallbackUrl(url)) {
+          await handleNativePlatformCallbackUrl(url, navigate);
+          return;
+        }
+
         await handleNativeAuthUrl(url, navigate);
       } finally {
         isHandlingRef.current = false;
@@ -147,13 +171,13 @@ export default function NativeAuthListener() {
     }
 
     const appUrlListener = App.addListener("appUrlOpen", ({ url }) => {
-      void onAuthUrl(url);
+      void onAppUrl(url);
     });
 
     App.getLaunchUrl()
       .then((launch) => {
         if (launch?.url) {
-          void onAuthUrl(launch.url);
+          void onAppUrl(launch.url);
         }
       })
       .catch(() => {});

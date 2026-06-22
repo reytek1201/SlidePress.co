@@ -11,6 +11,7 @@ import { verifyInstagramOAuthState } from "@/utils/instagram/oauth-state";
 import {
   buildOAuthErrorRedirect,
   buildOAuthSuccessRedirect,
+  platformOAuthRedirectContext,
 } from "@/utils/platforms/oauth-return";
 import { hasInstagramPublishScope } from "@/utils/platforms/scopes";
 import { assertPlatformConnectAllowed } from "@/utils/platform-connection-limits";
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     oauthState = null;
   }
 
-  const returnTo = oauthState?.returnTo;
+  const redirectContext = platformOAuthRedirectContext(oauthState);
   const intent = oauthState?.intent ?? "connect";
 
   if (oauthError) {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "instagram",
         reason,
-        returnTo,
+        ...redirectContext,
       }),
     );
   }
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "instagram",
         reason: !oauthState ? "state" : "missing_code",
-        returnTo,
+        ...redirectContext,
       }),
     );
   }
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "instagram",
           reason: "session_mismatch",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "instagram",
           reason: "scope",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
       buildOAuthSuccessRedirect({
         platform: "instagram",
         intent,
-        returnTo,
+        ...redirectContext,
       }),
     );
   } catch (error) {
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "instagram",
           reason: "platform_limit",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -139,7 +140,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "instagram",
           reason: "database",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "instagram",
           reason: "account",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -163,7 +164,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "instagram",
           reason: "token",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -172,7 +173,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "instagram",
         reason: "unknown",
-        returnTo,
+        ...redirectContext,
       }),
     );
   }

@@ -1,15 +1,21 @@
-import { getAppUrl } from "@/utils/stripe";
 import { createClient } from "@/utils/supabase/server";
 import { buildYouTubeAuthUrl, getYouTubeOAuthConfig } from "@/utils/youtube/oauth";
 import { createYouTubeOAuthState } from "@/utils/youtube/oauth-state";
-import { buildOAuthErrorRedirect } from "@/utils/platforms/oauth-return";
+import {
+  buildOAuthErrorRedirect,
+  respondPlatformOAuthStart,
+  respondPlatformOAuthStartError,
+  respondPlatformOAuthUnauthorized,
+  wantsNativeOAuthClient,
+} from "@/utils/platforms/oauth-return";
 import { assertPlatformConnectAllowed } from "@/utils/platform-connection-limits";
 import { isUsageLimitError } from "@/utils/usage-limits";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const returnTo = searchParams.get("returnTo");
+  const native = wantsNativeOAuthClient(searchParams);
 
   try {
     const supabase = await createClient();
@@ -20,9 +26,7 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.redirect(
-        new URL("/login?next=/settings/connected-accounts", getAppUrl()),
-      );
+      return respondPlatformOAuthUnauthorized(native);
     }
 
     getYouTubeOAuthConfig();
@@ -32,29 +36,34 @@ export async function GET(request: NextRequest) {
     const state = createYouTubeOAuthState(user.id, {
       returnTo,
       intent: "connect",
+      native,
     });
     const authUrl = buildYouTubeAuthUrl(state);
 
-    return NextResponse.redirect(authUrl);
+    return respondPlatformOAuthStart(authUrl, native);
   } catch (error) {
     if (isUsageLimitError(error)) {
-      return NextResponse.redirect(
+      return respondPlatformOAuthStartError(
         buildOAuthErrorRedirect({
           platform: "youtube",
           reason: "platform_limit",
           returnTo: returnTo ?? undefined,
+          native,
         }),
+        native,
       );
     }
 
     console.error("YouTube connect error:", error);
 
-    return NextResponse.redirect(
+    return respondPlatformOAuthStartError(
       buildOAuthErrorRedirect({
         platform: "youtube",
         reason: "connect",
         returnTo: returnTo ?? undefined,
+        native,
       }),
+      native,
     );
   }
 }

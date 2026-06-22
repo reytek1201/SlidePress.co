@@ -13,6 +13,7 @@ export interface InstagramOAuthStatePayload {
   nonce: string;
   returnTo?: string;
   intent: PlatformOAuthIntent;
+  native?: boolean;
 }
 
 function signPayload(payloadB64: string): string {
@@ -25,6 +26,7 @@ export function createInstagramOAuthState(
   options?: {
     returnTo?: string | null;
     intent?: PlatformOAuthIntent;
+    native?: boolean;
   },
 ): string {
   const payload: InstagramOAuthStatePayload = {
@@ -38,6 +40,10 @@ export function createInstagramOAuthState(
 
   if (safeReturnTo) {
     payload.returnTo = safeReturnTo;
+  }
+
+  if (options?.native) {
+    payload.native = true;
   }
 
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -75,5 +81,6 @@ export function verifyInstagramOAuthState(
     nonce: payload.nonce ?? "",
     returnTo: resolveSafeReturnPath(payload.returnTo),
     intent: payload.intent === "publish" ? "publish" : "connect",
+    native: payload.native === true,
   };
 }

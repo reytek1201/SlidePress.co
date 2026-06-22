@@ -10,6 +10,7 @@ import { verifyTikTokOAuthState } from "@/utils/tiktok/oauth-state";
 import {
   buildOAuthErrorRedirect,
   buildOAuthSuccessRedirect,
+  platformOAuthRedirectContext,
 } from "@/utils/platforms/oauth-return";
 import { hasTikTokPublishScope } from "@/utils/platforms/scopes";
 import { assertPlatformConnectAllowed } from "@/utils/platform-connection-limits";
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
     oauthState = null;
   }
 
-  const returnTo = oauthState?.returnTo;
+  const redirectContext = platformOAuthRedirectContext(oauthState);
   const intent = oauthState?.intent ?? "connect";
 
   if (oauthError) {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "tiktok",
         reason,
-        returnTo,
+        ...redirectContext,
       }),
     );
   }
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "tiktok",
         reason: !oauthState ? "state" : "missing_code",
-        returnTo,
+        ...redirectContext,
       }),
     );
   }
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "tiktok",
           reason: "session_mismatch",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "tiktok",
           reason: "scope",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
       buildOAuthSuccessRedirect({
         platform: "tiktok",
         intent,
-        returnTo,
+        ...redirectContext,
       }),
     );
   } catch (error) {
@@ -121,7 +122,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "tiktok",
           reason: "platform_limit",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "tiktok",
           reason: "database",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -145,7 +146,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "tiktok",
           reason: "account",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -155,7 +156,7 @@ export async function GET(request: NextRequest) {
         buildOAuthErrorRedirect({
           platform: "tiktok",
           reason: "token",
-          returnTo,
+          ...redirectContext,
         }),
       );
     }
@@ -164,7 +165,7 @@ export async function GET(request: NextRequest) {
       buildOAuthErrorRedirect({
         platform: "tiktok",
         reason: "unknown",
-        returnTo,
+        ...redirectContext,
       }),
     );
   }

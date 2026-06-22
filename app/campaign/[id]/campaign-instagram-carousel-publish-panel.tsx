@@ -2,6 +2,8 @@
 
 import CampaignInstagramCarouselReadinessChecklist from "@/app/campaign/[id]/campaign-instagram-carousel-readiness-checklist";
 import PlatformTierUpgradeNotice from "@/app/campaign/[id]/platform-tier-upgrade-notice";
+import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
+import { navigatePlatformOAuth } from "@/utils/native-platform-oauth-flow";
 import { getInstagramPublishErrorMessage } from "@/utils/instagram/publish-errors";
 import { buildPlatformAuthorizeUrl } from "@/utils/platforms/oauth-return";
 import type { CarouselFormatPublishState } from "@/utils/slide-aspect-images";
@@ -106,6 +108,7 @@ export default function CampaignInstagramCarouselPublishPanel({
 }: CampaignInstagramCarouselPublishPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isNativeApp = useIsNativeApp();
   const [readiness, setReadiness] = useState<PublishReadinessResponse | null>(
     null,
   );
@@ -379,7 +382,10 @@ export default function CampaignInstagramCarouselPublishPanel({
           <button
             type="button"
             onClick={() => {
-              window.location.href = publishAuthorizeUrl;
+              navigatePlatformOAuth(publishAuthorizeUrl, isNativeApp === true, (nextPath) => {
+                router.replace(nextPath);
+                router.refresh();
+              });
             }}
             className="btn-primary w-full py-2.5 text-sm sm:w-auto sm:px-6"
           >

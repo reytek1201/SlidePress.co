@@ -3,8 +3,10 @@
 import type { PlatformConnectionPublic } from "@/types/platform-connection";
 import type { UsageSummary } from "@/types/usage";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
+import { startNativePlatformOAuth } from "@/utils/native-platform-oauth-flow";
 
 interface PlatformStatusResponse {
   success: boolean;
@@ -270,7 +272,9 @@ const INITIAL_LOADING: PlatformLoadingState = {
 };
 
 export default function ConnectedAccountsSettings() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const isNativeApp = useIsNativeApp();
   const [connections, setConnections] =
     useState<PlatformConnectionState>(INITIAL_CONNECTIONS);
   const [loading, setLoading] = useState<PlatformLoadingState>(INITIAL_LOADING);
@@ -402,6 +406,24 @@ export default function ConnectedAccountsSettings() {
     }
   }
 
+  async function connectPlatform(platform: PlatformKey, apiPath: string) {
+    setError(null);
+
+    if (isNativeApp === true) {
+      const result = await startNativePlatformOAuth(apiPath, (nextPath) => {
+        router.replace(nextPath);
+        router.refresh();
+      });
+
+      if (result.error) {
+        setError(result.error);
+      }
+      return;
+    }
+
+    window.location.href = apiPath;
+  }
+
   function connectBlockedFor(platform: PlatformKey): boolean {
     if (!usage || connections[platform]) {
       return false;
@@ -468,7 +490,7 @@ export default function ConnectedAccountsSettings() {
         disconnectLabel={PLATFORM_LABELS.youtube.disconnect}
         connectBlocked={connectBlockedFor("youtube")}
         onConnect={() => {
-          window.location.href = "/api/platforms/youtube/connect";
+          void connectPlatform("youtube", "/api/platforms/youtube/connect");
         }}
         onDisconnect={() => void handleDisconnect("youtube")}
       />
@@ -485,7 +507,7 @@ export default function ConnectedAccountsSettings() {
         disconnectLabel={PLATFORM_LABELS.tiktok.disconnect}
         connectBlocked={connectBlockedFor("tiktok")}
         onConnect={() => {
-          window.location.href = "/api/platforms/tiktok/connect";
+          void connectPlatform("tiktok", "/api/platforms/tiktok/connect");
         }}
         onDisconnect={() => void handleDisconnect("tiktok")}
       />
@@ -502,7 +524,7 @@ export default function ConnectedAccountsSettings() {
         disconnectLabel={PLATFORM_LABELS.instagram.disconnect}
         connectBlocked={connectBlockedFor("instagram")}
         onConnect={() => {
-          window.location.href = "/api/platforms/instagram/connect";
+          void connectPlatform("instagram", "/api/platforms/instagram/connect");
         }}
         onDisconnect={() => void handleDisconnect("instagram")}
       />
