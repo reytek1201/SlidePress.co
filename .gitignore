@@ -47,6 +47,7 @@ android/.gradle/
 android/app/build/
 android/build/
 android/local.properties
+supabase/.temp/
 *.xcuserstate
 **/xcuserdata/
 /icons/
