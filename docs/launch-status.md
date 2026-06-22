@@ -95,8 +95,8 @@ Single source of truth for where store setup, billing, and platform audits stand
 
 Priority: unblock billing QA and platform gating in production.
 
-- [ ] Apply `20260623000001_tier_entitlement_v2.sql` in Supabase production
-- [ ] Apply `20260624000001_platform_connection_grace.sql` in Supabase production
+- [x] Apply `20260623000001_tier_entitlement_v2.sql` in Supabase production
+- [x] Apply `20260624000001_platform_connection_grace.sql` in Supabase production
 - [ ] Stripe: create v2 Prices ($24 / $79) → update Vercel env (`STRIPE_PRICE_CREATOR`, `STRIPE_PRICE_AGENCY`)
 - [ ] Confirm `REVENUECAT_WEBHOOK_SECRET` + webhook URL on RevenueCat
 - [ ] Create **reviewer demo account** (`reviewer@slidepress.co`) with sample campaign — [`app-store-review-notes.md`](app-store-review-notes.md)

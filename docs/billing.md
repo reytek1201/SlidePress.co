@@ -347,7 +347,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 
 - [x] Update `utils/plan-limits.ts` to v2 caps
 - [x] Migration: `apply_tier_entitlement()` CASE values match v2
-- [ ] Apply migration `20260623000001_tier_entitlement_v2.sql` in Supabase
+- [x] Apply migration `20260623000001_tier_entitlement_v2.sql` in Supabase
 - [ ] Stripe: new Price IDs ($24 / $79) + Vercel env
 - [x] `usage-settings.tsx` plan copy and prices (web vs IAP)
 - [x] RevenueCat products ($29.99 / $99.99) in ASC + Play; linked in RC — **Ready to Submit** (iOS); IAP live after App Store review ([#44](https://github.com/reytek1201/SlidePress.co/issues/44))
@@ -360,7 +360,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [x] Guard publish-authorize / upload-authorize routes
 - [x] Connected accounts UI: locked cards + upgrade CTA on free (Phase 2)
 - [x] Downgrade webhook: 7-day grace + auto-revoke extras (Phase 4)
-- [ ] Apply migration `20260624000001_platform_connection_grace.sql` in Supabase
+- [x] Apply migration `20260624000001_platform_connection_grace.sql` in Supabase
 
 ### QA
 
