@@ -4,12 +4,12 @@
 
 **GitHub epic:** [Epic — Direct Platform Posting](https://github.com/reytek1201/SlidePress.co/issues/27)
 
-**Current state (June 21, 2026):** All four platform integrations **shipped in code** — connect in Settings, publish from campaign. **Public launch** blocked only by platform audits:
+**Current state (June 22, 2026):** All four platform integrations **shipped in code** — connect in Settings, publish from campaign. **Public launch** blocked only by platform audits:
 
 | Platform | Code | Public users |
 |----------|------|----------------|
 | YouTube Shorts | ✅ | 🚧 Google OAuth verification submitted |
-| TikTok | ✅ | 🚧 TikTok app audit (sandbox / `SELF_ONLY` today) |
+| TikTok | ✅ | 🟡 Verify audit — may be approved; test public post |
 | Instagram Reels | ✅ | 🚧 Meta App Review (`instagram_content_publish`) — in progress; KeyMacro LLC business docs |
 | Instagram Carousel | ✅ | 🚧 Same Meta review as Reels |
 

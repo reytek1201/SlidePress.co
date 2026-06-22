@@ -2,6 +2,17 @@
 
 Use this before **TestFlight** (iOS) and **Play internal testing** (Android).
 
+**Launch status (stores, billing, audits):** see **[`docs/launch-status.md`](launch-status.md)** — updated June 22, 2026.
+
+### Store setup snapshot
+
+| | iOS | Android |
+|--|-----|---------|
+| **Binary** | Build **4** (1.0) on ASC | AAB `versionCode` **2** |
+| **Subscriptions** | Ready to Submit; attached to 1.0 draft | Created in Play; linked in RevenueCat |
+| **Submitted for store review?** | **No** — waiting on platform audits + QA | Closed testing — submit when ready |
+| **TestFlight / testing** | ✅ External beta passed; internal testing on build 4 | Closed/internal track |
+
 ---
 
 ## Pre-flight (web)

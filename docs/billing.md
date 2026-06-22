@@ -350,7 +350,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [ ] Apply migration `20260623000001_tier_entitlement_v2.sql` in Supabase
 - [ ] Stripe: new Price IDs ($24 / $79) + Vercel env
 - [x] `usage-settings.tsx` plan copy and prices (web vs IAP)
-- [ ] RevenueCat products ($29.99 / $99.99) when mobile billing ships
+- [x] RevenueCat products ($29.99 / $99.99) in ASC + Play; linked in RC — **Ready to Submit** (iOS); IAP live after App Store review ([#44](https://github.com/reytek1201/SlidePress.co/issues/44))
 
 ### Platform gating
 
@@ -407,7 +407,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 | 23 | App Store + Play subscription setup | E |
 | 25 | QA checklist + launch docs | F |
 
-[Epic #14 — Billing & Usage Tiers](https://github.com/reytek1201/SlidePress.co/issues/14)
+[Epic #14 — Billing & Usage Tiers](https://github.com/reytek1201/SlidePress.co/issues/14) · [Launch status](launch-status.md) · [Epic #44 — Store launch](https://github.com/reytek1201/SlidePress.co/issues/44)
 
 ---
 

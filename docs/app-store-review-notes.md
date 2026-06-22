@@ -9,6 +9,8 @@ Copy-paste sections into **App Store Connect** or **Google Play Console** when y
 **Terms:** `https://www.slidepress.co/terms`  
 **Support:** hello@slidepress.co
 
+**Launch status:** [`docs/launch-status.md`](launch-status.md) — iOS **1.0** draft has build 4 + both subscriptions attached; **not yet submitted** for App Store review (manual release when ready).
+
 ---
 
 ## When to use what
