@@ -1,7 +1,7 @@
 "use client";
 
 import SettingsSection from "@/app/settings/settings-section";
-import type { UsageSummary } from "@/types/usage";
+import type { BillingSource, UsageSummary } from "@/types/usage";
 import {
   fetchUsageSummary,
   waitForUsageTierChange,
@@ -18,12 +18,25 @@ import { Capacitor } from "@capacitor/core";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+const APP_STORE_SUBSCRIPTIONS_URL =
+  "https://apps.apple.com/account/subscriptions";
+const PLAY_STORE_SUBSCRIPTIONS_URL =
+  "https://play.google.com/store/account/subscriptions?package=co.slidepress.app";
+
 function formatRenewalDate(isoDate: string): string {
   return new Intl.DateTimeFormat(undefined, {
     month: "long",
     day: "numeric",
     year: "numeric",
   }).format(new Date(isoDate));
+}
+
+function formatSubscriptionPeriodEnd(isoDate: string): string {
+  const label = formatRenewalDate(isoDate);
+  if (new Date(isoDate).getTime() < Date.now()) {
+    return `Ended ${label}`;
+  }
+  return `Renews ${label}`;
 }
 
 interface CreditTileProps {
@@ -34,7 +47,10 @@ interface CreditTileProps {
 }
 
 function CreditTile({ label, remaining, limit, isLifetime }: CreditTileProps) {
-  const pct = limit > 0 ? Math.round(((limit - remaining) / limit) * 100) : 0;
+  const displayRemaining = limit > 0 ? Math.min(remaining, limit) : remaining;
+  const used = limit > 0 ? limit - displayRemaining : 0;
+  const pct =
+    limit > 0 ? Math.min(100, Math.max(0, Math.round((used / limit) * 100))) : 0;
   const low = remaining === 0;
 
   return (
@@ -43,7 +59,7 @@ function CreditTile({ label, remaining, limit, isLifetime }: CreditTileProps) {
         {label}
       </dt>
       <dd className="mt-2 text-2xl font-semibold text-foreground">
-        {remaining}
+        {displayRemaining}
         <span className="text-base font-normal text-muted-foreground">
           {" "}
           / {limit}
@@ -189,6 +205,69 @@ function ManageSubscriptionButton() {
       </button>
       {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </div>
+  );
+}
+
+function WebIapManageSubscription() {
+  return (
+    <div className="flex flex-wrap gap-2">
+      <a
+        href={APP_STORE_SUBSCRIPTIONS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground"
+      >
+        App Store subscriptions
+      </a>
+      <a
+        href={PLAY_STORE_SUBSCRIPTIONS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-xl border border-border px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground"
+      >
+        Play Store subscriptions
+      </a>
+    </div>
+  );
+}
+
+function WebPaidManageActions({
+  billingSource,
+}: {
+  billingSource: BillingSource | null;
+}) {
+  if (billingSource === "stripe") {
+    return <ManageSubscriptionButton />;
+  }
+  if (billingSource === "iap") {
+    return <WebIapManageSubscription />;
+  }
+  return null;
+}
+
+function WebIapManageHelpText() {
+  return (
+    <>
+      Manage or cancel through the{" "}
+      <a
+        href={APP_STORE_SUBSCRIPTIONS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-primary underline-offset-2 hover:underline"
+      >
+        App Store
+      </a>{" "}
+      or{" "}
+      <a
+        href={PLAY_STORE_SUBSCRIPTIONS_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-primary underline-offset-2 hover:underline"
+      >
+        Google Play
+      </a>{" "}
+      on the device where you subscribed.
+    </>
   );
 }
 
@@ -496,7 +575,7 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                 </span>
               ) : usage.resetsAt ? (
                 <span className="text-xs text-muted-foreground">
-                  Renews {formatRenewalDate(usage.resetsAt)}
+                  {formatSubscriptionPeriodEnd(usage.resetsAt)}
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground">
@@ -515,7 +594,7 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                 }}
               />
             ) : !usage.isLifetimeTier ? (
-              <ManageSubscriptionButton />
+              <WebPaidManageActions billingSource={usage.billingSource} />
             ) : null}
           </div>
 
@@ -660,15 +739,9 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                       onClick={() => {
                         const platform = Capacitor.getPlatform();
                         if (platform === "ios") {
-                          window.open(
-                            "https://apps.apple.com/account/subscriptions",
-                            "_system",
-                          );
+                          window.open(APP_STORE_SUBSCRIPTIONS_URL, "_system");
                         } else {
-                          window.open(
-                            "https://play.google.com/store/account/subscriptions?package=co.slidepress.app",
-                            "_system",
-                          );
+                          window.open(PLAY_STORE_SUBSCRIPTIONS_URL, "_system");
                         }
                       }}
                       className="font-medium text-primary underline-offset-2 hover:underline"
@@ -677,7 +750,9 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                     </button>
                     .
                   </>
-                ) : (
+                ) : usage.billingSource === "iap" ? (
+                  <WebIapManageHelpText />
+                ) : usage.billingSource === "stripe" ? (
                   <>
                     Use{" "}
                     <button
@@ -695,7 +770,7 @@ export default function UsageSettings({ variant = "card" }: UsageSettingsProps) 
                     </button>{" "}
                     to manage or cancel.
                   </>
-                )}
+                ) : null}
               </p>
             </div>
           )}

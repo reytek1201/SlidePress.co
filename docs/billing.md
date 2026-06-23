@@ -6,7 +6,7 @@ Paid subscription tiers with credit-based usage enforcement, dual payment rails 
 
 **Related:** [#1 — ElevenLabs narration & video export](https://github.com/reytek1201/SlidePress.co/issues/1) (video credit enforcement depends on Epic #1)
 
-**Status:** **v2** caps and list prices are implemented in code (`utils/plan-limits.ts`, Settings → Usage). Run the Supabase migration and create new Stripe Prices in the Dashboard (see [Stripe price change runbook](#stripe-price-change-runbook)) before charging new amounts.
+**Status:** **v2** caps and list prices are live in production. Stripe live prices ($24 / $79), Vercel env, and webhook verified Jun 23, 2026. Remaining work: full #25 QA matrix (free tier, Agency upgrade, cancel/grace, IAP).
 
 **Deferred:** Studio / Enterprise tier with higher video caps — reassess H2 2026 after `usage_events` data.
 
@@ -348,7 +348,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [x] Update `utils/plan-limits.ts` to v2 caps
 - [x] Migration: `apply_tier_entitlement()` CASE values match v2
 - [x] Apply migration `20260623000001_tier_entitlement_v2.sql` in Supabase
-- [ ] Stripe: new Price IDs ($24 / $79) + Vercel env
+- [x] Stripe: live Price IDs ($24 / $79) + Vercel env + live webhook destination
 - [x] `usage-settings.tsx` plan copy and prices (web vs IAP)
 - [x] RevenueCat products ($29.99 / $99.99) in ASC + Play; linked in RC — **Ready to Submit** (iOS); IAP live after App Store review ([#44](https://github.com/reytek1201/SlidePress.co/issues/44))
 
@@ -367,9 +367,9 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [ ] New signup → free defaults (3 / 10 / 0 / 5 / 0)
 - [ ] Free: 2nd platform connect blocked
 - [ ] Free: 4th campaign blocked with upsell
-- [ ] Stripe upgrade Creator → v2 credits (10 / 20 / 10)
+- [x] Stripe upgrade Creator → v2 credits (10 / 20 / 10) — smoke test green (Jun 23, 2026)
 - [ ] Stripe upgrade Agency → v2 credits (30 / 60 / 20)
-- [ ] Checkout shows $24 / $79 (not legacy $19 / $49)
+- [x] Checkout shows $24 / $79 (not legacy $19 / $49)
 - [ ] Cancel subscription → free tier + connection grace handling
 - [ ] Brand limits: 1 / 3 / 15 per tier
 - [ ] Period reset refills paid credits (hard reset, not additive)
@@ -424,4 +424,4 @@ Revisit after ~3 months of `usage_events` + conversion data. Candidates:
 
 ---
 
-*Last updated: June 2026 — v2 draft*
+*Last updated: June 23, 2026 — Stripe live verified*

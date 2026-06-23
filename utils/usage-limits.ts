@@ -1,4 +1,5 @@
 import type { UsageSummary } from "@/types/usage";
+import { resolveBillingSource } from "@/utils/billing-rail";
 import { getPlanLabel, getPlanLimits, isLifetimeTier } from "@/utils/plan-limits";
 import type { Tier } from "@/utils/plan-limits";
 import { getPlatformConnectionSummary } from "@/utils/platform-connection-limits";
@@ -51,6 +52,8 @@ interface BalanceRow {
   tts_preview_credits_remaining: number;
   audio_export_credits_remaining: number;
   current_period_end: string | null;
+  stripe_customer_id: string | null;
+  revenuecat_app_user_id: string | null;
 }
 
 async function fetchBalance(
@@ -60,7 +63,7 @@ async function fetchBalance(
   const { data, error } = await supabase
     .from("usage_balances")
     .select(
-      "tier, campaign_credits_remaining, regeneration_credits_remaining, video_credits_remaining, tts_preview_credits_remaining, audio_export_credits_remaining, current_period_end",
+      "tier, campaign_credits_remaining, regeneration_credits_remaining, video_credits_remaining, tts_preview_credits_remaining, audio_export_credits_remaining, current_period_end, stripe_customer_id, revenuecat_app_user_id",
     )
     .eq("user_id", userId)
     .single();
@@ -131,6 +134,11 @@ export async function getUsageSummary(
     platformConnections,
     resetsAt: balance.current_period_end ?? null,
     isLifetimeTier: isLifetimeTier(tier),
+    billingSource: resolveBillingSource(
+      tier,
+      balance.stripe_customer_id,
+      balance.revenuecat_app_user_id,
+    ),
     totalCampaigns: campaignResult.count ?? 0,
   };
 }

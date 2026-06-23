@@ -1,6 +1,6 @@
 # SlidePress — Launch status & next phase
 
-**Last updated:** June 20, 2026
+**Last updated:** June 23, 2026
 
 Single source of truth for where store setup, billing, and platform audits stand — and what to work on next.
 
@@ -20,7 +20,7 @@ Single source of truth for where store setup, billing, and platform audits stand
 | **iOS App Store** | 🟡 **1.0 draft ready** — build + subs attached; **not submitted** (waiting on platform reviews) |
 | **Android closed testing** | 🟡 AAB uploaded (`versionCode` **8**); **Play sandbox IAP verified** ([#26](https://github.com/reytek1201/SlidePress.co/issues/26) closed) |
 | **Billing v2 (code)** | ✅ Caps, gating, Stripe + RevenueCat integration in repo |
-| **Billing v2 (prod)** | 🟡 Migrations + Stripe Price IDs may still need applying in Supabase/Vercel |
+| **Billing v2 (prod)** | ✅ Migrations applied; Stripe live prices + webhook on Vercel |
 | **Platform audits** | 🚧 YouTube OAuth, Meta Instagram, TikTok public posting — **blockers for marketing “direct post”** |
 
 **Strategy:** Finish external platform reviews + internal QA **before** submitting iOS **1.0** for App Store review. TestFlight can continue without App Store submit. iOS uses **manual release** so approval ≠ going live.
@@ -97,7 +97,7 @@ Priority: unblock billing QA and platform gating in production.
 
 - [x] Apply `20260623000001_tier_entitlement_v2.sql` in Supabase production
 - [x] Apply `20260624000001_platform_connection_grace.sql` in Supabase production
-- [ ] Stripe: create v2 Prices ($24 / $79) → update Vercel env (`STRIPE_PRICE_CREATOR`, `STRIPE_PRICE_AGENCY`)
+- [x] Stripe: live v2 Prices ($24 / $79) + Vercel env (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_*`, `STRIPE_WEBHOOK_SECRET`) — smoke test green (Jun 23, 2026)
 - [ ] Confirm `REVENUECAT_WEBHOOK_SECRET` + webhook URL on RevenueCat
 - [ ] Create **reviewer demo account** (`reviewer@slidepress.co`) with sample campaign — [`app-store-review-notes.md`](app-store-review-notes.md)
 
@@ -113,7 +113,8 @@ Run on web + one native device after Phase A migrations:
 
 - [ ] Free tier defaults (3 / 10 / 0 campaigns / regens / videos)
 - [ ] Free: 2nd platform connect blocked; 4th campaign upsell
-- [ ] Stripe upgrade → v2 credits (10/20/10 Creator, 30/60/20 Agency)
+- [x] Stripe upgrade → v2 credits (10/20/10 Creator) — smoke test green (Jun 23, 2026)
+- [ ] Stripe upgrade Agency → v2 credits (30/60/20)
 - [ ] Downgrade → 7-day connection grace then revoke
 - [ ] Brand limits 1 / 3 / 15
 
@@ -153,6 +154,7 @@ Increment build numbers on every store upload.
 | Jun 22, 2026 | **Do not** submit iOS 1.0 for App Store review until platform audits + QA complete; 1.0 draft with subs attached is correct holding state |
 | Jun 22, 2026 | iOS **manual release** — approval will not auto-publish to App Store |
 | Jun 2026 | v2 pricing locked: web $24/$79, IAP $29.99/$99.99 |
+| Jun 23, 2026 | **Stripe live billing verified** — v2 prices on Vercel, live webhook destination, Creator checkout smoke test green |
 
 ---
 

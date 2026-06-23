@@ -2,6 +2,9 @@ import type { Tier } from "@/utils/plan-limits";
 
 export type { Tier };
 
+/** How the user pays for a paid tier — drives manage/cancel UI on web vs native. */
+export type BillingSource = "stripe" | "iap";
+
 export interface UsageRemaining {
   campaigns: number;
   regenerations: number;
@@ -67,5 +70,7 @@ export interface UsageSummary {
   resetsAt: string | null;
   /** True for free tier (lifetime credits, no monthly reset). */
   isLifetimeTier: boolean;
+  /** Stripe web checkout vs mobile IAP; null when free or billing rail unknown. */
+  billingSource: BillingSource | null;
   totalCampaigns: number;
 }
