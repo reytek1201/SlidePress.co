@@ -99,7 +99,10 @@ Priority: unblock billing QA and platform gating in production.
 - [x] Apply `20260624000001_platform_connection_grace.sql` in Supabase production
 - [x] Stripe: live v2 Prices ($24 / $79) + Vercel env (`STRIPE_SECRET_KEY`, `STRIPE_PRICE_*`, `STRIPE_WEBHOOK_SECRET`) — smoke test green (Jun 23, 2026)
 - [ ] Confirm `REVENUECAT_WEBHOOK_SECRET` + webhook URL on RevenueCat
-- [ ] Create **reviewer demo account** (`reviewer@slidepress.co`) with sample campaign — [`app-store-review-notes.md`](app-store-review-notes.md)
+- [x] Create **reviewer demo account** (`reviewer@slidepress.co`) with sample campaign — live (Jun 23, 2026); credentials in [`app-store-review-notes.md`](app-store-review-notes.md)
+- [ ] Apply `20260625000001_clamp_v1_usage_balances.sql` in Supabase production
+- [ ] Apply `20260625000002_security_lockdown.sql` in Supabase production
+- [ ] Enable **leaked password protection** in Supabase Dashboard → Authentication → Settings
 
 ### Phase B — Platform review submissions (parallel)
 
@@ -123,7 +126,7 @@ Run on web + one native device after Phase A migrations:
 - [ ] **iOS TestFlight:** smoke test on build 4 (login, campaign, Save to Photos, Settings → Usage paywall UI)
 - [ ] **Android:** closed testing install + smoke test
 - [x] **Android IAP sandbox** ([#26](https://github.com/reytek1201/SlidePress.co/issues/26)): license tester purchase → `usage_balances` tier upgrade via RevenueCat webhook
-- [ ] **iOS IAP sandbox** (after App Store submit + Apple approves subs, or limited sandbox before): Creator + Agency purchase → `usage_balances` updates via webhook
+- [ ] **iOS IAP sandbox** (TestFlight): Creator + Agency purchase → `usage_balances` updates via webhook — **partial:** Agency sandbox verified Jun 23, 2026 ([#25](https://github.com/reytek1201/SlidePress.co/issues/25))
 - [ ] Increment iOS build to **5** when shipping `ITSAppUsesNonExemptEncryption` fix
 
 ### Phase E — Launch (when Phases A–D + platform audits acceptable)
@@ -155,6 +158,9 @@ Increment build numbers on every store upload.
 | Jun 22, 2026 | iOS **manual release** — approval will not auto-publish to App Store |
 | Jun 2026 | v2 pricing locked: web $24/$79, IAP $29.99/$99.99 |
 | Jun 23, 2026 | **Stripe live billing verified** — v2 prices on Vercel, live webhook destination, Creator checkout smoke test green |
+| Jun 23, 2026 | **Reviewer demo account live** — `reviewer@slidepress.co` with stable sample campaign for App Store / Play review |
+| Jun 23, 2026 | **Dual-rail billing UX** — web Usage shows App Store / Play manage links for IAP subscribers; v1 balance clamp migration added |
+| Jun 23, 2026 | **DB security lockdown** — billing RPCs service_role-only; campaign-refs listing restricted (`20260625000002_security_lockdown.sql`) |
 
 ---
 

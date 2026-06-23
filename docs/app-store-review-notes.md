@@ -25,14 +25,14 @@ You do **not** need App Store review to start **internal** TestFlight. Save full
 
 ---
 
-## Demo account (fill in before submit)
+## Demo account (ready for submit)
 
-Create a dedicated reviewer account with a stable campaign (images + captions complete). Do **not** use your personal account.
+Dedicated reviewer account with a stable campaign (images + captions complete). **Do not** use your personal account in App Store Connect.
 
 | Field | Value |
 |-------|--------|
-| Email | `[REVIEWER_EMAIL]` |
-| Password | `[REVIEWER_PASSWORD]` |
+| Email | `reviewer@slidepress.co` |
+| Password | Team vault (paste into App Store Connect / Play Console only — do not commit) |
 
 **Optional — platform posting (may fail for reviewers):**
 
@@ -56,8 +56,8 @@ SIGN IN
 2. Sign in with the demo credentials below, OR use Sign in with Apple / Google.
 
 Demo account:
-Email: [REVIEWER_EMAIL]
-Password: [REVIEWER_PASSWORD]
+Email: reviewer@slidepress.co
+Password: [paste from team vault]
 
 CORE FLOW (no social connection required)
 1. After login, open an existing campaign OR tap Create to start a new one.
@@ -189,8 +189,8 @@ Paste into **Release notes** (internal/closed) or **App access** instructions.
 All features require sign-in.
 
 Demo credentials:
-Email: [REVIEWER_EMAIL]
-Password: [REVIEWER_PASSWORD]
+Email: reviewer@slidepress.co
+Password: [paste from team vault]
 
 The app loads https://www.slidepress.co in a WebView. Core flow: login → campaign → generate images → Publish tab → export or Save to Photos.
 
@@ -209,7 +209,7 @@ Use the App Store description above (Play allows longer text; same content is fi
 
 ## Reviewer checklist (you — before submit)
 
-- [ ] `[REVIEWER_EMAIL]` account exists with at least one campaign (images + captions)
+- [x] `reviewer@slidepress.co` account exists with at least one campaign (images + captions)
 - [ ] Latest `main` deployed to Vercel
 - [ ] `/api/health` returns `{ "ok": true }`
 - [ ] Smoke test on physical device: login → campaign → Save to Photos

@@ -6,7 +6,7 @@ Paid subscription tiers with credit-based usage enforcement, dual payment rails 
 
 **Related:** [#1 — ElevenLabs narration & video export](https://github.com/reytek1201/SlidePress.co/issues/1) (video credit enforcement depends on Epic #1)
 
-**Status:** **v2** caps and list prices are live in production. Stripe live prices ($24 / $79), Vercel env, and webhook verified Jun 23, 2026. Remaining work: full #25 QA matrix (free tier, Agency upgrade, cancel/grace, IAP).
+**Status:** **v2** caps and list prices are live in production. Stripe live prices ($24 / $79), Vercel env, and webhook verified Jun 23, 2026. IAP-aware web Usage shipped Jun 23, 2026. Remaining work: full #25 QA matrix (free tier, Agency upgrade, cancel/grace); apply `20260625000001_clamp_v1_usage_balances.sql` in prod.
 
 **Deferred:** Studio / Enterprise tier with higher video caps — reassess H2 2026 after `usage_events` data.
 
@@ -349,6 +349,8 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [x] Migration: `apply_tier_entitlement()` CASE values match v2
 - [x] Apply migration `20260623000001_tier_entitlement_v2.sql` in Supabase
 - [x] Stripe: live Price IDs ($24 / $79) + Vercel env + live webhook destination
+- [x] IAP-aware web Usage (`billingSource`, App Store / Play manage links on web) — Jun 23, 2026
+- [ ] Apply migration `20260625000001_clamp_v1_usage_balances.sql` in Supabase production
 - [x] `usage-settings.tsx` plan copy and prices (web vs IAP)
 - [x] RevenueCat products ($29.99 / $99.99) in ASC + Play; linked in RC — **Ready to Submit** (iOS); IAP live after App Store review ([#44](https://github.com/reytek1201/SlidePress.co/issues/44))
 
@@ -376,6 +378,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [ ] Video: dual aspect = 2 credits (document in UI)
 - [ ] Webhook idempotency (replay same event)
 - [ ] Cross-platform: web subscription visible in native app
+- [x] iOS IAP sandbox (TestFlight) — sandbox purchase → tier upgrade via RevenueCat webhook (Jun 23, 2026)
 
 ---
 
