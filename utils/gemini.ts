@@ -9,9 +9,21 @@ import {
   slideNarrativeGuidance,
   type SlideCount,
 } from "@/types/slides";
+import {
+  isRetryableGeminiError,
+  mapGeminiError,
+} from "@/utils/map-gemini-error";
 import { safeFetch } from "@/utils/safe-fetch";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+const GEMINI_MAX_ATTEMPTS = 3;
+const GEMINI_RETRY_DELAY_MS = 600;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -119,20 +131,40 @@ export async function generateCampaignContent(
     ].join("\n"),
   });
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: userParts,
-    config: {
-      responseMimeType: "application/json",
-    },
-  });
+  let lastError: unknown;
 
-  const rawText = response.text;
+  for (let attempt = 0; attempt < GEMINI_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: userParts,
+        config: {
+          responseMimeType: "application/json",
+        },
+      });
 
-  if (!rawText) {
-    throw new Error("Gemini returned an empty response");
+      const rawText = response.text;
+
+      if (!rawText) {
+        throw new Error("Gemini returned an empty response");
+      }
+
+      const parsedJson = JSON.parse(rawText) as unknown;
+      return parseCampaignGeneration(parsedJson, slideCount);
+    } catch (error) {
+      lastError = error;
+
+      if (
+        attempt < GEMINI_MAX_ATTEMPTS - 1 &&
+        isRetryableGeminiError(error)
+      ) {
+        await sleep(GEMINI_RETRY_DELAY_MS * (attempt + 1));
+        continue;
+      }
+
+      throw new Error(mapGeminiError(error));
+    }
   }
 
-  const parsedJson = JSON.parse(rawText) as unknown;
-  return parseCampaignGeneration(parsedJson, slideCount);
+  throw new Error(mapGeminiError(lastError));
 }

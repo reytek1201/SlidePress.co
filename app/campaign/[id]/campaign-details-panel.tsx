@@ -119,7 +119,13 @@ export default function CampaignDetailsPanel({
             role="alert"
             className="mt-3 rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200"
           >
-            {campaign.error_message}
+            <p>{campaign.error_message}</p>
+            {campaign.creation_credit_refunded ? (
+              <p className="mt-2 text-amber-100/90">
+                This didn&apos;t use a campaign credit — your balance was
+                restored.
+              </p>
+            ) : null}
           </div>
         ) : null}
       </section>

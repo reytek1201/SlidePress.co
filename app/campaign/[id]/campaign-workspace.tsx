@@ -56,7 +56,7 @@ import {
   shareCampaignZip,
 } from "@/utils/native-slide-export";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
@@ -106,6 +106,7 @@ export default function CampaignWorkspace({
   initialPreferredVoicePersona = "warm",
 }: CampaignWorkspaceProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const supabase = createClient();
   const [campaign, setCampaign] = useState(initialCampaign);
   const [slides, setSlides] = useState(initialSlides);
@@ -459,6 +460,22 @@ export default function CampaignWorkspace({
     };
   }, []);
 
+  const refreshUsage = useCallback(async () => {
+    try {
+      const response = await fetch("/api/usage");
+      const data = (await response.json()) as {
+        success: boolean;
+        usage?: UsageSummary;
+      };
+
+      if (response.ok && data.success && data.usage) {
+        setUsage(data.usage);
+      }
+    } catch {
+      // Keep the last known usage snapshot.
+    }
+  }, []);
+
   useEffect(() => {
     if (captions.length === 0 || !imagesComplete) {
       setPublishFlow({
@@ -739,9 +756,35 @@ export default function CampaignWorkspace({
       const data = (await response.json()) as {
         success: boolean;
         error?: string;
+        creditRefunded?: boolean;
+        campaignDeleted?: boolean;
       };
 
       if (!response.ok || !data.success) {
+        if (data.campaignDeleted) {
+          if (data.creditRefunded) {
+            await refreshUsage();
+          }
+
+          const params = new URLSearchParams();
+
+          if (data.error) {
+            params.set("generation_error", data.error);
+          }
+
+          if (data.creditRefunded) {
+            params.set("credit_refunded", "1");
+          }
+
+          const query = params.toString();
+          router.replace(query ? `/campaigns?${query}` : "/campaigns");
+          return;
+        }
+
+        if (data.creditRefunded) {
+          await refreshUsage();
+        }
+
         throw new Error(data.error ?? "Campaign generation failed");
       }
 
@@ -756,7 +799,7 @@ export default function CampaignWorkspace({
     } finally {
       setIsRetryingText(false);
     }
-  }, [campaign.id, refreshCampaign, refreshSlides]);
+  }, [campaign.id, refreshCampaign, refreshSlides, refreshUsage, router]);
 
   useEffect(() => {
     if (campaign.status !== "generating_text" || textGenerationStarted.current) {

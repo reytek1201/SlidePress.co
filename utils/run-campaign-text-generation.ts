@@ -2,25 +2,27 @@ import type { Campaign } from "@/types/campaign";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { referencesFromCampaign } from "@/utils/campaign-generation";
 import { generateCampaignContent } from "@/utils/gemini";
+import { mapGeminiError } from "@/utils/map-gemini-error";
 import type { SlideCount } from "@/types/slides";
-import { z } from "zod";
+import { refundCampaignCreationOnFailure } from "@/utils/usage-limits";
 
 export function formatTextGenerationError(error: unknown): string {
-  if (error instanceof z.ZodError) {
-    return "AI returned invalid slide data. Try again or use fewer slides.";
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Campaign generation failed";
+  return mapGeminiError(error);
 }
+
+export type TextGenerationResult =
+  | { success: true }
+  | {
+      success: false;
+      error: string;
+      creditRefunded: boolean;
+      campaignDeleted: boolean;
+    };
 
 export async function runCampaignTextGeneration(
   supabase: SupabaseClient,
   campaign: Campaign
-): Promise<{ success: true } | { success: false; error: string }> {
+): Promise<TextGenerationResult> {
   const { data: existingSlides, error: slidesCheckError } = await supabase
     .from("slides")
     .select("id")
@@ -31,6 +33,8 @@ export async function runCampaignTextGeneration(
     return {
       success: false,
       error: "Failed to check campaign slides",
+      creditRefunded: false,
+      campaignDeleted: false,
     };
   }
 
@@ -95,14 +99,45 @@ export async function runCampaignTextGeneration(
   } catch (error) {
     const message = formatTextGenerationError(error);
 
+    let creditRefunded = false;
+
+    try {
+      creditRefunded = await refundCampaignCreationOnFailure(
+        campaign.user_id,
+        campaign.id,
+      );
+    } catch (refundError) {
+      console.error("Failed to refund campaign credit:", refundError);
+    }
+
+    const { error: deleteError } = await supabase
+      .from("campaigns")
+      .delete()
+      .eq("id", campaign.id);
+
+    if (!deleteError) {
+      return {
+        success: false,
+        error: message,
+        creditRefunded,
+        campaignDeleted: true,
+      };
+    }
+
     await supabase
       .from("campaigns")
       .update({
         status: "failed",
         error_message: message,
+        creation_credit_refunded: creditRefunded,
       })
       .eq("id", campaign.id);
 
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: message,
+      creditRefunded,
+      campaignDeleted: false,
+    };
   }
 }

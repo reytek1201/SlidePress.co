@@ -42,6 +42,12 @@ export default function CampaignGeneratingView({
                   <p className="mt-2 text-sm leading-6 text-red-200/90">
                     {campaign.error_message ?? "Something went wrong. Try again."}
                   </p>
+                  {campaign.creation_credit_refunded ? (
+                    <p className="mt-3 text-sm leading-6 text-amber-100/90">
+                      This didn&apos;t use a campaign credit — your balance was
+                      restored.
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   type="button"

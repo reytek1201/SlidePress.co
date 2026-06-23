@@ -1,5 +1,6 @@
 import type { UsageSummary } from "@/types/usage";
 import { resolveBillingSource } from "@/utils/billing-rail";
+import { HIDDEN_CAMPAIGN_STATUSES } from "@/utils/campaign-visibility";
 import { getPlanLabel, getPlanLimits, isLifetimeTier } from "@/utils/plan-limits";
 import type { Tier } from "@/utils/plan-limits";
 import { getPlatformConnectionSummary } from "@/utils/platform-connection-limits";
@@ -84,10 +85,18 @@ export async function getUsageSummary(
   const [balance, campaignResult, brandResult, platformConnections] =
     await Promise.all([
     fetchBalance(supabase, userId),
-    supabase
-      .from("campaigns")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId),
+    (async () => {
+      let query = supabase
+        .from("campaigns")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      for (const hiddenStatus of HIDDEN_CAMPAIGN_STATUSES) {
+        query = query.neq("status", hiddenStatus);
+      }
+
+      return query;
+    })(),
     supabase
       .from("brands")
       .select("*", { count: "exact", head: true })
@@ -275,6 +284,62 @@ export async function recordCampaignCreation(userId: string): Promise<void> {
     user_id: userId,
     event_type: "campaign_created",
   });
+}
+
+/** Refund a reserved campaign credit when text generation fails before slides exist. */
+export async function refundCampaignCreationOnFailure(
+  userId: string,
+  campaignId: string,
+): Promise<boolean> {
+  const admin = createAdminClient();
+
+  const { data: marked, error: markError } = await admin
+    .from("campaigns")
+    .update({ creation_credit_refunded: true })
+    .eq("id", campaignId)
+    .eq("user_id", userId)
+    .eq("creation_credit_refunded", false)
+    .select("id")
+    .maybeSingle();
+
+  if (markError) {
+    throw new Error(
+      `Failed to mark campaign credit refund: ${markError.message}`,
+    );
+  }
+
+  if (!marked) {
+    return false;
+  }
+
+  try {
+    const { error: restoreError } = await admin.rpc("restore_credit", {
+      p_user_id: userId,
+      p_credit: "campaign",
+    });
+
+    if (restoreError) {
+      throw new Error(
+        `Failed to restore campaign credit: ${restoreError.message}`,
+      );
+    }
+
+    await admin.from("usage_events").insert({
+      user_id: userId,
+      event_type: "campaign_refunded",
+      metadata: { campaign_id: campaignId },
+    });
+
+    return true;
+  } catch (error) {
+    await admin
+      .from("campaigns")
+      .update({ creation_credit_refunded: false })
+      .eq("id", campaignId)
+      .eq("user_id", userId);
+
+    throw error;
+  }
 }
 
 export async function recordSlideRegeneration(userId: string): Promise<void> {

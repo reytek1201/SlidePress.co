@@ -1,13 +1,29 @@
 "use client";
 
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
+import { getStoredPushDeviceToken } from "@/utils/push-preferences";
+import { Capacitor } from "@capacitor/core";
 import { useState } from "react";
+
+type PushTestResponse = {
+  success: boolean;
+  error?: string;
+  sent?: number;
+  failed?: number;
+  errors?: string[];
+  apnsEnvironment?: "sandbox" | "production";
+  environmentHint?: string;
+  diagnostics?: Partial<Record<"sandbox" | "production", string>>;
+};
 
 export default function PushTestSection({ embedded = false }: { embedded?: boolean }) {
   const isNativeApp = useIsNativeApp();
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<PushTestResponse["diagnostics"] | null>(
+    null,
+  );
 
   if (process.env.NEXT_PUBLIC_ALLOW_PUSH_TEST !== "true") {
     return null;
@@ -21,36 +37,56 @@ export default function PushTestSection({ embedded = false }: { embedded?: boole
     setSending(true);
     setMessage(null);
     setError(null);
+    setDiagnostics(null);
+
+    const deviceToken = getStoredPushDeviceToken();
+    const platform = Capacitor.getPlatform();
+
+    if (!deviceToken) {
+      setError(
+        "No device token on this phone. Turn notifications on in Settings, then reopen the app.",
+      );
+      setSending(false);
+      return;
+    }
+
+    if (platform !== "ios" && platform !== "android") {
+      setError("Push test is only available on iOS and Android.");
+      setSending(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/push/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          deviceToken,
+          platform,
+        }),
       });
 
-      const data = (await response.json()) as {
-        success: boolean;
-        error?: string;
-        sent?: number;
-        failed?: number;
-        errors?: string[];
-        removedStaleTokens?: number;
-      };
+      const data = (await response.json()) as PushTestResponse;
 
       if (!response.ok || !data.success) {
         const detail =
-          data.errors?.[0] ?? data.error ?? "Failed to send test push";
+          data.environmentHint ??
+          data.errors?.[0] ??
+          data.error ??
+          "Failed to send test push";
+        setDiagnostics(data.diagnostics ?? null);
         throw new Error(detail);
       }
 
-      const staleNote =
-        data.removedStaleTokens && data.removedStaleTokens > 0
-          ? ` Removed ${data.removedStaleTokens} stale token(s).`
-          : "";
+      const envNote = data.apnsEnvironment
+        ? ` Delivered via ${data.apnsEnvironment} APNs.`
+        : "";
 
+      const hintNote = data.environmentHint ? ` ${data.environmentHint}` : "";
+
+      setDiagnostics(data.diagnostics ?? null);
       setMessage(
-        `Test push sent to ${data.sent ?? 0} device(s). Background the app to see the banner.${staleNote}`,
+        `Test push sent to this device.${envNote}${hintNote} Background the app to see the banner.`,
       );
     } catch (sendError) {
       setError(
@@ -99,6 +135,16 @@ export default function PushTestSection({ embedded = false }: { embedded?: boole
           className="mt-4 rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200"
         >
           {error}
+        </div>
+      )}
+
+      {diagnostics && (
+        <div className="mt-4 rounded-xl border border-amber-900/40 bg-amber-950/20 px-4 py-3 text-xs text-amber-100/90">
+          <p className="font-medium text-amber-100">APNs probe</p>
+          <ul className="mt-2 space-y-1">
+            <li>Production: {diagnostics.production ?? "—"}</li>
+            <li>Sandbox: {diagnostics.sandbox ?? "—"}</li>
+          </ul>
         </div>
       )}
     </>

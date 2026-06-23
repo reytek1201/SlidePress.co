@@ -1,4 +1,5 @@
 import CampaignWorkspace from "@/app/campaign/[id]/campaign-workspace";
+import { isCampaignVisibleInList } from "@/utils/campaign-visibility";
 import { createClient } from "@/utils/supabase/server";
 import { appRobots } from "@/utils/site-metadata";
 import type { Campaign, Slide, SlideImage } from "@/types/campaign";
@@ -56,6 +57,12 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
 
   const slides = slidesResult.data ?? [];
   const captions = captionsResult.data;
+  const typedCampaign = campaign as Campaign;
+
+  if (!isCampaignVisibleInList(typedCampaign.status) && slides.length === 0) {
+    redirect("/campaigns");
+  }
+
   const slideIds = slides.map((slide) => slide.id);
 
   let slideImages: SlideImage[] = [];
@@ -68,8 +75,6 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
 
     slideImages = (data ?? []) as SlideImage[];
   }
-
-  const typedCampaign = campaign as Campaign;
 
   let brandName: string | null = null;
   let initialPreferredVoicePersona: "warm" | "energetic" | "professional" = "warm";

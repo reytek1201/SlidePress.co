@@ -70,7 +70,12 @@ export async function POST(_request: Request, context: RouteContext) {
 
     if (!result.success) {
       return NextResponse.json(
-        { success: false, error: result.error },
+        {
+          success: false,
+          error: result.error,
+          creditRefunded: result.creditRefunded,
+          campaignDeleted: result.campaignDeleted,
+        },
         { status: 422 }
       );
     }

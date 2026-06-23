@@ -21,6 +21,7 @@ export interface Campaign {
   slide_count: number;
   status: CampaignStatus;
   error_message: string | null;
+  creation_credit_refunded?: boolean;
   product_reference_url: string | null;
   style_reference_url: string | null;
   logo_reference_url: string | null;

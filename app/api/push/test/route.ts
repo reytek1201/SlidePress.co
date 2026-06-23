@@ -6,6 +6,8 @@ import { z } from "zod";
 
 const RequestSchema = z.object({
   campaignId: z.string().uuid().optional(),
+  deviceToken: z.string().min(1).optional(),
+  platform: z.enum(["ios", "android"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -63,6 +65,8 @@ export async function POST(request: Request) {
 
     const result = await sendTestPushToUser(user.id, {
       campaignId: parsed.data.campaignId,
+      deviceToken: parsed.data.deviceToken,
+      platform: parsed.data.platform,
     });
 
     if (result.sent === 0) {
@@ -73,7 +77,9 @@ export async function POST(request: Request) {
           sent: result.sent,
           failed: result.failed,
           errors: result.errors,
-          removedStaleTokens: result.staleTokenIds.length,
+          apnsEnvironment: result.apnsEnvironment,
+          environmentHint: result.environmentHint,
+          diagnostics: result.diagnostics,
         },
         { status: 502 },
       );
@@ -84,7 +90,9 @@ export async function POST(request: Request) {
       sent: result.sent,
       failed: result.failed,
       errors: result.errors,
-      removedStaleTokens: result.staleTokenIds.length,
+      apnsEnvironment: result.apnsEnvironment,
+      environmentHint: result.environmentHint,
+      diagnostics: result.diagnostics,
     });
   } catch (error) {
     const message =

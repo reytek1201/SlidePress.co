@@ -1,13 +1,16 @@
 import CampaignList from "@/app/campaigns/campaign-list";
 import CampaignsRefreshShell from "@/app/campaigns/campaigns-refresh-shell";
+import GenerationErrorBanner from "@/app/campaigns/generation-error-banner";
 import CampaignsPageHeader from "@/app/components/campaigns-page-header";
 import NewCampaignButton from "@/app/components/new-campaign-button";
 import { listUserBrands } from "@/utils/brands-server";
 import { loadCampaignListStatuses } from "@/utils/campaign-list-status-server";
+import { HIDDEN_CAMPAIGN_STATUSES } from "@/utils/campaign-visibility";
 import { createClient } from "@/utils/supabase/server";
 import { appRobots } from "@/utils/site-metadata";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import type { Campaign } from "@/types/campaign";
 
 export const metadata: Metadata = {
@@ -50,6 +53,10 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
     .order("created_at", { ascending: false })
     .limit(50);
 
+  for (const hiddenStatus of HIDDEN_CAMPAIGN_STATUSES) {
+    campaignsQuery = campaignsQuery.neq("status", hiddenStatus);
+  }
+
   if (activeBrand) {
     campaignsQuery = campaignsQuery.eq("brand_id", activeBrand.id);
   }
@@ -76,6 +83,10 @@ export default async function CampaignsPage({ searchParams }: CampaignsPageProps
             hasMultipleBrands={hasMultipleBrands}
             activeBrandId={activeBrand?.id ?? null}
           />
+
+          <Suspense fallback={null}>
+            <GenerationErrorBanner />
+          </Suspense>
 
           {typedCampaigns.length === 0 ? (
             <section className="mt-12 rounded-2xl border border-border bg-card/50 p-10 text-center">
