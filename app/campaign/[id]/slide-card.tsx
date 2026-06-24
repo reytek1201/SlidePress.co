@@ -186,7 +186,11 @@ const SlideCard = memo(function SlideCard({
   const showImageSlot =
     Boolean(slide.image_url) ||
     Boolean(slide.fal_request_id) ||
-    isAnySlideGenerating;
+    isAnySlideGenerating ||
+    isRegenerating;
+
+  const isImageGenerating =
+    isRegenerating || Boolean(slide.fal_request_id && !slide.image_url);
 
   const aspectPanelClass =
     aspectRatio === "4:5"
@@ -202,9 +206,9 @@ const SlideCard = memo(function SlideCard({
         <h3 className="text-sm font-semibold text-secondary-foreground">
           Slide {slide.slide_index + 1}
         </h3>
-        {slide.image_url ? (
+        {slide.image_url && !isImageGenerating ? (
           <span className="text-xs font-medium text-emerald-400">Image ready</span>
-        ) : slide.fal_request_id ? (
+        ) : isImageGenerating ? (
           <span className="text-xs font-medium text-amber-300">Generating…</span>
         ) : (
           <span className="text-xs font-medium text-muted-foreground">Image pending</span>
@@ -220,7 +224,7 @@ const SlideCard = memo(function SlideCard({
           <div
             className={`flex max-h-64 flex-col items-center justify-center border-b border-border bg-background p-3 sm:max-h-80 md:max-h-none md:p-6 lg:border-b-0 lg:border-r ${aspectPanelClass}`}
           >
-            {slide.image_url ? (
+            {slide.image_url && !isImageGenerating ? (
               <>
                 <button
                   type="button"
@@ -250,20 +254,18 @@ const SlideCard = memo(function SlideCard({
                   Expand image
                 </button>
               </>
+            ) : isImageGenerating ? (
+              <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <span className="text-xs text-muted-foreground">
+                  Generating image…
+                </span>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 px-4 py-6 text-center">
-                {slide.fal_request_id ? (
-                  <>
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <span className="text-xs text-muted-foreground">
-                      Generating image…
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    Waiting to generate
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground">
+                  Waiting to generate
+                </span>
               </div>
             )}
           </div>

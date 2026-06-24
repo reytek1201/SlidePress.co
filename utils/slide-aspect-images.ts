@@ -122,6 +122,63 @@ export function slidesGeneratingForAspect(
   });
 }
 
+export function mergeSlideImageIntoList(
+  current: SlideImage[],
+  row: SlideImage,
+): SlideImage[] {
+  const existingIndex = current.findIndex(
+    (entry) =>
+      entry.id === row.id ||
+      (entry.slide_id === row.slide_id &&
+        entry.aspect_ratio === row.aspect_ratio),
+  );
+
+  if (existingIndex === -1) {
+    return [...current, row];
+  }
+
+  const next = [...current];
+  next[existingIndex] = row;
+  return next;
+}
+
+export function clearSlideImageInList(
+  current: SlideImage[],
+  slideId: string,
+  aspectRatio: AspectRatio,
+  falRequestId?: string | null,
+): SlideImage[] {
+  const existing = current.find(
+    (entry) =>
+      entry.slide_id === slideId && entry.aspect_ratio === aspectRatio,
+  );
+
+  if (existing) {
+    return current.map((entry) =>
+      entry.slide_id === slideId && entry.aspect_ratio === aspectRatio
+        ? {
+            ...entry,
+            image_url: null,
+            fal_request_id: falRequestId ?? null,
+          }
+        : entry,
+    );
+  }
+
+  return [
+    ...current,
+    {
+      id: `pending-${slideId}-${aspectRatio}`,
+      slide_id: slideId,
+      aspect_ratio: aspectRatio,
+      image_url: null,
+      fal_request_id: falRequestId ?? null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ];
+}
+
 export function aspectRatioFolderName(aspectRatio: AspectRatio): string {
   return aspectRatio === "4:5" ? "4x5" : "9x16";
 }

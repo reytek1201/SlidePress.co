@@ -18,6 +18,11 @@ import {
   scrollToCampaignSection,
   scrollToSlideCard,
 } from "@/utils/campaign-progress";
+import {
+  CAPTION_GENERATION_TIMEOUT_MS,
+  CAPTION_POLL_INTERVAL_MS,
+  CAPTION_RECOVERY_AFTER_IMAGES_MS,
+} from "@/utils/caption-generation-client";
 import SlideCard from "@/app/campaign/[id]/slide-card";
 import AddFormatSheet from "@/app/campaign/[id]/add-format-sheet";
 import CampaignAspectToggle from "@/app/campaign/[id]/campaign-aspect-toggle";
@@ -72,10 +77,13 @@ import { setBiometricLockDeferred } from "@/utils/biometric-lock-defer";
 import {
   type VideoExportUiStage,
 } from "@/utils/video-export-stages";
+import { SLIDE_IMAGE_POLL_INTERVAL_MS } from "@/utils/slide-image-generation-client";
 import {
   getVerticalFormatPublishState,
   getCarouselFormatPublishState,
+  clearSlideImageInList,
   indexSlideImages,
+  mergeSlideImageIntoList,
   mergeSlidesWithAspect,
   otherAspectRatio,
   slidesCompleteForAspect,
@@ -120,6 +128,9 @@ export default function CampaignWorkspace({
   const [captions, setCaptions] = useState(initialCaptions);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
+  const [captionGenerationError, setCaptionGenerationError] = useState<
+    string | null
+  >(null);
   const [isPublishingYouTube, setIsPublishingYouTube] = useState(false);
   const [isPublishingTikTok, setIsPublishingTikTok] = useState(false);
   const [isPublishingInstagram, setIsPublishingInstagram] = useState(false);
@@ -196,8 +207,11 @@ export default function CampaignWorkspace({
   );
   const skipPublishAutoNavRef = useRef(false);
   const autoImagesStartedRef = useRef(false);
+  const captionsRecoveryStartedRef = useRef(false);
+  const captionsPollStartedAtRef = useRef<number | null>(null);
   const lastUserScrollAtRef = useRef(0);
   const isGeneratingImagesRef = useRef(false);
+  const prevIsGeneratingImagesRef = useRef(false);
   const pendingSlideUpdatesRef = useRef<Map<string, Slide>>(new Map());
   const slideFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -609,6 +623,38 @@ export default function CampaignWorkspace({
   }, [isGeneratingImages]);
 
   useEffect(() => {
+    if (prevIsGeneratingImagesRef.current && !isGeneratingImages) {
+      if (slideFlushTimerRef.current !== null) {
+        clearTimeout(slideFlushTimerRef.current);
+        slideFlushTimerRef.current = null;
+      }
+
+      const updates = pendingSlideUpdatesRef.current;
+
+      if (updates.size > 0) {
+        pendingSlideUpdatesRef.current = new Map();
+        setSlides((current) =>
+          current.map((slide) => updates.get(slide.id) ?? slide),
+        );
+      }
+    }
+
+    prevIsGeneratingImagesRef.current = isGeneratingImages;
+  }, [isGeneratingImages]);
+
+  useEffect(() => {
+    if (!regeneratingSlideId) {
+      return;
+    }
+
+    const slide = displaySlides.find((entry) => entry.id === regeneratingSlideId);
+
+    if (slide?.image_url) {
+      setRegeneratingSlideId(null);
+    }
+  }, [displaySlides, regeneratingSlideId]);
+
+  useEffect(() => {
     function markUserScrolled() {
       lastUserScrollAtRef.current = Date.now();
     }
@@ -680,6 +726,9 @@ export default function CampaignWorkspace({
       captions.length === 0 &&
       (isGeneratingImages || campaign.status === "generating_images")
     ) {
+      captionsRecoveryStartedRef.current = false;
+      captionsPollStartedAtRef.current = Date.now();
+      setCaptionGenerationError(null);
       setIsGeneratingCaptions(true);
     }
   }, [campaign.status, captions.length, isGeneratingImages]);
@@ -687,6 +736,7 @@ export default function CampaignWorkspace({
   useEffect(() => {
     if (captions.length > 0) {
       setIsGeneratingCaptions(false);
+      setCaptionGenerationError(null);
     }
   }, [captions.length]);
 
@@ -756,6 +806,181 @@ export default function CampaignWorkspace({
       setCampaign(refreshedCampaign as Campaign);
     }
   }, [campaign.id, supabase]);
+
+  useEffect(() => {
+    if (!isAnySlideGenerating && !regeneratingSlideId) {
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    async function pollSlideImages() {
+      if (cancelled) {
+        return;
+      }
+
+      await refreshSlides();
+
+      if (cancelled) {
+        return;
+      }
+
+      timeoutId = setTimeout(() => {
+        void pollSlideImages();
+      }, SLIDE_IMAGE_POLL_INTERVAL_MS);
+    }
+
+    void pollSlideImages();
+
+    return () => {
+      cancelled = true;
+
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [isAnySlideGenerating, regeneratingSlideId, refreshSlides]);
+
+  const refreshCaptions = useCallback(async (): Promise<PlatformCaption[]> => {
+    const { data, error: captionsError } = await supabase
+      .from("platform_captions")
+      .select("*")
+      .eq("campaign_id", campaign.id);
+
+    if (captionsError || !data || data.length === 0) {
+      return [];
+    }
+
+    const typedCaptions = data as PlatformCaption[];
+    setCaptions(typedCaptions);
+    setIsGeneratingCaptions(false);
+    setCaptionGenerationError(null);
+    return typedCaptions;
+  }, [campaign.id, supabase]);
+
+  const requestCaptionsGeneration = useCallback(async (): Promise<boolean> => {
+    const response = await fetch("/api/generate-captions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ campaignId: campaign.id }),
+    });
+
+    const data = (await response.json()) as {
+      success: boolean;
+      error?: string;
+      captions?: PlatformCaption[];
+    };
+
+    if (!response.ok || !data.success || !data.captions) {
+      throw new Error(data.error ?? "Failed to generate captions");
+    }
+
+    setCaptions(data.captions);
+    setIsGeneratingCaptions(false);
+    setCaptionGenerationError(null);
+    return true;
+  }, [campaign.id]);
+
+  const recoverCaptionsIfMissing = useCallback(async () => {
+    if (captionsRecoveryStartedRef.current) {
+      return;
+    }
+
+    captionsRecoveryStartedRef.current = true;
+
+    try {
+      const existing = await refreshCaptions();
+
+      if (existing.length > 0) {
+        return;
+      }
+
+      await requestCaptionsGeneration();
+    } catch (recoveryError) {
+      setCaptionGenerationError(
+        recoveryError instanceof Error
+          ? recoveryError.message
+          : "Could not generate captions",
+      );
+      setIsGeneratingCaptions(false);
+    }
+  }, [refreshCaptions, requestCaptionsGeneration]);
+
+  useEffect(() => {
+    if (!isGeneratingCaptions || captions.length > 0) {
+      return;
+    }
+
+    if (captionsPollStartedAtRef.current === null) {
+      captionsPollStartedAtRef.current = Date.now();
+    }
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    async function pollCaptions() {
+      if (cancelled) {
+        return;
+      }
+
+      const loaded = await refreshCaptions();
+
+      if (cancelled || loaded.length > 0) {
+        return;
+      }
+
+      const elapsed = Date.now() - (captionsPollStartedAtRef.current ?? Date.now());
+
+      if (
+        !captionsRecoveryStartedRef.current &&
+        elapsed >= CAPTION_GENERATION_TIMEOUT_MS
+      ) {
+        await recoverCaptionsIfMissing();
+        return;
+      }
+
+      if (!cancelled) {
+        timeoutId = setTimeout(() => {
+          void pollCaptions();
+        }, CAPTION_POLL_INTERVAL_MS);
+      }
+    }
+
+    void pollCaptions();
+
+    return () => {
+      cancelled = true;
+
+      if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [
+    captions.length,
+    isGeneratingCaptions,
+    recoverCaptionsIfMissing,
+    refreshCaptions,
+  ]);
+
+  useEffect(() => {
+    if (!imagesComplete || captions.length > 0 || !isGeneratingCaptions) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      void recoverCaptionsIfMissing();
+    }, CAPTION_RECOVERY_AFTER_IMAGES_MS);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [
+    captions.length,
+    imagesComplete,
+    isGeneratingCaptions,
+    recoverCaptionsIfMissing,
+  ]);
 
   const runTextGeneration = useCallback(async () => {
     setIsRetryingText(true);
@@ -928,17 +1153,7 @@ export default function CampaignWorkspace({
             return;
           }
 
-          setSlideImages((current) => {
-            const existingIndex = current.findIndex((entry) => entry.id === row.id);
-
-            if (existingIndex === -1) {
-              return [...current, row];
-            }
-
-            const next = [...current];
-            next[existingIndex] = row;
-            return next;
-          });
+          setSlideImages((current) => mergeSlideImageIntoList(current, row));
         },
       )
       .on(
@@ -1046,6 +1261,9 @@ export default function CampaignWorkspace({
   async function handleGenerateImages() {
     setError(null);
     setIsGenerating(true);
+    captionsRecoveryStartedRef.current = false;
+    captionsPollStartedAtRef.current = Date.now();
+    setCaptionGenerationError(null);
 
     if (captions.length === 0) {
       setIsGeneratingCaptions(true);
@@ -1472,7 +1690,7 @@ export default function CampaignWorkspace({
         isPublishingTikTok,
         isPublishingInstagram,
         isPublishingInstagramCarousel,
-        isGeneratingCaptions,
+        isGeneratingCaptions: isGeneratingCaptions && !captionGenerationError,
         isGeneratingFormat,
         isExportingAudio,
         isExporting,
@@ -1485,6 +1703,7 @@ export default function CampaignWorkspace({
       isPublishingInstagram,
       isPublishingInstagramCarousel,
       isGeneratingCaptions,
+      captionGenerationError,
       isGeneratingFormat,
       isExportingAudio,
       isExporting,
@@ -1504,6 +1723,7 @@ export default function CampaignWorkspace({
     canGenerateCaptions,
     isGeneratingCaptions,
     captionsMessage,
+    captionGenerationError,
     copiedCopyKey,
     copiedAllCaptions: copiedCopyKey === "all",
     isNativeApp: isNativeApp === true,
@@ -1557,6 +1777,9 @@ export default function CampaignWorkspace({
   async function handleGenerateCaptions() {
     setError(null);
     setCaptionsMessage(null);
+    setCaptionGenerationError(null);
+    captionsRecoveryStartedRef.current = false;
+    captionsPollStartedAtRef.current = Date.now();
     setIsGeneratingCaptions(true);
     setWorkspaceTab("publish");
     requestAnimationFrame(() => {
@@ -1671,6 +1894,33 @@ export default function CampaignWorkspace({
 
   const slidesWithImages = displaySlides.filter((slide) => slide.image_url);
 
+  const applySlideImagePending = useCallback(
+    (
+      slideId: string,
+      aspectRatio: AspectRatio,
+      falRequestId?: string | null,
+    ) => {
+      setSlideImages((current) =>
+        clearSlideImageInList(current, slideId, aspectRatio, falRequestId),
+      );
+
+      if (aspectRatio === campaign.aspect_ratio) {
+        setSlides((current) =>
+          current.map((entry) =>
+            entry.id === slideId
+              ? {
+                  ...entry,
+                  image_url: null,
+                  fal_request_id: falRequestId ?? null,
+                }
+              : entry,
+          ),
+        );
+      }
+    },
+    [campaign.aspect_ratio],
+  );
+
   const handleRegenerateSlide = useCallback(async (
     slideId: string,
     options?: {
@@ -1684,6 +1934,7 @@ export default function CampaignWorkspace({
     setError(null);
     skipPublishAutoNavRef.current = true;
     setRegeneratingSlideId(slideId);
+    applySlideImagePending(slideId, activeAspectRatio);
 
     try {
       const slide = displaySlides.find((entry) => entry.id === slideId);
@@ -1711,6 +1962,7 @@ export default function CampaignWorkspace({
         error?: string;
         mode?: string;
         aspectRatio?: AspectRatio;
+        falRequestId?: string | null;
       };
 
       if (!response.ok || !data.success) {
@@ -1719,47 +1971,7 @@ export default function CampaignWorkspace({
 
       const targetAspect = data.aspectRatio ?? activeAspectRatio;
 
-      setSlideImages((current) => {
-        const existing = current.find(
-          (entry) =>
-            entry.slide_id === slideId && entry.aspect_ratio === targetAspect,
-        );
-
-        if (existing) {
-          return current.map((entry) =>
-            entry.id === existing.id
-              ? { ...entry, image_url: null, fal_request_id: null }
-              : entry,
-          );
-        }
-
-        return [
-          ...current,
-          {
-            id: `pending-${slideId}-${targetAspect}`,
-            slide_id: slideId,
-            aspect_ratio: targetAspect,
-            image_url: null,
-            fal_request_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ];
-      });
-
-      if (targetAspect === campaign.aspect_ratio) {
-        setSlides((current) =>
-          current.map((entry) =>
-            entry.id === slideId
-              ? {
-                  ...entry,
-                  image_url: null,
-                  fal_request_id: null,
-                }
-              : entry,
-          ),
-        );
-      }
+      applySlideImagePending(slideId, targetAspect, data.falRequestId ?? null);
 
       setCampaign((current) => ({
         ...current,
@@ -1770,20 +1982,21 @@ export default function CampaignWorkspace({
 
       if (data.mode === "sync") {
         await Promise.all([refreshSlides(), refreshCampaign()]);
+        setRegeneratingSlideId(null);
       }
     } catch (regenerateError) {
+      setRegeneratingSlideId(null);
       setError(
         regenerateError instanceof Error
           ? regenerateError.message
           : "Something went wrong"
       );
-    } finally {
-      setRegeneratingSlideId(null);
+      void refreshSlides();
+      void refreshCampaign();
     }
   }, [
     activeAspectRatio,
-    campaign.aspect_ratio,
-    campaign.id,
+    applySlideImagePending,
     displaySlides,
     refreshCampaign,
     refreshSlides,

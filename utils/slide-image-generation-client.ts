@@ -1,0 +1,1 @@
+export const SLIDE_IMAGE_POLL_INTERVAL_MS = 5_000;

@@ -325,6 +325,7 @@ export async function POST(request: Request) {
           mode: "queue",
           slideId,
           aspectRatio: targetAspectRatio,
+          falRequestId: requestId,
         },
         { status: 202 },
       );
