@@ -19,6 +19,11 @@ interface CampaignOperationOverlayProps {
   videoPreset?: VideoExportPreset;
   aspectRatio?: AspectRatio;
   slideCount?: number;
+  draftBuild?: {
+    imagesReadyCount: number;
+    imagesComplete: boolean;
+    captionsCount: number;
+  };
   error?: string | null;
   onDismiss?: () => void;
 }
@@ -37,6 +42,7 @@ export default function CampaignOperationOverlay({
   videoPreset = "quick_reel",
   aspectRatio,
   slideCount,
+  draftBuild,
   error = null,
   onDismiss,
 }: CampaignOperationOverlayProps) {
@@ -64,6 +70,7 @@ export default function CampaignOperationOverlay({
         videoPreset,
         aspectRatio,
         slideCount,
+        draftBuild,
       }),
     [
       kind,
@@ -72,6 +79,7 @@ export default function CampaignOperationOverlay({
       videoPreset,
       aspectRatio,
       slideCount,
+      draftBuild,
     ],
   );
 

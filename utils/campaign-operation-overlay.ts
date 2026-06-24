@@ -1,5 +1,6 @@
 import type { AspectRatio } from "@/types/campaign";
 import { formatAspectRatio } from "@/utils/campaign-display";
+import { formatDraftDurationHint } from "@/utils/campaign-draft-timing";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import {
   VIDEO_EXPORT_STAGE_DESCRIPTIONS,
@@ -10,6 +11,7 @@ import {
 } from "@/utils/video-export-stages";
 
 export type CampaignOperationKind =
+  | "draft_build"
   | "captions"
   | "video_export"
   | "youtube_publish"
@@ -75,6 +77,56 @@ export function getCampaignOperationStepState(
   return getStepState(stageIndex, activeStageIndex);
 }
 
+export function resolveDraftBuildOverlay(input: {
+  slideCount: number;
+  imagesReadyCount: number;
+  imagesComplete: boolean;
+  captionsCount: number;
+  aspectRatio?: AspectRatio;
+}): CampaignOperationOverlayModel {
+  const { slideCount, imagesReadyCount, imagesComplete, captionsCount, aspectRatio } =
+    input;
+
+  let activeStageIndex = 0;
+
+  if (imagesComplete) {
+    activeStageIndex = captionsCount > 0 ? 2 : 1;
+  } else if (imagesReadyCount > 0) {
+    activeStageIndex = 0;
+  }
+
+  const imageLabel = imagesComplete
+    ? "Slide images ready"
+    : imagesReadyCount > 0
+      ? `Generating images (${imagesReadyCount} of ${slideCount})`
+      : "Generating slide images";
+
+  const captionLabel =
+    captionsCount > 0 ? "Platform captions ready" : "Writing platform captions";
+
+  return {
+    kind: "draft_build",
+    kicker: "Building your draft",
+    description:
+      "Creating slide images and post copy for TikTok, Instagram, and YouTube Shorts.",
+    durationHint: formatDraftDurationHint(slideCount),
+    errorTitle: "Draft generation failed",
+    stages: [
+      { id: "images", label: imageLabel },
+      { id: "captions", label: captionLabel },
+      { id: "finish", label: "Opening Publish" },
+    ],
+    activeStageIndex: Math.min(activeStageIndex, 2),
+    metadata:
+      aspectRatio && slideCount > 0
+        ? [
+            { label: "Format", value: formatAspectRatio(aspectRatio) },
+            { label: "Slides", value: String(slideCount) },
+          ]
+        : undefined,
+  };
+}
+
 export function resolveCampaignOperationOverlay(input: {
   kind: CampaignOperationKind;
   elapsedSeconds: number;
@@ -82,6 +134,11 @@ export function resolveCampaignOperationOverlay(input: {
   videoPreset?: VideoExportPreset;
   aspectRatio?: AspectRatio;
   slideCount?: number;
+  draftBuild?: {
+    imagesReadyCount: number;
+    imagesComplete: boolean;
+    captionsCount: number;
+  };
 }): CampaignOperationOverlayModel {
   const {
     kind,
@@ -89,10 +146,27 @@ export function resolveCampaignOperationOverlay(input: {
     videoStage = "preparing",
     videoPreset = "quick_reel",
     aspectRatio,
-    slideCount,
+    slideCount = 0,
+    draftBuild,
   } = input;
 
+  if (kind === "draft_build" && draftBuild) {
+    return resolveDraftBuildOverlay({
+      slideCount,
+      aspectRatio,
+      ...draftBuild,
+    });
+  }
+
   switch (kind) {
+    case "draft_build":
+      return resolveDraftBuildOverlay({
+        slideCount,
+        aspectRatio,
+        imagesReadyCount: 0,
+        imagesComplete: false,
+        captionsCount: 0,
+      });
     case "captions":
       return {
         kind,
@@ -252,6 +326,7 @@ export function pickActiveCampaignOperation(input: {
   isPublishingTikTok: boolean;
   isPublishingInstagram: boolean;
   isPublishingInstagramCarousel: boolean;
+  isBuildingDraft: boolean;
   isGeneratingCaptions: boolean;
   isGeneratingFormat: boolean;
   isExportingAudio: boolean;
@@ -275,6 +350,10 @@ export function pickActiveCampaignOperation(input: {
 
   if (input.isPublishingInstagramCarousel) {
     return "instagram_carousel_publish";
+  }
+
+  if (input.isBuildingDraft) {
+    return "draft_build";
   }
 
   if (input.isGeneratingCaptions) {

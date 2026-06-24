@@ -21,6 +21,7 @@ interface CampaignTopicSuggesterProps {
   onSaveBrandKit?: (payload: WebsiteIngestCompletePayload) => Promise<void>;
   brandId?: string | null;
   selectedTopic?: string;
+  slideCount?: number;
   disabled?: boolean;
   defaultExpanded?: boolean;
   inputId?: string;
@@ -33,6 +34,7 @@ export default function CampaignTopicSuggester({
   onSaveBrandKit,
   brandId = null,
   selectedTopic = "",
+  slideCount,
   disabled = false,
   defaultExpanded = false,
   inputId,
@@ -73,6 +75,7 @@ export default function CampaignTopicSuggester({
             inputId={inputId}
             defaultExpanded={defaultExpanded}
             selectedTopic={selectedTopic}
+            slideCount={slideCount}
             brandId={brandId}
             onSelectTopic={onSelectTopic}
             onUseTopicAndGenerate={onUseTopicAndGenerate}
@@ -95,6 +98,7 @@ export default function CampaignTopicSuggester({
       inputId={inputId}
       defaultExpanded={defaultExpanded}
       selectedTopic={selectedTopic}
+      slideCount={slideCount}
       brandId={brandId}
       onSelectTopic={onSelectTopic}
       onUseTopicAndGenerate={onUseTopicAndGenerate}

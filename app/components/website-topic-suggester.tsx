@@ -20,6 +20,10 @@ import {
   hasUsedWebsiteIngest,
   markWebsiteIngestUsed,
 } from "@/utils/website-ingest-preference";
+import { DEFAULT_SLIDE_COUNT } from "@/types/slides";
+import {
+  formatDraftDurationShort,
+} from "@/utils/campaign-draft-timing";
 import { useEffect, useState } from "react";
 
 function GlobeIcon() {
@@ -58,6 +62,7 @@ interface WebsiteTopicSuggesterProps {
   onSaveBrandKit?: (payload: WebsiteIngestCompletePayload) => Promise<void>;
   brandId?: string | null;
   selectedTopic?: string;
+  slideCount?: number;
   disabled?: boolean;
   defaultExpanded?: boolean;
   inputId?: string;
@@ -130,6 +135,7 @@ export default function WebsiteTopicSuggester({
   onSaveBrandKit,
   brandId = null,
   selectedTopic = "",
+  slideCount = DEFAULT_SLIDE_COUNT,
   disabled = false,
   defaultExpanded = false,
   inputId = "website-url",
@@ -556,8 +562,15 @@ export default function WebsiteTopicSuggester({
         ) : null}
 
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
-          Pick one idea for this campaign, or use &amp; generate to start
-          immediately.
+          <span className="font-medium text-secondary-foreground">
+            Use this topic
+          </span>{" "}
+          pre-fills the form.{" "}
+          <span className="font-medium text-secondary-foreground">
+            Create full draft
+          </span>{" "}
+          starts the campaign and generates slide images plus platform captions
+          automatically ({formatDraftDurationShort(slideCount)}).
         </p>
 
         <div className="mt-3 space-y-3">
@@ -620,9 +633,12 @@ export default function WebsiteTopicSuggester({
                           recommendedFormat: suggestion.recommendedFormat,
                         });
                       }}
-                      className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex flex-col items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Use &amp; generate
+                      <span>Create full draft</span>
+                      <span className="mt-0.5 text-[10px] font-medium text-primary-foreground/80">
+                        {formatDraftDurationShort(slideCount)}
+                      </span>
                     </button>
                   ) : null}
                 </div>

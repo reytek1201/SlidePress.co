@@ -3,12 +3,14 @@
 import CampaignBackLink from "@/app/components/campaign-back-link";
 import type { Campaign } from "@/types/campaign";
 import { formatAspectRatio } from "@/utils/campaign-display";
+import { formatDraftCopyStepHint } from "@/utils/campaign-draft-timing";
 
 interface CampaignGeneratingViewProps {
   campaign: Campaign;
   brandName?: string | null;
   isRetrying: boolean;
   onRetry: () => void;
+  buildingFullDraft?: boolean;
 }
 
 export default function CampaignGeneratingView({
@@ -16,6 +18,7 @@ export default function CampaignGeneratingView({
   brandName = null,
   isRetrying,
   onRetry,
+  buildingFullDraft = false,
 }: CampaignGeneratingViewProps) {
   const isFailed = campaign.status === "failed";
   const slideCount = campaign.slide_count ?? 0;
@@ -63,13 +66,16 @@ export default function CampaignGeneratingView({
                 <div className="flex h-14 w-14 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
                   <span className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 </div>
-                <p className="brand-kicker mt-8">Writing your campaign</p>
+                <p className="brand-kicker mt-8">
+                  {buildingFullDraft ? "Step 1 of 2" : "Writing your campaign"}
+                </p>
                 <h1 className="mt-3 text-center text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                   {campaign.topic}
                 </h1>
                 <p className="mt-4 max-w-md text-center text-sm leading-7 text-muted-foreground">
-                  Gemini is drafting {slideCount} slide scripts with headlines,
-                  voiceover, and image prompts. This usually takes 15–30 seconds.
+                  {buildingFullDraft
+                    ? formatDraftCopyStepHint(slideCount)
+                    : `Gemini is drafting ${slideCount} slide scripts with headlines, voiceover, and image prompts. This usually takes 15–30 seconds.`}
                 </p>
                 <dl className="mt-8 flex flex-wrap justify-center gap-6 text-center text-sm text-muted-foreground">
                   <div>

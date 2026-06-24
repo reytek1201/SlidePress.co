@@ -208,6 +208,9 @@ export default function CampaignWorkspace({
   );
   const skipPublishAutoNavRef = useRef(false);
   const autoImagesStartedRef = useRef(false);
+  const buildingFullDraftRef = useRef(
+    searchParams.get("auto_images") === "1",
+  );
   const captionsRecoveryStartedRef = useRef(false);
   const captionsPollStartedAtRef = useRef<number | null>(null);
   const lastUserScrollAtRef = useRef(0);
@@ -307,6 +310,11 @@ export default function CampaignWorkspace({
   );
   const isGeneratingImages =
     campaign.status === "generating_images" || isAnySlideGenerating;
+  const isBuildingDraft =
+    !draftReady &&
+    slides.length > 0 &&
+    !captionGenerationError &&
+    (isGeneratingImages || isGeneratingCaptions);
   const canGenerateImages =
     !isGenerating &&
     campaign.status !== "generating_images" &&
@@ -1715,6 +1723,7 @@ export default function CampaignWorkspace({
         isPublishingTikTok,
         isPublishingInstagram,
         isPublishingInstagramCarousel,
+        isBuildingDraft,
         isGeneratingCaptions: isGeneratingCaptions && !captionGenerationError,
         isGeneratingFormat,
         isExportingAudio,
@@ -1727,6 +1736,7 @@ export default function CampaignWorkspace({
       isPublishingTikTok,
       isPublishingInstagram,
       isPublishingInstagramCarousel,
+      isBuildingDraft,
       isGeneratingCaptions,
       captionGenerationError,
       isGeneratingFormat,
@@ -2202,6 +2212,7 @@ export default function CampaignWorkspace({
         brandName={brandName}
         isRetrying={isRetryingText}
         onRetry={handleRetryTextGeneration}
+        buildingFullDraft={buildingFullDraftRef.current}
       />
     );
   }
@@ -2523,8 +2534,17 @@ export default function CampaignWorkspace({
         headline={campaign.title?.trim() || campaign.topic}
         videoStage={videoExportStage}
         videoPreset={videoPreset}
-        aspectRatio={videoExportAspectRatio}
+        aspectRatio={campaign.aspect_ratio}
         slideCount={slides.length}
+        draftBuild={
+          activeCampaignOperation === "draft_build"
+            ? {
+                imagesReadyCount: imagesReadyCount,
+                imagesComplete,
+                captionsCount: captions.length,
+              }
+            : undefined
+        }
         error={
           activeCampaignOperation === "video_export" ? videoExportError : null
         }

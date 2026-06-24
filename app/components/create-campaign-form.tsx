@@ -41,6 +41,7 @@ import {
   getAllowedSlideCounts,
   type SlideCount,
 } from "@/types/slides";
+import { formatDraftDurationShort } from "@/utils/campaign-draft-timing";
 
 type AspectRatio = "4:5" | "9:16";
 
@@ -681,6 +682,7 @@ export default function CreateCampaignForm({
             inputId={`${idPrefix}website-url`}
             defaultExpanded={isFirstCampaign}
             selectedTopic={topic}
+            slideCount={slideCount}
             brandId={activeBrand?.id ?? null}
             onSelectTopic={handleSelectTopic}
             onUseTopicAndGenerate={(nextTopic, options) => {
@@ -894,7 +896,8 @@ export default function CreateCampaignForm({
             className="mt-1 h-4 w-4 rounded border-border"
           />
           <span>
-            Generate images and captions automatically when slide copy is ready.
+            Generate images and captions automatically when slide copy is ready
+            ({formatDraftDurationShort(slideCount)} for a full draft).
           </span>
         </label>
 
