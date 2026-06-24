@@ -319,3 +319,35 @@ To test push **without generating images**:
 4. Background the app to see the notification banner.
 
 Remove or disable `NEXT_PUBLIC_ALLOW_PUSH_TEST` when you are done testing.
+
+### Home screen widgets (Phase 5.7)
+
+Show campaign progress on the home screen and tap to jump back into SlidePress. **Native app only** — web has no widgets.
+
+**Roadmap:** [Epic #36](https://github.com/reytek1201/SlidePress.co/issues/36) — closed · [`docs/notifications-widgets-roadmap.md`](notifications-widgets-roadmap.md)
+
+**Widgets:**
+
+| Widget | iOS | Android |
+|--------|-----|---------|
+| **Continue Campaign** | WidgetKit small + medium (journey strip) | Jetpack Glance 2×2 / resizable wide |
+| **New Campaign** | WidgetKit small shortcut | Jetpack Glance 2×2 shortcut |
+
+**Client:** Settings → **Widgets** (`/settings/widgets`) — add-to-home-screen instructions and manual refresh.
+
+**Sync:** Snapshot written via `NativeWidget` Capacitor plugin when campaigns update, app resumes, pull-to-refresh runs, or push notifications include `widgetSnapshot`. Tap opens `co.slidepress.app://campaign/{id}`, `?tab=publish`, or `co.slidepress.app://new`.
+
+**iOS native:**
+
+- Extension target `ios/SlidePressWidget/`
+- App Group `group.co.slidepress.app`
+- Plugin `ios/App/App/NativeWidgetPlugin.swift`
+- Background push handler `WidgetPushHandler.swift`
+
+**Android native:**
+
+- Glance widgets in `android/app/src/main/java/co/slidepress/app/widget/`
+- Plugin `NativeWidgetPlugin.kt` + resume sync `WidgetBridgeSync.kt`
+- Rebuild AAB after widget changes; run `npm run cap:sync` before Gradle build
+
+**API:** `GET /api/widget/snapshot` — server builds snapshot from campaign list / journey state (auth required).

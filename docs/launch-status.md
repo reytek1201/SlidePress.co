@@ -34,6 +34,7 @@ Single source of truth for where store setup, billing, and platform audits stand
 - [x] Capacitor native shell (iOS + Android) loading production web
 - [x] Sign in with Apple, Google, email; optional Face ID
 - [x] Push notifications (Phases 1–3 closed — [#35](https://github.com/reytek1201/SlidePress.co/issues/35))
+- [x] Home screen widgets (Phases 0–3 closed — [#36](https://github.com/reytek1201/SlidePress.co/issues/36); iOS + Android Continue + Quick Create)
 - [x] Privacy policy, terms, health endpoint
 - [x] v2 tier caps in `utils/plan-limits.ts` (Creator $24 web / $29.99 IAP; Agency $79 / $99.99)
 
@@ -161,11 +162,11 @@ Increment build numbers on every store upload.
 | Jun 23, 2026 | **Reviewer demo account live** — `reviewer@slidepress.co` with stable sample campaign for App Store / Play review |
 | Jun 23, 2026 | **Dual-rail billing UX** — web Usage shows App Store / Play manage links for IAP subscribers; v1 balance clamp migration added |
 | Jun 23, 2026 | **DB security lockdown** — billing RPCs service_role-only; campaign-refs listing restricted (`20260625000002_security_lockdown.sql`) |
+| Jun 23, 2026 | **Home screen widgets shipped** — iOS WidgetKit + Android Glance; Epic [#36](https://github.com/reytek1201/SlidePress.co/issues/36) closed ([#39](https://github.com/reytek1201/SlidePress.co/issues/39)–[#43](https://github.com/reytek1201/SlidePress.co/issues/43)) |
 
 ---
 
 ## Deferred (post-launch)
 
-- Home screen widgets — Epic [#36](https://github.com/reytek1201/SlidePress.co/issues/36) (Phases 0–3 open)
 - Studio tier (~$129 web) — reassess H2 2026 per [`billing.md`](billing.md)
 - YouTube API quota increase — only if >~6 Shorts uploads/day

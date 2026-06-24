@@ -345,14 +345,16 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | Pull-to-refresh on campaigns (native) | ✅ |
 | Android back closes overlays | ✅ |
 
-### Phase 5.7 — Notifications & widgets *(planned)*
+### Phase 5.7 — Notifications & widgets ✅ *shipped*
 
-Extend mobile engagement beyond image-ready push. Full plan: [`docs/notifications-widgets-roadmap.md`](notifications-widgets-roadmap.md).
+Mobile engagement: push alerts when async work finishes, and home-screen widgets for ambient campaign status. Full plan: [`docs/notifications-widgets-roadmap.md`](notifications-widgets-roadmap.md).
 
-| Track | Epic | Next up |
-|-------|------|---------|
-| **Push notifications** | [Epic #35](https://github.com/reytek1201/SlidePress.co/issues/35) | ✅ Phases 0–3 shipped · widgets [#36](https://github.com/reytek1201/SlidePress.co/issues/36) next |
-| **Home screen widgets** | [Epic #36](https://github.com/reytek1201/SlidePress.co/issues/36) | [#39](https://github.com/reytek1201/SlidePress.co/issues/39) snapshot contract · [#40](https://github.com/reytek1201/SlidePress.co/issues/40) iOS · [#42](https://github.com/reytek1201/SlidePress.co/issues/42) Android |
+| Track | Epic | Status |
+|-------|------|--------|
+| **Push notifications** | [Epic #35](https://github.com/reytek1201/SlidePress.co/issues/35) | ✅ Phases 0–3 shipped |
+| **Home screen widgets** | [Epic #36](https://github.com/reytek1201/SlidePress.co/issues/36) | ✅ Phases 0–3 shipped — [#39](https://github.com/reytek1201/SlidePress.co/issues/39) snapshot · [#40](https://github.com/reytek1201/SlidePress.co/issues/40) iOS · [#42](https://github.com/reytek1201/SlidePress.co/issues/42) Android · [#43](https://github.com/reytek1201/SlidePress.co/issues/43) Quick Create |
+
+**Widgets:** Continue Campaign (small/medium) + New Campaign shortcut on **iOS and Android**. Settings → Widgets for setup instructions. Sync on campaign workspace, resume, pull-to-refresh, and push delivery.
 
 ### Phase 6 — Scale *(in progress)*
 
