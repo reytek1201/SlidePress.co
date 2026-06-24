@@ -2,6 +2,7 @@
 
 import BrandLibraryPanel from "@/app/components/brand-library-panel";
 import PhotoTopicSuggester from "@/app/components/photo-topic-suggester";
+import WebsiteTopicSuggester from "@/app/components/website-topic-suggester";
 import ReferenceUploadSlot from "@/app/components/reference-upload-slot";
 import { useActiveBrandOptional } from "@/app/components/active-brand-provider";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
@@ -480,6 +481,14 @@ export default function CreateCampaignForm({
             ) : null}
           </p>
         ) : null}
+
+        <div className="mb-4">
+          <WebsiteTopicSuggester
+            inputId={`${idPrefix}website-url`}
+            onSelectTopic={(t) => setTopic(t)}
+            disabled={isLoading}
+          />
+        </div>
 
         <label
           htmlFor={topicId}
