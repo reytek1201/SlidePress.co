@@ -1,4 +1,5 @@
 import type {
+  IngestWebsiteOptions,
   WebsiteIngestResult,
   WebsiteIngestTopicSuggestion,
   WebsiteTopicAngle,
@@ -9,6 +10,24 @@ import { GoogleGenAI } from "@google/genai";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 const MAX_PROMPT_CHARS = 24_000;
+const MIN_PAGE_TEXT_CHARS = 120;
+
+const FALLBACK_PATHS = [
+  "/about",
+  "/about-us",
+  "/our-story",
+  "/company",
+  "/what-we-do",
+] as const;
+
+const FALLBACK_PATH_HINTS = [
+  "about",
+  "story",
+  "company",
+  "product",
+  "service",
+  "what-we-do",
+] as const;
 
 const INGEST_RESPONSE_SCHEMA = {
   type: "object",
@@ -38,6 +57,12 @@ const INGEST_RESPONSE_SCHEMA = {
   },
   required: ["businessName", "description", "audience", "topics"],
 } as const;
+
+interface FetchedPage {
+  html: string;
+  finalUrl: string;
+  pageText: string;
+}
 
 function getGeminiClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -157,6 +182,119 @@ function extractSiteIconUrl(html: string, baseUrl: string): string | null {
   return resolveAbsoluteUrl("/favicon.ico", baseUrl);
 }
 
+function extractInternalContentLinks(html: string, baseUrl: string): string[] {
+  const base = new URL(baseUrl);
+  const seen = new Set<string>();
+  const links: { url: string; score: number }[] = [];
+  const anchorPattern = /<a\s+[^>]*href=["']([^"'#]+)["'][^>]*>/gi;
+
+  for (const match of html.matchAll(anchorPattern)) {
+    const href = match[1]?.trim();
+
+    if (!href || href.startsWith("mailto:") || href.startsWith("tel:")) {
+      continue;
+    }
+
+    try {
+      const resolved = new URL(href, baseUrl);
+
+      if (resolved.origin !== base.origin) {
+        continue;
+      }
+
+      const path = resolved.pathname.toLowerCase();
+
+      if (path === "/" || path === base.pathname.toLowerCase()) {
+        continue;
+      }
+
+      resolved.hash = "";
+      const normalized = resolved.toString();
+
+      if (seen.has(normalized)) {
+        continue;
+      }
+
+      seen.add(normalized);
+
+      let score = 0;
+
+      for (const hint of FALLBACK_PATH_HINTS) {
+        if (path.includes(hint)) {
+          score += 10;
+        }
+      }
+
+      links.push({ url: normalized, score });
+    } catch {
+      continue;
+    }
+  }
+
+  return links
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3)
+    .map((link) => link.url);
+}
+
+async function fetchReadablePage(rawUrl: string): Promise<FetchedPage> {
+  const { html, finalUrl } = await fetchPublicWebsiteHtml(rawUrl);
+
+  return {
+    html,
+    finalUrl,
+    pageText: htmlToReadableText(html),
+  };
+}
+
+async function fetchWebsiteContentWithFallback(
+  rawUrl: string,
+): Promise<FetchedPage> {
+  let page = await fetchReadablePage(rawUrl);
+
+  if (page.pageText.length >= MIN_PAGE_TEXT_CHARS) {
+    return page;
+  }
+
+  const origin = new URL(page.finalUrl).origin;
+  const fallbackUrls = [
+    ...FALLBACK_PATHS.map((path) => new URL(path, origin).toString()),
+    ...extractInternalContentLinks(page.html, page.finalUrl),
+  ];
+
+  const seen = new Set<string>([page.finalUrl]);
+
+  for (const fallbackUrl of fallbackUrls) {
+    if (seen.has(fallbackUrl)) {
+      continue;
+    }
+
+    seen.add(fallbackUrl);
+
+    try {
+      const candidate = await fetchReadablePage(fallbackUrl);
+
+      if (candidate.pageText.length > page.pageText.length) {
+        page = candidate;
+      }
+
+      if (page.pageText.length >= MIN_PAGE_TEXT_CHARS) {
+        break;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  if (page.pageText.length < MIN_PAGE_TEXT_CHARS) {
+    throw new Error(
+      "This page did not include enough readable text. Try your homepage or enter a topic manually.",
+    );
+  }
+
+  return page;
+}
+
 function normalizeAngle(value: unknown): WebsiteTopicAngle {
   if (value === "curiosity" || value === "contrarian") {
     return value;
@@ -243,15 +381,11 @@ function normalizeTopicSuggestions(
 
 export async function ingestWebsiteForCampaign(
   rawUrl: string,
+  options: IngestWebsiteOptions = {},
 ): Promise<WebsiteIngestResult> {
-  const { html, finalUrl } = await fetchPublicWebsiteHtml(rawUrl);
-  const pageText = htmlToReadableText(html);
-
-  if (pageText.length < 120) {
-    throw new Error(
-      "This page did not include enough readable text. Try your homepage or enter a topic manually.",
-    );
-  }
+  const { html, finalUrl, pageText } = await fetchWebsiteContentWithFallback(
+    rawUrl,
+  );
 
   const title = extractTitle(html);
   const metaDescription =
@@ -263,6 +397,10 @@ export async function ingestWebsiteForCampaign(
     finalUrl,
   );
   const logoImageUrl = extractSiteIconUrl(html, finalUrl);
+
+  const excludeTopics = (options.excludeTopics ?? [])
+    .map((topic) => topic.trim())
+    .filter(Boolean);
 
   const ai = getGeminiClient();
   const response = await ai.models.generateContent({
@@ -276,6 +414,9 @@ export async function ingestWebsiteForCampaign(
           "Each topic must be a pain-point, curiosity, or contrarian hook (5–12 words).",
           "Each topic needs angle (pain_point, curiosity, or contrarian), a one-sentence rationale explaining why it fits this business, and recommendedFormat (4:5 for feed carousels or 9:16 for Reels/TikTok).",
           "Topics must be specific to this business, not generic social media advice.",
+          excludeTopics.length > 0
+            ? `Do not repeat or closely paraphrase these previously suggested topics: ${excludeTopics.join("; ")}. Use fresh angles.`
+            : "",
           `Website URL: ${finalUrl}`,
           title ? `Page title: ${title}` : "",
           ogTitle ? `Open Graph title: ${ogTitle}` : "",

@@ -14,6 +14,8 @@ type SuggesterMode = "website" | "photo";
 interface CampaignTopicSuggesterProps {
   onSelectTopic: (topic: string, options?: TopicSelectionOptions) => void;
   onIngestComplete?: (payload: WebsiteIngestCompletePayload) => void;
+  onSaveBrandKit?: (payload: WebsiteIngestCompletePayload) => Promise<void>;
+  brandId?: string | null;
   selectedTopic?: string;
   disabled?: boolean;
   defaultExpanded?: boolean;
@@ -23,6 +25,8 @@ interface CampaignTopicSuggesterProps {
 export default function CampaignTopicSuggester({
   onSelectTopic,
   onIngestComplete,
+  onSaveBrandKit,
+  brandId = null,
   selectedTopic = "",
   disabled = false,
   defaultExpanded = false,
@@ -64,8 +68,10 @@ export default function CampaignTopicSuggester({
             inputId={inputId}
             defaultExpanded={defaultExpanded}
             selectedTopic={selectedTopic}
+            brandId={brandId}
             onSelectTopic={onSelectTopic}
             onIngestComplete={onIngestComplete}
+            onSaveBrandKit={onSaveBrandKit}
             disabled={disabled}
           />
         ) : (
@@ -83,8 +89,10 @@ export default function CampaignTopicSuggester({
       inputId={inputId}
       defaultExpanded={defaultExpanded}
       selectedTopic={selectedTopic}
+      brandId={brandId}
       onSelectTopic={onSelectTopic}
       onIngestComplete={onIngestComplete}
+      onSaveBrandKit={onSaveBrandKit}
       disabled={disabled}
     />
   );

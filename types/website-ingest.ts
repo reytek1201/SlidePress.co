@@ -53,3 +53,7 @@ export type WebsiteIngestApiResponse =
 export interface TopicSelectionOptions {
   recommendedFormat?: WebsiteTopicFormat;
 }
+
+export interface IngestWebsiteOptions {
+  excludeTopics?: string[];
+}

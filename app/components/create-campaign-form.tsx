@@ -18,6 +18,7 @@ import {
 } from "@/types/brand";
 import type { ReferenceType } from "@/types/references";
 import type { UsageSummary } from "@/types/usage";
+import type { WebsiteIngestCompletePayload } from "@/types/website-ingest";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -437,6 +438,46 @@ export default function CreateCampaignForm({
     }
   }
 
+  async function handleSaveIngestBrandKit(
+    payload: WebsiteIngestCompletePayload,
+  ): Promise<void> {
+    if (!activeBrand) {
+      throw new Error("Select a brand before saving to brand kit");
+    }
+
+    const update: {
+      product?: string;
+      logo?: string;
+    } = {};
+
+    if (payload.productImageUrl) {
+      update.product = payload.productImageUrl;
+    }
+
+    if (payload.logoImageUrl) {
+      update.logo = payload.logoImageUrl;
+    }
+
+    if (!update.product && !update.logo) {
+      throw new Error("No site references to save");
+    }
+
+    await updateBrand(activeBrand.id, update);
+    void activeBrandContext?.refreshBrands();
+    setUseSavedBrand(true);
+    setClearedLibrarySlots(new Set());
+
+    if (payload.productImageUrl) {
+      setIngestedProductUrl(payload.productImageUrl);
+      setProductPreview(payload.productImageUrl);
+    }
+
+    if (payload.logoImageUrl) {
+      setIngestedLogoUrl(payload.logoImageUrl);
+      setLogoPreview(payload.logoImageUrl);
+    }
+  }
+
   async function handleSaveBrandKitOnly() {
     if (!activeBrand) {
       setError("Select a brand before saving references.");
@@ -534,6 +575,7 @@ export default function CreateCampaignForm({
             inputId={`${idPrefix}website-url`}
             defaultExpanded={isFirstCampaign}
             selectedTopic={topic}
+            brandId={activeBrand?.id ?? null}
             onSelectTopic={(topic, options) => {
               setTopic(topic);
               if (options?.recommendedFormat) {
@@ -559,6 +601,7 @@ export default function CreateCampaignForm({
                 setLogoPreview(payload.logoImageUrl);
               }
             }}
+            onSaveBrandKit={handleSaveIngestBrandKit}
             disabled={isLoading}
           />
         </div>

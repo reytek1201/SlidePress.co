@@ -9,6 +9,13 @@ import type {
   WebsiteTopicAngle,
 } from "@/types/website-ingest";
 import {
+  clearCachedWebsiteIngest,
+  getCachedWebsiteIngest,
+  getHostnameFromUrl,
+  setCachedWebsiteIngest,
+  type CachedWebsiteIngest,
+} from "@/utils/website-ingest-cache";
+import {
   hasUsedWebsiteIngest,
   markWebsiteIngestUsed,
 } from "@/utils/website-ingest-preference";
@@ -43,6 +50,8 @@ const ANGLE_LABELS: Record<WebsiteTopicAngle, string> = {
 interface WebsiteTopicSuggesterProps {
   onSelectTopic: (topic: string, options?: TopicSelectionOptions) => void;
   onIngestComplete?: (payload: WebsiteIngestCompletePayload) => void;
+  onSaveBrandKit?: (payload: WebsiteIngestCompletePayload) => Promise<void>;
+  brandId?: string | null;
   selectedTopic?: string;
   disabled?: boolean;
   defaultExpanded?: boolean;
@@ -56,6 +65,8 @@ function isSameTopic(left: string, right: string): boolean {
 export default function WebsiteTopicSuggester({
   onSelectTopic,
   onIngestComplete,
+  onSaveBrandKit,
+  brandId = null,
   selectedTopic = "",
   disabled = false,
   defaultExpanded = false,
@@ -69,12 +80,24 @@ export default function WebsiteTopicSuggester({
   );
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
+  const [audience, setAudience] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
   const [logoImageUrl, setLogoImageUrl] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<WebsiteIngestTopicSuggestion[]>(
     [],
   );
   const [error, setError] = useState<string | null>(null);
+  const [cachedIngest, setCachedIngest] = useState<CachedWebsiteIngest | null>(
+    null,
+  );
+  const [isSavingBrandKit, setIsSavingBrandKit] = useState(false);
+  const [brandKitSaved, setBrandKitSaved] = useState(false);
+  const [brandKitError, setBrandKitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCachedIngest(getCachedWebsiteIngest());
+  }, []);
 
   useEffect(() => {
     if (defaultExpanded && !hasUsedWebsiteIngest()) {
@@ -82,14 +105,85 @@ export default function WebsiteTopicSuggester({
     }
   }, [defaultExpanded]);
 
+  function toCompletePayload(
+    data: WebsiteIngestApiResponse & { success: true },
+  ): WebsiteIngestCompletePayload {
+    return {
+      businessName: data.businessName,
+      description: data.description,
+      audience: data.audience,
+      topics: data.topics,
+      productImageUrl: data.productImageUrl,
+      logoImageUrl: data.logoImageUrl,
+      sourceUrl: data.sourceUrl,
+    };
+  }
+
+  function applyIngestResult(
+    data: WebsiteIngestApiResponse & { success: true },
+    inputUrl: string,
+    options?: {
+      notifyReferences?: boolean;
+      preserveReferenceUrls?: boolean;
+      preservedProductImageUrl?: string | null;
+      preservedLogoImageUrl?: string | null;
+    },
+  ) {
+    const nextProductImageUrl = options?.preserveReferenceUrls
+      ? (options.preservedProductImageUrl ?? productImageUrl)
+      : data.productImageUrl;
+    const nextLogoImageUrl = options?.preserveReferenceUrls
+      ? (options.preservedLogoImageUrl ?? logoImageUrl)
+      : data.logoImageUrl;
+
+    setBusinessName(data.businessName);
+    setDescription(data.description);
+    setAudience(data.audience);
+    setSourceUrl(data.sourceUrl);
+    setSuggestions(data.topics);
+    setProductImageUrl(nextProductImageUrl);
+    setLogoImageUrl(nextLogoImageUrl);
+
+    setCachedWebsiteIngest(inputUrl, {
+      ...data,
+      productImageUrl: nextProductImageUrl,
+      logoImageUrl: nextLogoImageUrl,
+    });
+    setCachedIngest(getCachedWebsiteIngest());
+    markWebsiteIngestUsed();
+    setBrandKitSaved(false);
+    setBrandKitError(null);
+
+    if (options?.notifyReferences !== false && !options?.preserveReferenceUrls) {
+      onIngestComplete?.({
+        ...toCompletePayload(data),
+        productImageUrl: nextProductImageUrl,
+        logoImageUrl: nextLogoImageUrl,
+      });
+    }
+  }
+
+  function restoreFromCache(cache: CachedWebsiteIngest) {
+    setUrl(cache.inputUrl);
+    setConsent(true);
+    setExpanded(true);
+    applyIngestResult(cache, cache.inputUrl);
+    setState("suggestions");
+    setError(null);
+  }
+
   function handleReset() {
     setState("idle");
     setSuggestions([]);
     setBusinessName(null);
     setDescription(null);
+    setAudience(null);
+    setSourceUrl(null);
     setProductImageUrl(null);
     setLogoImageUrl(null);
     setError(null);
+    setBrandKitSaved(false);
+    setBrandKitError(null);
   }
 
   function handleCollapse() {
@@ -97,13 +191,25 @@ export default function WebsiteTopicSuggester({
     setExpanded(false);
     setUrl("");
     setConsent(false);
+    clearCachedWebsiteIngest();
+    setCachedIngest(null);
   }
 
-  async function handleAnalyze() {
-    if (disabled || state === "thinking") {
-      return;
-    }
+  function handleExpand() {
+    setExpanded(true);
 
+    const cache = getCachedWebsiteIngest();
+
+    if (cache) {
+      setUrl(cache.inputUrl);
+      setConsent(true);
+    }
+  }
+
+  async function requestIngest(options: {
+    regenerate?: boolean;
+    skipReferenceUpload?: boolean;
+  } = {}) {
     const trimmedUrl = url.trim();
 
     if (!trimmedUrl) {
@@ -123,7 +229,14 @@ export default function WebsiteTopicSuggester({
       const response = await fetch("/api/campaigns/ingest-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmedUrl }),
+        body: JSON.stringify({
+          url: trimmedUrl,
+          regenerate: options.regenerate ?? false,
+          excludeTopics: options.regenerate
+            ? suggestions.map((suggestion) => suggestion.topic)
+            : undefined,
+          skipReferenceUpload: options.skipReferenceUpload ?? false,
+        }),
       });
 
       const data = (await response.json()) as WebsiteIngestApiResponse;
@@ -132,43 +245,79 @@ export default function WebsiteTopicSuggester({
         throw new Error(data.success ? "No topics returned" : data.error);
       }
 
-      setBusinessName(data.businessName);
-      setDescription(data.description);
-      setProductImageUrl(data.productImageUrl);
-      setLogoImageUrl(data.logoImageUrl);
-      setSuggestions(data.topics);
-      setState("suggestions");
-      markWebsiteIngestUsed();
-
-      onIngestComplete?.({
-        businessName: data.businessName,
-        description: data.description,
-        audience: data.audience,
-        topics: data.topics,
-        productImageUrl: data.productImageUrl,
-        logoImageUrl: data.logoImageUrl,
-        sourceUrl: data.sourceUrl,
+      applyIngestResult(data, trimmedUrl, {
+        preserveReferenceUrls: options.skipReferenceUpload === true,
+        preservedProductImageUrl: productImageUrl,
+        preservedLogoImageUrl: logoImageUrl,
+        notifyReferences: options.skipReferenceUpload !== true,
       });
+      setState("suggestions");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not read that website",
       );
-      setState("idle");
+      setState(suggestions.length > 0 ? "suggestions" : "idle");
     }
   }
 
+  async function handleSaveBrandKit() {
+    if (!onSaveBrandKit || !brandId) {
+      return;
+    }
+
+    setBrandKitError(null);
+    setIsSavingBrandKit(true);
+
+    try {
+      await onSaveBrandKit({
+        businessName: businessName ?? "Your business",
+        description: description ?? "",
+        audience: audience ?? "",
+        topics: suggestions,
+        productImageUrl,
+        logoImageUrl,
+        sourceUrl: sourceUrl ?? url.trim(),
+      });
+      setBrandKitSaved(true);
+    } catch (err) {
+      setBrandKitError(
+        err instanceof Error ? err.message : "Could not save brand kit",
+      );
+    } finally {
+      setIsSavingBrandKit(false);
+    }
+  }
+
+  const canSaveBrandKit =
+    Boolean(brandId && onSaveBrandKit) &&
+    Boolean(productImageUrl || logoImageUrl);
+
   if (!expanded) {
+    const cachedHostname = cachedIngest
+      ? getHostnameFromUrl(cachedIngest.inputUrl)
+      : null;
+
     return (
-      <div>
+      <div className="space-y-2">
         <button
           type="button"
           disabled={disabled}
-          onClick={() => setExpanded(true)}
+          onClick={handleExpand}
           className="inline-flex items-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition hover:border-primary/70 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <GlobeIcon />
           Start from your website
         </button>
+        {cachedIngest && cachedHostname ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => restoreFromCache(cachedIngest)}
+            className="block text-sm font-medium text-primary underline-offset-2 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Resume ideas for {cachedHostname}
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -178,7 +327,7 @@ export default function WebsiteTopicSuggester({
       <WebsiteIngestLoader
         url={url}
         previewImageUrl={null}
-        businessName={null}
+        businessName={businessName}
       />
     );
   }
@@ -239,6 +388,40 @@ export default function WebsiteTopicSuggester({
             })()}
           </p>
         )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() =>
+              void requestIngest({
+                regenerate: true,
+                skipReferenceUpload: true,
+              })
+            }
+            className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-2 text-xs font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            New ideas
+          </button>
+          {canSaveBrandKit ? (
+            <button
+              type="button"
+              disabled={disabled || isSavingBrandKit || brandKitSaved}
+              onClick={() => void handleSaveBrandKit()}
+              className="inline-flex items-center justify-center rounded-lg border border-border px-3 py-2 text-xs font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {brandKitSaved
+                ? "Saved to brand kit"
+                : isSavingBrandKit
+                  ? "Saving…"
+                  : "Save to brand kit"}
+            </button>
+          ) : null}
+        </div>
+
+        {brandKitError ? (
+          <p className="mt-2 text-xs text-red-400">{brandKitError}</p>
+        ) : null}
 
         <p className="mt-3 text-xs leading-5 text-muted-foreground">
           Pick one idea for this campaign. You can switch between them, then
@@ -324,6 +507,18 @@ export default function WebsiteTopicSuggester({
         ) : null}
       </div>
 
+      {cachedIngest ? (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => restoreFromCache(cachedIngest)}
+          className="mt-3 text-sm font-medium text-primary underline-offset-2 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Resume ideas for{" "}
+          {getHostnameFromUrl(cachedIngest.inputUrl) ?? "your site"}
+        </button>
+      ) : null}
+
       <label htmlFor={inputId} className="sr-only">
         Website URL
       </label>
@@ -353,7 +548,7 @@ export default function WebsiteTopicSuggester({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => void handleAnalyze()}
+        onClick={() => void requestIngest()}
         className="btn-primary mt-4 min-h-11 w-full px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
         Analyze website

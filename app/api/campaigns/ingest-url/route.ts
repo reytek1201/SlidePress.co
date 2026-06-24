@@ -16,6 +16,9 @@ const INGEST_URL_RATE_LIMIT = {
 
 const RequestSchema = z.object({
   url: z.string().min(3).max(2048),
+  regenerate: z.boolean().optional(),
+  excludeTopics: z.array(z.string().min(1).max(140)).max(10).optional(),
+  skipReferenceUpload: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -54,25 +57,31 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await ingestWebsiteForCampaign(parsed.data.url);
+    const result = await ingestWebsiteForCampaign(parsed.data.url, {
+      excludeTopics: parsed.data.regenerate
+        ? parsed.data.excludeTopics
+        : undefined,
+    });
 
     let productImageUrl = result.productImageUrl;
     let logoImageUrl = result.logoImageUrl;
 
-    if (productImageUrl) {
-      productImageUrl = await uploadIngestedProductImage(
-        supabase,
-        user.id,
-        productImageUrl,
-      );
-    }
+    if (!parsed.data.skipReferenceUpload) {
+      if (productImageUrl) {
+        productImageUrl = await uploadIngestedProductImage(
+          supabase,
+          user.id,
+          productImageUrl,
+        );
+      }
 
-    if (logoImageUrl) {
-      logoImageUrl = await uploadIngestedLogoImage(
-        supabase,
-        user.id,
-        logoImageUrl,
-      );
+      if (logoImageUrl) {
+        logoImageUrl = await uploadIngestedLogoImage(
+          supabase,
+          user.id,
+          logoImageUrl,
+        );
+      }
     }
 
     return NextResponse.json({
