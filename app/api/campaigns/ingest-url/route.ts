@@ -1,5 +1,8 @@
 import { ingestWebsiteForCampaign } from "@/utils/ingest-website";
-import { uploadIngestedProductImage } from "@/utils/ingest-product-image";
+import {
+  uploadIngestedLogoImage,
+  uploadIngestedProductImage,
+} from "@/utils/ingest-product-image";
 import { PublicUrlFetchError } from "@/utils/fetch-public-url";
 import { isRateLimitError, assertRateLimit } from "@/utils/rate-limit";
 import { createClient } from "@/utils/supabase/server";
@@ -54,14 +57,22 @@ export async function POST(request: Request) {
     const result = await ingestWebsiteForCampaign(parsed.data.url);
 
     let productImageUrl = result.productImageUrl;
+    let logoImageUrl = result.logoImageUrl;
 
     if (productImageUrl) {
-      const uploadedProductImageUrl = await uploadIngestedProductImage(
+      productImageUrl = await uploadIngestedProductImage(
         supabase,
         user.id,
         productImageUrl,
       );
-      productImageUrl = uploadedProductImageUrl;
+    }
+
+    if (logoImageUrl) {
+      logoImageUrl = await uploadIngestedLogoImage(
+        supabase,
+        user.id,
+        logoImageUrl,
+      );
     }
 
     return NextResponse.json({
@@ -71,6 +82,7 @@ export async function POST(request: Request) {
       audience: result.audience,
       topics: result.topics,
       productImageUrl,
+      logoImageUrl,
       sourceUrl: result.sourceUrl,
     });
   } catch (error) {

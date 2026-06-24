@@ -101,6 +101,7 @@ export default function CreateCampaignForm({
   const [ingestedProductUrl, setIngestedProductUrl] = useState<string | null>(
     null,
   );
+  const [ingestedLogoUrl, setIngestedLogoUrl] = useState<string | null>(null);
   const [productPreview, setProductPreview] = useState<string | null>(null);
   const [stylePreview, setStylePreview] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -208,6 +209,10 @@ export default function CreateCampaignForm({
       setIngestedProductUrl(null);
     }
 
+    if (type === "logo" && !file) {
+      setIngestedLogoUrl(null);
+    }
+
     if (file) {
       setClearedLibrarySlots((current) => {
         const next = new Set(current);
@@ -259,6 +264,14 @@ export default function CreateCampaignForm({
       !clearedLibrarySlots.has("product")
     ) {
       return ingestedProductUrl;
+    }
+
+    if (
+      type === "logo" &&
+      ingestedLogoUrl &&
+      !clearedLibrarySlots.has("logo")
+    ) {
+      return ingestedLogoUrl;
     }
 
     if (
@@ -316,6 +329,14 @@ export default function CreateCampaignForm({
         !clearedLibrarySlots.has("product")
       ) {
         return ingestedProductUrl;
+      }
+
+      if (
+        type === "logo" &&
+        ingestedLogoUrl &&
+        !clearedLibrarySlots.has("logo")
+      ) {
+        return ingestedLogoUrl;
       }
 
       if (
@@ -512,7 +533,12 @@ export default function CreateCampaignForm({
           <CampaignTopicSuggester
             inputId={`${idPrefix}website-url`}
             defaultExpanded={isFirstCampaign}
-            onSelectTopic={(t) => setTopic(t)}
+            onSelectTopic={(topic, options) => {
+              setTopic(topic);
+              if (options?.recommendedFormat) {
+                setAspectRatio(options.recommendedFormat);
+              }
+            }}
             onIngestComplete={(payload) => {
               if (
                 payload.productImageUrl &&
@@ -521,6 +547,15 @@ export default function CreateCampaignForm({
               ) {
                 setIngestedProductUrl(payload.productImageUrl);
                 setProductPreview(payload.productImageUrl);
+              }
+
+              if (
+                payload.logoImageUrl &&
+                !logoFile &&
+                !clearedLibrarySlots.has("logo")
+              ) {
+                setIngestedLogoUrl(payload.logoImageUrl);
+                setLogoPreview(payload.logoImageUrl);
               }
             }}
             disabled={isLoading}

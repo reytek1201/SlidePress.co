@@ -1,4 +1,9 @@
-import type { WebsiteIngestResult } from "@/types/website-ingest";
+import type {
+  WebsiteIngestResult,
+  WebsiteIngestTopicSuggestion,
+  WebsiteTopicAngle,
+  WebsiteTopicFormat,
+} from "@/types/website-ingest";
 import { fetchPublicWebsiteHtml } from "@/utils/fetch-public-url";
 import { GoogleGenAI } from "@google/genai";
 
@@ -13,7 +18,22 @@ const INGEST_RESPONSE_SCHEMA = {
     audience: { type: "string" },
     topics: {
       type: "array",
-      items: { type: "string" },
+      items: {
+        type: "object",
+        properties: {
+          topic: { type: "string" },
+          angle: {
+            type: "string",
+            enum: ["pain_point", "curiosity", "contrarian"],
+          },
+          rationale: { type: "string" },
+          recommendedFormat: {
+            type: "string",
+            enum: ["4:5", "9:16"],
+          },
+        },
+        required: ["topic", "angle", "rationale", "recommendedFormat"],
+      },
     },
   },
   required: ["businessName", "description", "audience", "topics"],
@@ -103,33 +123,115 @@ function resolveAbsoluteUrl(
   }
 }
 
-function normalizeTopics(topics: unknown): string[] {
+function extractSiteIconUrl(html: string, baseUrl: string): string | null {
+  const linkTags = html.match(/<link\s+[^>]*>/gi) ?? [];
+  const candidates: { href: string; priority: number }[] = [];
+
+  for (const tag of linkTags) {
+    const rel = tag.match(/rel=["']([^"']+)["']/i)?.[1]?.toLowerCase() ?? "";
+    const href = tag.match(/href=["']([^"']+)["']/i)?.[1];
+
+    if (!href) {
+      continue;
+    }
+
+    if (rel.includes("apple-touch-icon")) {
+      candidates.push({ href, priority: 1 });
+      continue;
+    }
+
+    if (rel.includes("icon")) {
+      candidates.push({
+        href,
+        priority: rel.includes("shortcut") ? 3 : 2,
+      });
+    }
+  }
+
+  candidates.sort((left, right) => left.priority - right.priority);
+
+  if (candidates[0]) {
+    return resolveAbsoluteUrl(candidates[0].href, baseUrl);
+  }
+
+  return resolveAbsoluteUrl("/favicon.ico", baseUrl);
+}
+
+function normalizeAngle(value: unknown): WebsiteTopicAngle {
+  if (value === "curiosity" || value === "contrarian") {
+    return value;
+  }
+
+  return "pain_point";
+}
+
+function normalizeFormat(value: unknown): WebsiteTopicFormat {
+  return value === "9:16" ? "9:16" : "4:5";
+}
+
+function normalizeTopicSuggestions(
+  topics: unknown,
+): WebsiteIngestTopicSuggestion[] {
   if (!Array.isArray(topics)) {
     return [];
   }
 
   const seen = new Set<string>();
-  const normalized: string[] = [];
+  const normalized: WebsiteIngestTopicSuggestion[] = [];
 
-  for (const topic of topics) {
-    if (typeof topic !== "string") {
+  for (const entry of topics) {
+    if (typeof entry === "string") {
+      const trimmed = entry.trim().replace(/\s+/g, " ");
+
+      if (trimmed.length < 8 || trimmed.length > 140) {
+        continue;
+      }
+
+      const key = trimmed.toLowerCase();
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      normalized.push({
+        topic: trimmed,
+        angle: "pain_point",
+        rationale: "Grounded in your website messaging.",
+        recommendedFormat: "4:5",
+      });
+    } else if (typeof entry === "object" && entry !== null) {
+      const record = entry as Record<string, unknown>;
+      const topic =
+        typeof record.topic === "string"
+          ? record.topic.trim().replace(/\s+/g, " ")
+          : "";
+
+      if (topic.length < 8 || topic.length > 140) {
+        continue;
+      }
+
+      const key = topic.toLowerCase();
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      const rationale =
+        typeof record.rationale === "string" && record.rationale.trim()
+          ? record.rationale.trim().slice(0, 180)
+          : "Grounded in your website messaging.";
+
+      seen.add(key);
+      normalized.push({
+        topic,
+        angle: normalizeAngle(record.angle),
+        rationale,
+        recommendedFormat: normalizeFormat(record.recommendedFormat),
+      });
+    } else {
       continue;
     }
-
-    const trimmed = topic.trim().replace(/\s+/g, " ");
-
-    if (trimmed.length < 8 || trimmed.length > 140) {
-      continue;
-    }
-
-    const key = trimmed.toLowerCase();
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    normalized.push(trimmed);
 
     if (normalized.length >= 3) {
       break;
@@ -160,6 +262,7 @@ export async function ingestWebsiteForCampaign(
     extractMetaContent(html, "og:image"),
     finalUrl,
   );
+  const logoImageUrl = extractSiteIconUrl(html, finalUrl);
 
   const ai = getGeminiClient();
   const response = await ai.models.generateContent({
@@ -169,7 +272,9 @@ export async function ingestWebsiteForCampaign(
         text: [
           "You are a performance marketing strategist for Instagram and TikTok carousel campaigns.",
           "Analyse the website content and return JSON only.",
-          "Write exactly 3 distinct campaign topic suggestions as pain-point or curiosity hooks (5–12 words each).",
+          "Write exactly 3 distinct campaign topic suggestions.",
+          "Each topic must be a pain-point, curiosity, or contrarian hook (5–12 words).",
+          "Each topic needs angle (pain_point, curiosity, or contrarian), a one-sentence rationale explaining why it fits this business, and recommendedFormat (4:5 for feed carousels or 9:16 for Reels/TikTok).",
           "Topics must be specific to this business, not generic social media advice.",
           `Website URL: ${finalUrl}`,
           title ? `Page title: ${title}` : "",
@@ -202,7 +307,7 @@ export async function ingestWebsiteForCampaign(
     topics?: unknown;
   };
 
-  const topics = normalizeTopics(parsed.topics);
+  const topics = normalizeTopicSuggestions(parsed.topics);
 
   if (topics.length === 0) {
     throw new Error("Could not generate campaign topic suggestions");
@@ -229,6 +334,7 @@ export async function ingestWebsiteForCampaign(
     audience,
     topics,
     productImageUrl,
+    logoImageUrl,
     sourceUrl: finalUrl,
   };
 }

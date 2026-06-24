@@ -3,13 +3,16 @@
 import PhotoTopicSuggester from "@/app/components/photo-topic-suggester";
 import WebsiteTopicSuggester from "@/app/components/website-topic-suggester";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
-import type { WebsiteIngestCompletePayload } from "@/types/website-ingest";
+import type {
+  TopicSelectionOptions,
+  WebsiteIngestCompletePayload,
+} from "@/types/website-ingest";
 import { useState } from "react";
 
 type SuggesterMode = "website" | "photo";
 
 interface CampaignTopicSuggesterProps {
-  onSelectTopic: (topic: string) => void;
+  onSelectTopic: (topic: string, options?: TopicSelectionOptions) => void;
   onIngestComplete?: (payload: WebsiteIngestCompletePayload) => void;
   disabled?: boolean;
   defaultExpanded?: boolean;

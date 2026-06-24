@@ -1,8 +1,12 @@
 "use client";
 
+import WebsiteIngestLoader from "@/app/components/website-ingest-loader";
 import type {
+  TopicSelectionOptions,
   WebsiteIngestApiResponse,
   WebsiteIngestCompletePayload,
+  WebsiteIngestTopicSuggestion,
+  WebsiteTopicAngle,
 } from "@/types/website-ingest";
 import {
   hasUsedWebsiteIngest,
@@ -30,8 +34,14 @@ function GlobeIcon() {
   );
 }
 
+const ANGLE_LABELS: Record<WebsiteTopicAngle, string> = {
+  pain_point: "Pain point",
+  curiosity: "Curiosity",
+  contrarian: "Contrarian",
+};
+
 interface WebsiteTopicSuggesterProps {
-  onSelectTopic: (topic: string) => void;
+  onSelectTopic: (topic: string, options?: TopicSelectionOptions) => void;
   onIngestComplete?: (payload: WebsiteIngestCompletePayload) => void;
   disabled?: boolean;
   defaultExpanded?: boolean;
@@ -54,7 +64,10 @@ export default function WebsiteTopicSuggester({
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
   const [productImageUrl, setProductImageUrl] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [logoImageUrl, setLogoImageUrl] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<WebsiteIngestTopicSuggestion[]>(
+    [],
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,6 +82,7 @@ export default function WebsiteTopicSuggester({
     setBusinessName(null);
     setDescription(null);
     setProductImageUrl(null);
+    setLogoImageUrl(null);
     setError(null);
   }
 
@@ -115,6 +129,7 @@ export default function WebsiteTopicSuggester({
       setBusinessName(data.businessName);
       setDescription(data.description);
       setProductImageUrl(data.productImageUrl);
+      setLogoImageUrl(data.logoImageUrl);
       setSuggestions(data.topics);
       setState("suggestions");
       markWebsiteIngestUsed();
@@ -125,6 +140,7 @@ export default function WebsiteTopicSuggester({
         audience: data.audience,
         topics: data.topics,
         productImageUrl: data.productImageUrl,
+        logoImageUrl: data.logoImageUrl,
         sourceUrl: data.sourceUrl,
       });
     } catch (err) {
@@ -153,38 +169,44 @@ export default function WebsiteTopicSuggester({
 
   if (state === "thinking") {
     return (
-      <div className="rounded-xl border border-border bg-card/40 px-4 py-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          Reading your site…
-        </div>
-      </div>
+      <WebsiteIngestLoader
+        url={url}
+        previewImageUrl={null}
+        businessName={null}
+      />
     );
   }
 
   if (state === "suggestions") {
+    const headerImageUrl = logoImageUrl ?? productImageUrl;
+
     return (
       <div className="rounded-xl border border-border bg-card/40 p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Campaign ideas
-            </p>
-            {businessName ? (
-              <p className="mt-1 truncate text-sm font-semibold text-foreground">
-                {businessName}
-              </p>
+          <div className="flex min-w-0 items-start gap-3">
+            {headerImageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={headerImageUrl}
+                alt=""
+                className="h-11 w-11 shrink-0 rounded-lg border border-border object-cover"
+              />
             ) : null}
-            {description ? (
-              <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
-                {description}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Campaign ideas
               </p>
-            ) : null}
-            {productImageUrl ? (
-              <p className="mt-2 text-xs text-primary">
-                Site image added as your product reference.
-              </p>
-            ) : null}
+              {businessName ? (
+                <p className="mt-1 truncate text-sm font-semibold text-foreground">
+                  {businessName}
+                </p>
+              ) : null}
+              {description ? (
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                  {description}
+                </p>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"
@@ -195,18 +217,52 @@ export default function WebsiteTopicSuggester({
           </button>
         </div>
 
-        <div className="mt-3 space-y-2">
-          {suggestions.map((topic) => (
+        {(productImageUrl || logoImageUrl) && (
+          <p className="mt-3 text-xs text-primary">
+            {(() => {
+              const refs = [
+                productImageUrl ? "product" : null,
+                logoImageUrl ? "logo" : null,
+              ].filter(Boolean);
+
+              if (refs.length === 0) {
+                return null;
+              }
+
+              return `Added ${refs.join(" and ")} reference${refs.length > 1 ? "s" : ""} from your site.`;
+            })()}
+          </p>
+        )}
+
+        <div className="mt-3 space-y-3">
+          {suggestions.map((suggestion) => (
             <button
-              key={topic}
+              key={suggestion.topic}
               type="button"
               onClick={() => {
-                onSelectTopic(topic);
+                onSelectTopic(suggestion.topic, {
+                  recommendedFormat: suggestion.recommendedFormat,
+                });
                 handleCollapse();
               }}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-left text-sm text-foreground transition hover:border-primary/60 hover:bg-primary/5 active:opacity-80"
+              className="w-full rounded-lg border border-border bg-background px-3 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5 active:opacity-80"
             >
-              {topic}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                  {ANGLE_LABELS[suggestion.angle]}
+                </span>
+                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  {suggestion.recommendedFormat === "9:16"
+                    ? "9:16 Reels"
+                    : "4:5 Feed"}
+                </span>
+              </div>
+              <p className="mt-2 text-sm font-medium text-foreground">
+                {suggestion.topic}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                {suggestion.rationale}
+              </p>
             </button>
           ))}
         </div>
