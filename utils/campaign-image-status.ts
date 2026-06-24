@@ -79,8 +79,6 @@ export async function refreshCampaignImageStatus(
     ).finally(() => {
       void maybeSendCampaignDraftReadyPush(campaignId);
     });
-
-    void maybeSendCampaignDraftReadyPush(campaignId);
   }
 }
 

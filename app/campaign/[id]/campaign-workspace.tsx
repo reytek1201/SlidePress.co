@@ -181,6 +181,7 @@ export default function CampaignWorkspace({
   const [regeneratingSlideId, setRegeneratingSlideId] = useState<string | null>(
     null
   );
+  const [awaitingRegenCompletion, setAwaitingRegenCompletion] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [workspaceTab, setWorkspaceTab] = useState<CampaignWorkspaceTab>("slides");
   const [publishTabHint, setPublishTabHint] = useState<string | null>(null);
@@ -217,6 +218,7 @@ export default function CampaignWorkspace({
   const justFinishedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slideIdsRef = useRef(new Set(initialSlides.map((slide) => slide.id)));
   const activeVideoExportIdRef = useRef<string | null>(null);
+  const regenSawEmptyImageRef = useRef(false);
 
   const syncVideoExportBiometricDefer = useCallback(() => {
     setBiometricLockDeferred(
@@ -644,15 +646,38 @@ export default function CampaignWorkspace({
 
   useEffect(() => {
     if (!regeneratingSlideId) {
+      regenSawEmptyImageRef.current = false;
+      return;
+    }
+
+    if (campaign.status === "failed") {
+      setRegeneratingSlideId(null);
+      setAwaitingRegenCompletion(false);
+      regenSawEmptyImageRef.current = false;
       return;
     }
 
     const slide = displaySlides.find((entry) => entry.id === regeneratingSlideId);
 
-    if (slide?.image_url) {
-      setRegeneratingSlideId(null);
+    if (!slide) {
+      return;
     }
-  }, [displaySlides, regeneratingSlideId]);
+
+    if (!slide.image_url) {
+      regenSawEmptyImageRef.current = true;
+      return;
+    }
+
+    if (
+      regenSawEmptyImageRef.current &&
+      slide.image_url &&
+      !slide.fal_request_id
+    ) {
+      setRegeneratingSlideId(null);
+      setAwaitingRegenCompletion(false);
+      regenSawEmptyImageRef.current = false;
+    }
+  }, [campaign.status, displaySlides, regeneratingSlideId]);
 
   useEffect(() => {
     function markUserScrolled() {
@@ -808,7 +833,7 @@ export default function CampaignWorkspace({
   }, [campaign.id, supabase]);
 
   useEffect(() => {
-    if (!isAnySlideGenerating && !regeneratingSlideId) {
+    if (!isAnySlideGenerating && !awaitingRegenCompletion) {
       return;
     }
 
@@ -840,7 +865,7 @@ export default function CampaignWorkspace({
         clearTimeout(timeoutId);
       }
     };
-  }, [isAnySlideGenerating, regeneratingSlideId, refreshSlides]);
+  }, [awaitingRegenCompletion, isAnySlideGenerating, refreshSlides]);
 
   const refreshCaptions = useCallback(async (): Promise<PlatformCaption[]> => {
     const { data, error: captionsError } = await supabase
@@ -1803,9 +1828,11 @@ export default function CampaignWorkspace({
         throw new Error(data.error ?? "Failed to generate captions");
       }
 
+      const hadCaptions = captions.length > 0;
+
       setCaptions(data.captions);
       setCaptionsMessage(
-        captions.length > 0
+        hadCaptions
           ? "Captions regenerated — slide images unchanged"
           : "Platform captions generated",
       );
@@ -1816,11 +1843,12 @@ export default function CampaignWorkspace({
         scrollToCampaignSection("section-publish-video");
       });
     } catch (generateError) {
-      setError(
+      const message =
         generateError instanceof Error
           ? generateError.message
-          : "Something went wrong"
-      );
+          : "Something went wrong";
+      setCaptionGenerationError(message);
+      setError(message);
     } finally {
       setIsGeneratingCaptions(false);
     }
@@ -1934,6 +1962,8 @@ export default function CampaignWorkspace({
     setError(null);
     skipPublishAutoNavRef.current = true;
     setRegeneratingSlideId(slideId);
+    setAwaitingRegenCompletion(false);
+    regenSawEmptyImageRef.current = true;
     applySlideImagePending(slideId, activeAspectRatio);
 
     try {
@@ -1983,9 +2013,14 @@ export default function CampaignWorkspace({
       if (data.mode === "sync") {
         await Promise.all([refreshSlides(), refreshCampaign()]);
         setRegeneratingSlideId(null);
+        setAwaitingRegenCompletion(false);
+      } else {
+        setAwaitingRegenCompletion(true);
       }
     } catch (regenerateError) {
       setRegeneratingSlideId(null);
+      setAwaitingRegenCompletion(false);
+      regenSawEmptyImageRef.current = false;
       setError(
         regenerateError instanceof Error
           ? regenerateError.message
