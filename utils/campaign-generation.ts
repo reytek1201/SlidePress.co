@@ -135,6 +135,21 @@ export function aspectRatioContext(aspectRatio: "4:5" | "9:16"): string {
     : "TikTok/Reels/Shorts vertical frame (9:16 aspect ratio)";
 }
 
+/** Soft compositional nudge when export will burn on-screen captions (best-effort). */
+export const BURN_CAPTION_IMAGE_PROMPT_CLAUSE =
+  "Favor a calm, low-detail lower portion of the frame—open space, soft gradients, or simple backgrounds—with the boldest detail and busiest texture concentrated in the upper and middle areas.";
+
+export function appendCaptionFriendlyCompositionClause(
+  prompt: string,
+  burnCaptions?: boolean,
+): string {
+  if (!burnCaptions) {
+    return prompt;
+  }
+
+  return `${prompt} ${BURN_CAPTION_IMAGE_PROMPT_CLAUSE}`;
+}
+
 export function buildNanoBananaPrompt(
   textOverlay: string,
   imagePrompt: string,

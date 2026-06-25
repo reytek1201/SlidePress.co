@@ -3,6 +3,11 @@ import { copyFile, mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promi
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import {
+  buildBurnCaptionScrimFilters,
+  getBurnCaptionLayout,
+  parseAssPlayResolution,
+} from "@/utils/captions/build-ass-track";
 import type { VideoDimensions } from "@/utils/video-dimensions";
 import { requireFfmpegPath } from "@/utils/ffmpeg";
 
@@ -20,6 +25,8 @@ export async function burnCaptionsIntoVideo(
   videoBuffer: Buffer,
   assContent: string,
 ): Promise<Buffer> {
+  const { width, height } = parseAssPlayResolution(assContent);
+  const layout = getBurnCaptionLayout(width, height);
   const dir = await mkdtemp(join(tmpdir(), "slidepress-burn-captions-"));
 
   try {
@@ -35,13 +42,16 @@ export async function burnCaptionsIntoVideo(
 
     const escapedAssPath = escapeFfmpegFilterPath(assPath);
     const escapedFontsDir = escapeFfmpegFilterPath(fontsDir);
+    const scrimFilters = buildBurnCaptionScrimFilters(layout);
+    const assFilter = `ass='${escapedAssPath}':fontsdir='${escapedFontsDir}'`;
+    const videoFilter = `${scrimFilters},${assFilter}`;
 
     await execFileAsync(requireFfmpegPath(), [
       "-y",
       "-i",
       inputPath,
       "-vf",
-      `ass='${escapedAssPath}':fontsdir='${escapedFontsDir}'`,
+      videoFilter,
       "-c:v",
       "libx264",
       "-pix_fmt",

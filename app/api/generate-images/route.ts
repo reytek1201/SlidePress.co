@@ -16,6 +16,7 @@ export const maxDuration = 300;
 
 const RequestSchema = z.object({
   campaignId: z.string().uuid(),
+  burn_captions: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { campaignId } = parsedInput.data;
+    const { campaignId, burn_captions: burnCaptions } = parsedInput.data;
 
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
@@ -121,6 +122,7 @@ export async function POST(request: Request) {
       aspectRatio: typedCampaign.aspect_ratio,
       referenceUrls,
       request,
+      burnCaptions: burnCaptions === true,
     });
 
     return NextResponse.json(

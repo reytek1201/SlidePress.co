@@ -1326,7 +1326,10 @@ export default function CampaignWorkspace({
       const response = await fetch("/api/generate-images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId: campaign.id }),
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          ...(burnCaptions ? { burn_captions: true } : {}),
+        }),
       });
 
       const data = (await response.json()) as {
@@ -1396,7 +1399,10 @@ export default function CampaignWorkspace({
       const response = await fetch("/api/generate-format-variant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignId: campaign.id }),
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          ...(burnCaptions ? { burn_captions: true } : {}),
+        }),
       });
 
       const data = (await response.json()) as {
@@ -2019,6 +2025,7 @@ export default function CampaignWorkspace({
           aspectRatio: activeAspectRatio,
           text_overlay: textOverlay,
           headlineChanged: options?.headlineChanged === true,
+          ...(burnCaptions ? { burn_captions: true } : {}),
           ...(options?.feedback?.length ? { feedback: options.feedback } : {}),
           ...(options?.notes ? { notes: options.notes } : {}),
           ...(options?.snapProductUrl ? { snapProductUrl: options.snapProductUrl } : {}),

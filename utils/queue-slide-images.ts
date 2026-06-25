@@ -25,6 +25,7 @@ export interface QueueSlideImagesInput {
   aspectRatio: AspectRatio;
   referenceUrls: string[];
   request: Request;
+  burnCaptions?: boolean;
 }
 
 export async function queueSlideImagesForAspect(
@@ -37,6 +38,7 @@ export async function queueSlideImagesForAspect(
     aspectRatio,
     referenceUrls,
     request,
+    burnCaptions,
   } = input;
 
   if (slidesToGenerate.length === 0) {
@@ -67,10 +69,16 @@ export async function queueSlideImagesForAspect(
 
   if (useLocalSync) {
     for (const slide of slidesToGenerate) {
-      const prompt = buildSlideImagePrompt(slide, {
-        ...campaign,
-        aspect_ratio: aspectRatio,
-      });
+      const prompt = buildSlideImagePrompt(
+        slide,
+        {
+          ...campaign,
+          aspect_ratio: aspectRatio,
+        },
+        [],
+        undefined,
+        { burnCaptions },
+      );
 
       if (!prompt) {
         await markCampaignFailed(
@@ -107,10 +115,16 @@ export async function queueSlideImagesForAspect(
   let queued = 0;
 
   for (const slide of slidesToGenerate) {
-    const prompt = buildSlideImagePrompt(slide, {
-      ...campaign,
-      aspect_ratio: aspectRatio,
-    });
+    const prompt = buildSlideImagePrompt(
+      slide,
+      {
+        ...campaign,
+        aspect_ratio: aspectRatio,
+      },
+      [],
+      undefined,
+      { burnCaptions },
+    );
 
     if (!prompt) {
       await markCampaignFailed(

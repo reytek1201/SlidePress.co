@@ -6,6 +6,7 @@ import {
   resolveRegenerationFeedback,
 } from "@/types/regenerate-feedback";
 import {
+  appendCaptionFriendlyCompositionClause,
   buildNanoBananaPrompt,
   referencesFromCampaign,
 } from "@/utils/campaign-generation";
@@ -56,6 +57,7 @@ function buildHeadlineOnlyPrompt(
 export interface BuildSlideImagePromptOptions {
   isRegeneration?: boolean;
   headlineChanged?: boolean;
+  burnCaptions?: boolean;
 }
 
 export function buildSlideImagePrompt(
@@ -81,10 +83,16 @@ export function buildSlideImagePrompt(
 
   if (!options?.isRegeneration) {
     if (!feedback) {
-      return basePrompt;
+      return appendCaptionFriendlyCompositionClause(
+        basePrompt,
+        options?.burnCaptions,
+      );
     }
 
-    return `${basePrompt} User revision notes for this regeneration: ${feedback}`;
+    return appendCaptionFriendlyCompositionClause(
+      `${basePrompt} User revision notes for this regeneration: ${feedback}`,
+      options?.burnCaptions,
+    );
   }
 
   const resetScene = regenerationResetsScene(feedbackChipIds, {
@@ -135,5 +143,8 @@ export function buildSlideImagePrompt(
     );
   }
 
-  return parts.join(" ");
+  return appendCaptionFriendlyCompositionClause(
+    parts.join(" "),
+    options?.burnCaptions,
+  );
 }

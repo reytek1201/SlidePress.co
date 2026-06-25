@@ -46,6 +46,7 @@ const RequestSchema = z.object({
   headlineChanged: z.boolean().optional(),
   snapProductUrl: z.string().url().optional(),
   aspectRatio: z.enum(["4:5", "9:16"]).optional(),
+  burn_captions: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -88,6 +89,7 @@ export async function POST(request: Request) {
       headlineChanged,
       snapProductUrl,
       aspectRatio: aspectRatioInput,
+      burn_captions: burnCaptions,
     } = parsedInput.data;
 
     const { data: slide, error: slideError } = await supabase
@@ -218,7 +220,11 @@ export async function POST(request: Request) {
       typedCampaign,
       feedbackChipIds,
       notes,
-      { isRegeneration: true, headlineChanged },
+      {
+        isRegeneration: true,
+        headlineChanged,
+        burnCaptions: burnCaptions === true,
+      },
     );
 
     if (!prompt) {
