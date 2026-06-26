@@ -40,7 +40,6 @@ const RequestSchema = z.object({
   campaignId: z.string().uuid(),
   persona: VoicePersonaSchema.optional(),
   preset: z.enum(["quick_reel", "silent_captions"]).optional(),
-  voiceQuality: z.enum(["standard", "studio"]).optional(),
   aspectRatio: z.enum(["4:5", "9:16"]).optional(),
   burn_captions: z.boolean().optional(),
 });
@@ -83,13 +82,11 @@ export async function POST(request: Request) {
       campaignId,
       persona: personaOverride,
       preset: presetInput,
-      voiceQuality: voiceQualityInput,
       aspectRatio: aspectRatioInput,
       burn_captions: burnCaptionsInput,
     } = parsedInput.data;
 
     const preset = presetInput ?? "quick_reel";
-    const voiceQuality = voiceQualityInput ?? "standard";
     const burnCaptionsRequested = burnCaptionsInput ?? false;
 
     if (burnCaptionsRequested && !presetIncludesNarration(preset)) {
@@ -206,7 +203,6 @@ export async function POST(request: Request) {
     const fingerprints = buildVideoExportFingerprints({
       slides: slidesForExport,
       persona,
-      voiceQuality,
       preset,
     });
 
@@ -220,7 +216,6 @@ export async function POST(request: Request) {
           campaignId,
           aspectRatio: targetAspectRatio,
           preset,
-          voiceQuality,
           persona,
           narrationFingerprint: fingerprints.narrationFingerprint,
           slideFingerprints: fingerprints.slides,
@@ -245,7 +240,6 @@ export async function POST(request: Request) {
         metadata: {
           stage: "compose_slides",
           preset,
-          voiceQuality,
           persona,
           aspectRatio: targetAspectRatio,
           burnCaptions,
@@ -284,7 +278,6 @@ export async function POST(request: Request) {
       slides: slidesForExport,
       persona,
       preset,
-      voiceQuality,
       aspectRatio: targetAspectRatio,
       burnCaptions,
       narrationFingerprint: fingerprints.narrationFingerprint,
@@ -298,7 +291,6 @@ export async function POST(request: Request) {
     const slideClips = buildStoredSlideClips(prepared);
     const composeMetadata = buildComposeStageMetadata({
       preset,
-      voiceQuality,
       persona,
       aspectRatio: targetAspectRatio,
       prepared,

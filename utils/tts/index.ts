@@ -1,6 +1,5 @@
 export {
   ELEVEN_FLASH_MODEL,
-  ELEVEN_STUDIO_MODEL,
   TtsError,
   isTtsError,
   type SynthesizeInput,
@@ -9,8 +8,6 @@ export {
   type TtsProvider,
   type TtsUsageContext,
   type TtsUsageMetadata,
-  type VoiceQuality,
-  resolveTtsModelId,
 } from "@/utils/tts/types";
 
 export { mapElevenLabsError } from "@/utils/tts/map-elevenlabs-error";

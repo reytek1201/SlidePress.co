@@ -8,7 +8,6 @@ export const FAL_MERGE_AUDIO_VIDEO_MODEL =
 export const VIDEO_EXPORT_FPS = 24;
 
 import type { AspectRatio } from "@/types/campaign";
-import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import type { SlideExportFingerprint } from "@/utils/video-export-fingerprint";
 
@@ -26,7 +25,6 @@ export interface StoredSlideClip {
 export interface VideoExportMetadata {
   stage: VideoExportPipelineStage;
   preset?: VideoExportPreset;
-  voiceQuality?: VoiceQuality;
   persona?: string;
   aspectRatio?: AspectRatio;
   audioUrl?: string;
@@ -208,17 +206,12 @@ export function parseVideoExportMetadata(
   }
 
   const preset = record.preset;
-  const voiceQuality = record.voiceQuality;
 
   return {
     stage,
     preset:
       preset === "quick_reel" || preset === "silent_captions"
         ? preset
-        : undefined,
-    voiceQuality:
-      voiceQuality === "standard" || voiceQuality === "studio"
-        ? voiceQuality
         : undefined,
     persona: typeof record.persona === "string" ? record.persona : undefined,
     audioUrl: typeof record.audioUrl === "string" ? record.audioUrl : undefined,

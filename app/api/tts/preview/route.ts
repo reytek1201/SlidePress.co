@@ -1,5 +1,5 @@
 import { getVoiceIdForPersona, VoicePersonaSchema } from "@/utils/tts/voice-catalog";
-import { isTtsError, resolveTtsModelId } from "@/utils/tts/types";
+import { ELEVEN_FLASH_MODEL, isTtsError } from "@/utils/tts/types";
 import { normalizeVoiceoverScript } from "@/utils/tts/normalize-script";
 import { getTtsProvider } from "@/utils/tts/provider";
 import { resolveCampaignVoicePersona } from "@/utils/tts/resolve-campaign-persona";
@@ -34,7 +34,6 @@ const RequestSchema = z.object({
   campaignId: z.string().uuid(),
   slideId: z.string().uuid(),
   persona: VoicePersonaSchema.optional(),
-  voiceQuality: z.enum(["standard", "studio"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -69,10 +68,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { campaignId, slideId, persona: personaOverride, voiceQuality: voiceQualityInput } =
-      parsedInput.data;
-    const voiceQuality = voiceQualityInput ?? "standard";
-    const modelId = resolveTtsModelId(voiceQuality);
+    const { campaignId, slideId, persona: personaOverride } = parsedInput.data;
+    const modelId = ELEVEN_FLASH_MODEL;
 
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")

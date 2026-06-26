@@ -25,7 +25,6 @@ import { z } from "zod";
 const RequestSchema = z.object({
   campaignId: z.string().uuid(),
   persona: VoicePersonaSchema.optional(),
-  voiceQuality: z.enum(["standard", "studio"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -62,9 +61,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { campaignId, persona: personaOverride, voiceQuality: voiceQualityInput } =
-      parsedInput.data;
-    const voiceQuality = voiceQualityInput ?? "standard";
+    const { campaignId, persona: personaOverride } = parsedInput.data;
 
     const { data: campaign, error: campaignError } = await supabase
       .from("campaigns")
@@ -151,7 +148,6 @@ export async function POST(request: Request) {
     const narrationSlides = await synthesizeCampaignNarration({
       slides: typedSlides,
       persona,
-      voiceQuality,
       usage: {
         userId: user.id,
         campaignId,

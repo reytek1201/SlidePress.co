@@ -7,7 +7,6 @@ import {
 } from "@/utils/tts/disclosure-copy";
 import type { AspectRatio } from "@/types/campaign";
 import type { VerticalFormatPublishState } from "@/utils/slide-aspect-images";
-import type { VoiceQuality } from "@/utils/tts/types";
 import {
   VIDEO_EXPORT_PRESETS,
   type VideoExportPreset,
@@ -32,7 +31,6 @@ interface CampaignVideoPanelProps {
   lastVideoExport?: LastVideoExportInfo | null;
   videoPreset: VideoExportPreset;
   burnCaptions: boolean;
-  voiceQuality: VoiceQuality;
   dualFormatEnabled?: boolean;
   verticalFormatState?: VerticalFormatPublishState;
   videoExportAspectRatio?: AspectRatio;
@@ -40,7 +38,6 @@ interface CampaignVideoPanelProps {
   onAddVerticalFormat?: () => void;
   onPresetChange: (preset: VideoExportPreset) => void;
   onBurnCaptionsChange: (enabled: boolean) => void;
-  onVoiceQualityChange: (voiceQuality: VoiceQuality) => void;
   onExportVideo: () => void;
   onDownloadLastExport?: () => void;
 }
@@ -65,7 +62,6 @@ export default function CampaignVideoPanel({
   lastVideoExport = null,
   videoPreset,
   burnCaptions,
-  voiceQuality,
   dualFormatEnabled = false,
   verticalFormatState = "not_applicable",
   videoExportAspectRatio,
@@ -73,7 +69,6 @@ export default function CampaignVideoPanel({
   onAddVerticalFormat,
   onPresetChange,
   onBurnCaptionsChange,
-  onVoiceQualityChange,
   onExportVideo,
   onDownloadLastExport,
 }: CampaignVideoPanelProps) {
@@ -201,42 +196,6 @@ export default function CampaignVideoPanel({
           );
         })}
       </div>
-
-      {!isSilentPreset && (
-        <div className="mt-4">
-          <p className="text-xs font-semibold text-foreground">Voice quality</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(
-              [
-                { id: "standard", label: "Standard" },
-                { id: "studio", label: "Studio" },
-              ] as const
-            ).map((option) => {
-              const isActive = voiceQuality === option.id;
-
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  disabled={configurationDisabled}
-                  onClick={() => onVoiceQualityChange(option.id)}
-                  className={`rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                    isActive
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border text-secondary-foreground hover:border-ring/60 hover:text-foreground"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-            Studio uses a higher-quality AI voice model and may take slightly
-            longer to render.
-          </p>
-        </div>
-      )}
 
       {!isSilentPreset && (
         <div className="mt-4">

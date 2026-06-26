@@ -12,7 +12,7 @@ const RequestSchema = z
     text: z.string().min(1).max(500).optional(),
     voiceId: z.string().min(1).optional(),
     persona: VoicePersonaSchema.optional(),
-    modelId: z.enum(["eleven_flash_v2_5", "eleven_multilingual_v2"]).optional(),
+    modelId: z.literal("eleven_flash_v2_5").optional(),
   })
   .refine((value) => Boolean(value.voiceId || value.persona), {
     message: "Provide voiceId or persona",

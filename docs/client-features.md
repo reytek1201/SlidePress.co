@@ -329,7 +329,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | **4** | Ship & protect — landing, SEO, usage limits, mobile polish, Google auth, account deletion, prod deploy |
 | **5** | **Mobile app (Capacitor)** — native auth, share/save to Photos, push when images ready, biometric lock, settings hub |
 | **5+** | **Brand workspaces** — multi-brand kits, products, campaigns switcher, unified settings UX |
-| **6A** | **ElevenLabs narration & video** — voice preview, narration ZIP, MP4 export (4:5 + 9:16), presets, studio voice, narration cache |
+| **6A** | **ElevenLabs narration & video** — voice preview, narration ZIP, MP4 export (4:5 + 9:16), presets, narration cache |
 | **6A+** | **Voiceover editing** — inline script edit, AI rewrite sheet, regenerate slide sheet |
 | **6B** | **Dual format** — one campaign, optional second aspect (confirm upsell), per-format preview/export |
 | **6C** | **YouTube Shorts posting** — connect, upload API, Publish UI ✅; Google OAuth verification 🚧 |
@@ -389,7 +389,7 @@ Mobile engagement: push alerts when async work finishes, and home-screen widgets
 2. Voice preview in workspace  
 3. Audio export (narration ZIP)  
 4. Video export — slides → MP4 (4:5 + 9:16, AI voice, crossfades)  
-5. Polish — Quick Reel / Silent video presets, brand voice, studio quality  
+5. Polish — Quick Reel / Silent video presets, brand voice  
 
 **6A+ — Voiceover editing & slide fixes** ✅ *shipped*
 

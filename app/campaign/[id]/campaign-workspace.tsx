@@ -61,7 +61,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCampaignWidgetSync } from "@/app/hooks/use-widget-sync";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
-import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import { getVideoExportFilename } from "@/utils/video-export-filename";
 import { readJsonResponse } from "@/utils/read-json-response";
@@ -195,7 +194,6 @@ export default function CampaignWorkspace({
     initialPreferredVoicePersona,
   );
   const [isSavingVoicePersona, setIsSavingVoicePersona] = useState(false);
-  const [voiceQuality, setVoiceQuality] = useState<VoiceQuality>("standard");
   const [videoPreset, setVideoPreset] = useState<VideoExportPreset>("quick_reel");
   const [burnCaptions, setBurnCaptions] = useState(false);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
@@ -1502,7 +1500,6 @@ export default function CampaignWorkspace({
         body: JSON.stringify({
           campaignId: campaign.id,
           persona: preferredVoicePersona,
-          voiceQuality,
         }),
       });
 
@@ -1626,7 +1623,6 @@ export default function CampaignWorkspace({
           campaignId: campaign.id,
           persona: preferredVoicePersona,
           preset: videoPreset,
-          voiceQuality,
           aspectRatio: videoExportAspectRatio,
           burn_captions: burnCaptions,
         }),
@@ -1790,7 +1786,6 @@ export default function CampaignWorkspace({
     copiedAllCaptions: copiedCopyKey === "all",
     isNativeApp: isNativeApp === true,
     preferredVoicePersona,
-    voiceQuality,
     videoPreset,
     burnCaptions,
     aspectRatioLabel: formatAspectRatio(videoExportAspectRatio),
@@ -1827,7 +1822,6 @@ export default function CampaignWorkspace({
     onCopyCaptionField: handleCopyCaptionField,
     onCopyAllCaptions: handleCopyAllCaptions,
     onPersonaChange: (persona: VoicePersona) => void handleVoicePersonaChange(persona),
-    onVoiceQualityChange: setVoiceQuality,
     onVideoPresetChange: (preset: VideoExportPreset) => {
       setVideoPreset(preset);
       if (preset === "silent_captions") {

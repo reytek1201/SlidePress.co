@@ -1,15 +1,6 @@
 export const ELEVEN_FLASH_MODEL = "eleven_flash_v2_5" as const;
 
-/** Reserved for Phase 5 studio-quality voice toggle. */
-export const ELEVEN_STUDIO_MODEL = "eleven_multilingual_v2" as const;
-
-export type TtsModelId = typeof ELEVEN_FLASH_MODEL | typeof ELEVEN_STUDIO_MODEL;
-
-export type VoiceQuality = "standard" | "studio";
-
-export function resolveTtsModelId(quality: VoiceQuality = "standard"): TtsModelId {
-  return quality === "studio" ? ELEVEN_STUDIO_MODEL : ELEVEN_FLASH_MODEL;
-}
+export type TtsModelId = typeof ELEVEN_FLASH_MODEL;
 
 export type TtsErrorCode =
   | "INVALID_INPUT"

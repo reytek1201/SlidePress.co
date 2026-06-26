@@ -5,7 +5,7 @@ import { uploadFalMedia } from "@/utils/fal-video";
 import { concatMp3Buffers, getMp3DurationSeconds } from "@/utils/merge-mp3-buffers";
 import { loadCampaignNarrationFromCache } from "@/utils/tts/load-campaign-narration-from-cache";
 import { synthesizeCampaignNarration } from "@/utils/tts/synthesize-campaign-narration";
-import { resolveTtsModelId, type VoiceQuality, type TtsUsageContext } from "@/utils/tts/types";
+import { ELEVEN_FLASH_MODEL, type TtsUsageContext } from "@/utils/tts/types";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import {
   presetIncludesNarration,
@@ -16,7 +16,6 @@ export interface PrepareCampaignVideoInput {
   slides: Slide[];
   persona: VoicePersona;
   preset: VideoExportPreset;
-  voiceQuality?: VoiceQuality;
   usage: TtsUsageContext;
   aspectRatio?: AspectRatio;
   burnCaptions?: boolean;
@@ -76,7 +75,7 @@ export async function prepareCampaignVideo(
 
   const scripts = sortedSlides.map((slide) => slide.voiceover_script!.trim());
   const includeNarration = presetIncludesNarration(input.preset);
-  const modelId = resolveTtsModelId(input.voiceQuality);
+  const modelId = ELEVEN_FLASH_MODEL;
 
   const slideClips: PreparedSlideClip[] = [];
   let totalChars = 0;

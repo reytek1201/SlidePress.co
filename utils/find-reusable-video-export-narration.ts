@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AspectRatio } from "@/types/campaign";
 import { parseVideoExportMetadata } from "@/utils/fal-video";
-import type { VoiceQuality } from "@/utils/tts/types";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import {
   isImageOnlyVideoUpdate,
@@ -20,7 +19,6 @@ export async function findReusableVideoExportNarration(
     campaignId: string;
     aspectRatio: AspectRatio;
     preset: VideoExportPreset;
-    voiceQuality: VoiceQuality;
     persona: string;
     narrationFingerprint: string;
     slideFingerprints: SlideExportFingerprint[];
@@ -44,9 +42,6 @@ export async function findReusableVideoExportNarration(
       continue;
     }
     if (metadata.preset !== input.preset) {
-      continue;
-    }
-    if (metadata.voiceQuality !== input.voiceQuality) {
       continue;
     }
     if (metadata.persona !== input.persona) {

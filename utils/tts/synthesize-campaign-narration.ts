@@ -16,10 +16,9 @@ import { normalizeVoiceoverScript } from "@/utils/tts/normalize-script";
 import { getVoiceIdForPersona, type VoicePersona } from "@/utils/tts/voice-catalog";
 import { getTtsProvider } from "@/utils/tts/provider";
 import {
-  resolveTtsModelId,
+  ELEVEN_FLASH_MODEL,
   type TtsModelId,
   type TtsUsageContext,
-  type VoiceQuality,
   type WordTiming,
 } from "@/utils/tts/types";
 import JSZip from "jszip";
@@ -38,7 +37,6 @@ export interface SynthesizeCampaignNarrationInput {
   persona?: VoicePersona;
   voiceId?: string;
   modelId?: TtsModelId;
-  voiceQuality?: VoiceQuality;
   withTimestamps?: boolean;
   usage: TtsUsageContext;
 }
@@ -65,8 +63,7 @@ export async function synthesizeCampaignNarration(
   const voiceId =
     input.voiceId ??
     getVoiceIdForPersona(input.persona ?? "warm");
-  const modelId =
-    input.modelId ?? resolveTtsModelId(input.voiceQuality ?? "standard");
+  const modelId = input.modelId ?? ELEVEN_FLASH_MODEL;
   const provider = getTtsProvider();
   const userId = input.usage.userId;
   const campaignId = input.usage.campaignId;

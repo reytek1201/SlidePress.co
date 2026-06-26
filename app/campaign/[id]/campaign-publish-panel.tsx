@@ -15,7 +15,6 @@ import CampaignVideoPanel, {
 } from "@/app/campaign/[id]/campaign-video-panel";
 import type { CaptionCopyField, PlatformCaption } from "@/types/captions";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
-import type { VoiceQuality } from "@/utils/tts/types";
 import type { AspectRatio } from "@/types/campaign";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import type { VerticalFormatPublishState, CarouselFormatPublishState } from "@/utils/slide-aspect-images";
@@ -38,7 +37,6 @@ interface CampaignPublishPanelProps {
   copiedAllCaptions: boolean;
   isNativeApp: boolean;
   preferredVoicePersona: VoicePersona;
-  voiceQuality: VoiceQuality;
   videoPreset: VideoExportPreset;
   burnCaptions: boolean;
   aspectRatioLabel: string;
@@ -78,7 +76,6 @@ interface CampaignPublishPanelProps {
   ) => void;
   onCopyAllCaptions: () => void;
   onPersonaChange: (persona: VoicePersona) => void;
-  onVoiceQualityChange: (voiceQuality: VoiceQuality) => void;
   onVideoPresetChange: (preset: VideoExportPreset) => void;
   onBurnCaptionsChange: (enabled: boolean) => void;
   onVideoExportAspectRatioChange?: (aspectRatio: AspectRatio) => void;
@@ -107,7 +104,6 @@ export default function CampaignPublishPanel({
   copiedAllCaptions,
   isNativeApp,
   preferredVoicePersona,
-  voiceQuality,
   videoPreset,
   burnCaptions,
   aspectRatioLabel,
@@ -144,7 +140,6 @@ export default function CampaignPublishPanel({
   onCopyCaptionField,
   onCopyAllCaptions,
   onPersonaChange,
-  onVoiceQualityChange,
   onVideoPresetChange,
   onBurnCaptionsChange,
   onVideoExportAspectRatioChange,
@@ -334,7 +329,6 @@ export default function CampaignPublishPanel({
                   lastVideoExport={lastVideoExport}
                   videoPreset={videoPreset}
                   burnCaptions={burnCaptions}
-                  voiceQuality={voiceQuality}
                   dualFormatEnabled={dualFormatVideoReady}
                   verticalFormatState={verticalFormatPublishState}
                   videoExportAspectRatio={videoExportAspectRatio}
@@ -342,7 +336,6 @@ export default function CampaignPublishPanel({
                   onAddVerticalFormat={onAddVerticalFormat}
                   onPresetChange={onVideoPresetChange}
                   onBurnCaptionsChange={onBurnCaptionsChange}
-                  onVoiceQualityChange={onVoiceQualityChange}
                   onExportVideo={onExportVideo}
                   onDownloadLastExport={onDownloadLastVideoExport}
                 />
@@ -464,14 +457,12 @@ export default function CampaignPublishPanel({
           {hasVoiceoverScripts && (
             <CampaignNarrationPanel
               preferredVoicePersona={preferredVoicePersona}
-              voiceQuality={voiceQuality}
               brandId={brandId}
               disabled={disabled}
               isSavingVoicePersona={isSavingVoicePersona}
               isExportingAudio={isExportingAudio}
               audioExportMessage={audioExportMessage}
               onPersonaChange={onPersonaChange}
-              onVoiceQualityChange={onVoiceQualityChange}
               onDownloadNarration={onDownloadNarration}
             />
           )}

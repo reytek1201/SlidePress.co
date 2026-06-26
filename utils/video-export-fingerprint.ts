@@ -1,8 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Slide } from "@/types/campaign";
 import { normalizeVoiceoverScript } from "@/utils/tts/normalize-script";
-import type { VoiceQuality } from "@/utils/tts/types";
-import { resolveTtsModelId } from "@/utils/tts/types";
+import { ELEVEN_FLASH_MODEL } from "@/utils/tts/types";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import { presetIncludesNarration } from "@/utils/video-export-presets";
@@ -37,7 +36,6 @@ export function buildSlideExportFingerprint(slide: Slide): SlideExportFingerprin
 export function buildVideoExportFingerprints(input: {
   slides: Slide[];
   persona: VoicePersona;
-  voiceQuality: VoiceQuality;
   preset: VideoExportPreset;
 }): VideoExportFingerprints {
   const sortedSlides = [...input.slides].sort(
@@ -49,8 +47,7 @@ export function buildVideoExportFingerprints(input: {
   const narrationParts = presetIncludesNarration(input.preset)
     ? [
         input.persona,
-        input.voiceQuality,
-        resolveTtsModelId(input.voiceQuality),
+        ELEVEN_FLASH_MODEL,
         ...slideFingerprints.map((slide) => slide.scriptFingerprint),
       ]
     : ["silent", ...slideFingerprints.map((slide) => slide.scriptFingerprint)];

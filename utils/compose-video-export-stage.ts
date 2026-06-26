@@ -116,7 +116,6 @@ export async function runComposeSlidesStage(
 
 export function buildComposeStageMetadata(input: {
   preset: VideoExportMetadata["preset"];
-  voiceQuality: VideoExportMetadata["voiceQuality"];
   persona: string;
   aspectRatio: AspectRatio;
   prepared: PrepareCampaignVideoResult;
@@ -129,7 +128,6 @@ export function buildComposeStageMetadata(input: {
   return {
     stage: "compose_slides",
     preset: input.preset,
-    voiceQuality: input.voiceQuality,
     persona: input.persona,
     aspectRatio: input.aspectRatio,
     audioUrl: input.prepared.audioUrl,

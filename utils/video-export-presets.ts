@@ -1,5 +1,3 @@
-import type { VoiceQuality } from "@/utils/tts/types";
-
 export type VideoExportPreset = "quick_reel" | "silent_captions";
 
 export interface VideoExportPresetConfig {
