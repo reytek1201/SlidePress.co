@@ -165,30 +165,32 @@ export async function composeSlidesToVideo(
   const dir = await mkdtemp(join(tmpdir(), "slidepress-compose-"));
 
   try {
-    // Download all slide images in parallel.
+    // Download all slide images in parallel (pure I/O, safe to fan out).
     const imageBuffers = await Promise.all(
       slides.map((slide) => downloadImage(slide.imageUrl)),
     );
 
-    // Write images and render clips in parallel. Each renderSlideClip is an
-    // independent FFmpeg invocation so they can safely run concurrently.
-    const clipResults = await Promise.all(
-      slides.map(async (slide, index) => {
-        const imagePath = join(dir, `slide-${index}.jpg`);
-        const clipPath = join(dir, `clip-${index}.mp4`);
-        const clipDuration = slideClipDurationForCompose(
-          slide.durationSeconds,
-          index,
-          slides.length,
-          crossfadeSeconds,
-        );
+    // Write images then render clips sequentially. FFmpeg H.264 encodes are
+    // CPU + memory intensive — running them all concurrently on a serverless
+    // function causes OOM. Sequential rendering keeps peak memory to one
+    // active encode at a time.
+    const clipResults: Array<{ clipPath: string; clipDuration: number }> = [];
 
-        await writeFile(imagePath, imageBuffers[index]!);
-        await renderSlideClip(imagePath, clipPath, clipDuration, width, height);
+    for (let index = 0; index < slides.length; index++) {
+      const slide = slides[index]!;
+      const imagePath = join(dir, `slide-${index}.jpg`);
+      const clipPath = join(dir, `clip-${index}.mp4`);
+      const clipDuration = slideClipDurationForCompose(
+        slide.durationSeconds,
+        index,
+        slides.length,
+        crossfadeSeconds,
+      );
 
-        return { clipPath, clipDuration };
-      }),
-    );
+      await writeFile(imagePath, imageBuffers[index]!);
+      await renderSlideClip(imagePath, clipPath, clipDuration, width, height);
+      clipResults.push({ clipPath, clipDuration });
+    }
 
     const clipPaths = clipResults.map((r) => r.clipPath);
     const durations = clipResults.map((r) => r.clipDuration);
