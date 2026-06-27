@@ -68,6 +68,7 @@ interface CreateCampaignFormProps {
   user: User;
   idPrefix?: string;
   compact?: boolean;
+  hideBrandHeader?: boolean;
   onSuccess?: (
     campaignId: string,
     options?: { autoImages?: boolean },
@@ -102,6 +103,7 @@ export default function CreateCampaignForm({
   user,
   idPrefix = "",
   compact = false,
+  hideBrandHeader = false,
   onSuccess,
 }: CreateCampaignFormProps) {
   const supabase = createClient();
@@ -704,7 +706,7 @@ export default function CreateCampaignForm({
             : "rounded-2xl border border-border bg-card/60 p-6 shadow-2xl shadow-black/20 backdrop-blur sm:p-8"
         }
       >
-        {activeBrand ? (
+        {activeBrand && !hideBrandHeader ? (
           <p className="text-sm text-muted-foreground">
             Creating for{" "}
             <span className="font-medium text-foreground">
@@ -729,12 +731,7 @@ export default function CreateCampaignForm({
           </p>
         ) : null}
 
-        <div className="mb-4">
-          {isFirstCampaign ? (
-            <p className="mb-3 text-sm leading-6 text-muted-foreground">
-              New here? Paste your website to get campaign ideas in seconds.
-            </p>
-          ) : null}
+        <div className={compact ? "" : "mt-2"}>
           <CampaignTopicSuggester
             inputId={`${idPrefix}website-url`}
             defaultExpanded={isFirstCampaign}
@@ -770,9 +767,17 @@ export default function CreateCampaignForm({
           />
         </div>
 
+        <p
+          className={`text-xs text-muted-foreground ${
+            compact ? "mt-6" : "mt-8"
+          }`}
+        >
+          Or enter a topic manually
+        </p>
+
         <label
           htmlFor={topicId}
-          className="block text-sm font-medium text-secondary-foreground"
+          className="mt-3 block text-sm font-medium text-secondary-foreground"
         >
           Topic / pain point
         </label>

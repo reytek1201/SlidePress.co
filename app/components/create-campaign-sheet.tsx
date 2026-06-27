@@ -35,7 +35,7 @@ export default function CreateCampaignSheet({
       onClose={onClose}
       title="New campaign"
       titleId="create-campaign-sheet-title"
-      description="Paste your website for ideas, or enter a topic manually."
+      description="Start from your website or enter a topic."
       mobileOnly
       zIndexClass="z-[60]"
     >

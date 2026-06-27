@@ -48,6 +48,90 @@ function GlobeIcon() {
   );
 }
 
+function ChevronRightIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+function WebsiteIngestCardHeader() {
+  return (
+    <div className="flex min-w-0 flex-1 items-start gap-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/5 text-primary">
+        <GlobeIcon />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground">
+          Start from your website
+        </p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          Paste your homepage and we&apos;ll suggest campaign topics grounded in
+          your business.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CachedIngestResumeRow({
+  cache,
+  disabled,
+  onResume,
+  onScanAgain,
+}: {
+  cache: CachedWebsiteIngest;
+  disabled: boolean;
+  onResume: () => void;
+  onScanAgain: () => void;
+}) {
+  const hostname = getHostnameFromUrl(cache.inputUrl) ?? "your site";
+  const topicCount = cache.topics.length;
+
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-background/60 px-3 py-3">
+      <p className="text-xs leading-5 text-muted-foreground">
+        <span className="font-medium text-foreground">{hostname}</span>
+        {topicCount > 0 ? (
+          <>
+            {" "}
+            · {topicCount} topic idea{topicCount === 1 ? "" : "s"} saved
+          </>
+        ) : null}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onResume}
+          className="btn-primary px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Resume
+        </button>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onScanAgain}
+          className="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-xs font-semibold text-secondary-foreground transition hover:border-ring/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Scan again
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const ANGLE_LABELS: Record<WebsiteTopicAngle, string> = {
   pain_point: "Pain point",
   curiosity: "Curiosity",
@@ -418,26 +502,27 @@ export default function WebsiteTopicSuggester({
       : null;
 
     return (
-      <div className="space-y-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={handleExpand}
-          className="inline-flex items-center gap-2 rounded-xl border border-dashed border-primary/50 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition hover:border-primary/70 hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <GlobeIcon />
-          Start from your website
-        </button>
+      <div className="rounded-xl border border-border bg-card/40 p-4">
+        <WebsiteIngestCardHeader />
+
         {cachedIngest && cachedHostname ? (
+          <CachedIngestResumeRow
+            cache={cachedIngest}
+            disabled={disabled}
+            onResume={() => restoreFromCache(cachedIngest)}
+            onScanAgain={handleExpand}
+          />
+        ) : (
           <button
             type="button"
             disabled={disabled}
-            onClick={() => restoreFromCache(cachedIngest)}
-            className="block text-sm font-medium text-primary underline-offset-2 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleExpand}
+            className="btn-primary mt-4 flex w-full items-center justify-center gap-2 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Resume ideas for {cachedHostname}
+            Paste website URL
+            <ChevronRightIcon />
           </button>
-        ) : null}
+        )}
       </div>
     );
   }
@@ -675,15 +760,7 @@ export default function WebsiteTopicSuggester({
   return (
     <div className="rounded-xl border border-border bg-card/40 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">
-            Start from your website
-          </p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Paste your homepage and we&apos;ll suggest campaign topics grounded
-            in your business.
-          </p>
-        </div>
+        <WebsiteIngestCardHeader />
         {!defaultExpanded ? (
           <button
             type="button"
@@ -696,15 +773,12 @@ export default function WebsiteTopicSuggester({
       </div>
 
       {cachedIngest ? (
-        <button
-          type="button"
+        <CachedIngestResumeRow
+          cache={cachedIngest}
           disabled={disabled}
-          onClick={() => restoreFromCache(cachedIngest)}
-          className="mt-3 text-sm font-medium text-primary underline-offset-2 transition hover:underline disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Resume ideas for{" "}
-          {getHostnameFromUrl(cachedIngest.inputUrl) ?? "your site"}
-        </button>
+          onResume={() => restoreFromCache(cachedIngest)}
+          onScanAgain={() => void requestIngest({ regenerate: true })}
+        />
       ) : null}
 
       <label htmlFor={inputId} className="sr-only">

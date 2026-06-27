@@ -79,6 +79,7 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
   }
 
   let brandName: string | null = null;
+  let brandProductName: string | null = null;
   let initialPreferredVoicePersona: VoicePersona = "warm";
 
   if (typedCampaign.brand_id) {
@@ -97,6 +98,16 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
     }
   }
 
+  if (typedCampaign.brand_product_id) {
+    const { data: brandProduct } = await supabase
+      .from("brand_products")
+      .select("name")
+      .eq("id", typedCampaign.brand_product_id)
+      .maybeSingle();
+
+    brandProductName = brandProduct?.name ?? null;
+  }
+
   return (
     <CampaignWorkspace
       initialCampaign={typedCampaign}
@@ -105,6 +116,7 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
       initialCaptions={(captions ?? []) as PlatformCaption[]}
       userId={user.id}
       brandName={brandName}
+      brandProductName={brandProductName}
       initialPreferredVoicePersona={initialPreferredVoicePersona}
     />
   );

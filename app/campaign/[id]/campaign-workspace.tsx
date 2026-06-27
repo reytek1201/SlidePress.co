@@ -97,6 +97,7 @@ interface CampaignWorkspaceProps {
   initialCaptions: PlatformCaption[];
   userId: string;
   brandName?: string | null;
+  brandProductName?: string | null;
   initialPreferredVoicePersona?: VoicePersona;
 }
 
@@ -107,6 +108,7 @@ export default function CampaignWorkspace({
   initialCaptions,
   userId,
   brandName = null,
+  brandProductName = null,
   initialPreferredVoicePersona = "warm",
 }: CampaignWorkspaceProps) {
   const searchParams = useSearchParams();
@@ -2330,6 +2332,7 @@ export default function CampaignWorkspace({
           <CampaignWorkspaceHeader
             campaign={campaign}
             brandName={brandName}
+            brandProductName={brandProductName}
             slideCount={slideCount}
             showKicker={false}
             onTitleSaved={(title) =>
@@ -2370,6 +2373,7 @@ export default function CampaignWorkspace({
           <CampaignWorkspaceHeader
             campaign={campaign}
             brandName={brandName}
+            brandProductName={brandProductName}
             slideCount={slideCount}
             onTitleSaved={(title) =>
               setCampaign((current) => ({ ...current, title }))

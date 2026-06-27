@@ -2,25 +2,24 @@
 
 import CampaignCreationBriefContent from "@/app/campaign/[id]/campaign-creation-brief-content";
 import BottomSheet from "@/app/components/bottom-sheet";
+import type { Campaign } from "@/types/campaign";
 
 interface CampaignBriefSheetProps {
   open: boolean;
   onClose: () => void;
-  topic: string;
-  sourceUrl?: string | null;
-  productReferenceUrl?: string | null;
-  styleReferenceUrl?: string | null;
-  logoReferenceUrl?: string | null;
+  campaign: Campaign;
+  brandName?: string | null;
+  brandProductName?: string | null;
+  slideCount: number;
 }
 
 export default function CampaignBriefSheet({
   open,
   onClose,
-  topic,
-  sourceUrl,
-  productReferenceUrl,
-  styleReferenceUrl,
-  logoReferenceUrl,
+  campaign,
+  brandName,
+  brandProductName,
+  slideCount,
 }: CampaignBriefSheetProps) {
   return (
     <BottomSheet
@@ -28,9 +27,9 @@ export default function CampaignBriefSheet({
       onClose={onClose}
       title="Creation brief"
       titleId="campaign-brief-title"
-      description="Original topic and reference images from when this campaign was created."
+      description="How this campaign was set up — topic, references, and key details."
       zIndexClass="z-[70]"
-      maxHeightClass="max-h-[min(90dvh,640px)]"
+      maxHeightClass="max-h-[min(90dvh,720px)]"
       desktopModal
       footer={
         <div className="flex justify-end">
@@ -45,11 +44,10 @@ export default function CampaignBriefSheet({
       }
     >
       <CampaignCreationBriefContent
-        topic={topic}
-        sourceUrl={sourceUrl}
-        productReferenceUrl={productReferenceUrl}
-        styleReferenceUrl={styleReferenceUrl}
-        logoReferenceUrl={logoReferenceUrl}
+        campaign={campaign}
+        brandName={brandName}
+        brandProductName={brandProductName}
+        slideCount={slideCount}
       />
     </BottomSheet>
   );

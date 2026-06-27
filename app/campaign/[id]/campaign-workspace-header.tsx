@@ -10,6 +10,7 @@ import { useState } from "react";
 interface CampaignWorkspaceHeaderProps {
   campaign: Campaign;
   brandName: string | null;
+  brandProductName?: string | null;
   slideCount: number;
   onTitleSaved: (title: string) => void;
   onError: (message: string) => void;
@@ -34,6 +35,7 @@ function formatMetadataStrip(
 export default function CampaignWorkspaceHeader({
   campaign,
   brandName,
+  brandProductName = null,
   slideCount,
   onTitleSaved,
   onError,
@@ -73,11 +75,10 @@ export default function CampaignWorkspaceHeader({
       <CampaignBriefSheet
         open={briefOpen}
         onClose={() => setBriefOpen(false)}
-        topic={campaign.topic}
-        sourceUrl={campaign.source_url}
-        productReferenceUrl={campaign.product_reference_url}
-        styleReferenceUrl={campaign.style_reference_url}
-        logoReferenceUrl={campaign.logo_reference_url}
+        campaign={campaign}
+        brandName={brandName}
+        brandProductName={brandProductName}
+        slideCount={slideCount}
       />
     </>
   );
