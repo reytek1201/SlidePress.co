@@ -1,27 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CAPTION_VIDEO_CROSSFADE_SECONDS, captionOffsetForVideoCompose } from "./caption-video-sync.ts";
-
-const CROSSFADE_SECONDS = CAPTION_VIDEO_CROSSFADE_SECONDS;
+import { captionOffsetForVideoCompose } from "./caption-video-sync.ts";
 
 describe("captionOffsetForVideoCompose", () => {
-  it("leaves the first slide on the audio timeline", () => {
-    assert.equal(captionOffsetForVideoCompose(0, 0, CROSSFADE_SECONDS), 0);
-    assert.equal(captionOffsetForVideoCompose(4.2, 0, CROSSFADE_SECONDS), 4.2);
+  it("returns the audio offset unchanged (captions align to audio clock)", () => {
+    assert.equal(captionOffsetForVideoCompose(0), 0);
+    assert.equal(captionOffsetForVideoCompose(4.2), 4.2);
+    assert.equal(captionOffsetForVideoCompose(9.3), 9.3);
   });
 
-  it("pulls later slides earlier by crossfade overlap", () => {
-    assert.equal(
-      captionOffsetForVideoCompose(4.2, 1, CROSSFADE_SECONDS),
-      3.75,
-    );
-    assert.equal(
-      captionOffsetForVideoCompose(9.3, 2, CROSSFADE_SECONDS),
-      8.4,
-    );
-  });
-
-  it("does not shift when crossfade is disabled", () => {
-    assert.equal(captionOffsetForVideoCompose(9.3, 2, 0), 9.3);
+  it("works for any accumulated audio offset", () => {
+    // For a 5-slide video, the offset for slide 4 should be the sum of the
+    // prior slides' durations — no crossfade subtraction involved.
+    const priorDurationsSum = 3.1 + 2.8 + 4.5 + 3.9; // 14.3
+    assert.equal(captionOffsetForVideoCompose(priorDurationsSum), priorDurationsSum);
   });
 });

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { WordTiming } from "@/utils/tts/types";
 
 export const BURN_CAPTION_STYLE_V1 = {
-  version: "v1.3",
+  version: "v1.4",
   fontName: "Inter",
   fontSizeRatio: 0.065,
   marginVRatio: 0.18,
@@ -97,6 +97,15 @@ export interface BuildAssTrackInput {
   style?: typeof BURN_CAPTION_STYLE_V1;
 }
 
+/**
+ * Max seconds to fill-forward an event end into a following gap.
+ * Prevents caption for the last word of a slide bleeding into the next slide.
+ */
+const MAX_FILL_SECONDS = 0.8;
+
+/** Tail padding on the very last word so it doesn't vanish prematurely. */
+const LAST_WORD_TAIL_SECONDS = 0.4;
+
 function formatAssTimestamp(seconds: number): string {
   const totalCs = Math.max(0, Math.round(seconds * 100));
   const hours = Math.floor(totalCs / 360_000);
@@ -175,16 +184,52 @@ export function buildAssTrack(input: BuildAssTrackInput): string {
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
   ];
 
-  const events: string[] = [];
+  // Flatten to a sequence of (chunk, wordIndexInChunk) so we can look ahead
+  // across chunk boundaries to fill gaps between words.
+  interface EventSpec {
+    chunk: WordTiming[];
+    activeWord: WordTiming;
+    startSeconds: number;
+    endSeconds: number;
+  }
+
+  const eventSpecs: EventSpec[] = [];
 
   for (const chunk of chunks) {
     for (const activeWord of chunk) {
-      const start = formatAssTimestamp(activeWord.startSeconds);
-      const end = formatAssTimestamp(activeWord.endSeconds);
-      const text = buildChunkLine(chunk, activeWord, style);
-      events.push(`Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`);
+      eventSpecs.push({
+        chunk,
+        activeWord,
+        startSeconds: activeWord.startSeconds,
+        endSeconds: activeWord.endSeconds,
+      });
     }
   }
+
+  // Fill-forward: extend each event's end to the start of the next event (up
+  // to MAX_FILL_SECONDS) so inter-word silences don't blank the subtitle track.
+  for (let i = 0; i < eventSpecs.length; i++) {
+    const spec = eventSpecs[i]!;
+    const next = eventSpecs[i + 1];
+
+    if (next) {
+      const gapEnd = Math.min(
+        spec.endSeconds + MAX_FILL_SECONDS,
+        next.startSeconds,
+      );
+      spec.endSeconds = Math.max(spec.endSeconds, gapEnd);
+    } else {
+      // Last word — add a tail so it doesn't vanish before the audio finishes.
+      spec.endSeconds = spec.endSeconds + LAST_WORD_TAIL_SECONDS;
+    }
+  }
+
+  const events = eventSpecs.map((spec) => {
+    const start = formatAssTimestamp(spec.startSeconds);
+    const end = formatAssTimestamp(spec.endSeconds);
+    const text = buildChunkLine(spec.chunk, spec.activeWord, style);
+    return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
+  });
 
   return `${header.join("\n")}\n${events.join("\n")}\n`;
 }

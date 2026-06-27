@@ -15,7 +15,6 @@ import {
 import { uploadFalMedia } from "@/utils/fal-video";
 import { getMp3DurationSeconds } from "@/utils/merge-mp3-buffers";
 import { captionOffsetForVideoCompose } from "@/utils/captions/caption-video-sync";
-import { VIDEO_CROSSFADE_SECONDS } from "@/utils/compose-slide-video";
 import {
   estimateWordTimingsForScript,
   offsetWordTimings,
@@ -46,28 +45,33 @@ export interface PreparedBurnCaptions {
   timingSource: "elevenlabs" | "estimated" | "mixed";
   alignmentMs: number;
   assGenerationMs: number;
+  /** Per-slide audio durations (seconds) parsed during alignment — reuse to avoid re-parsing. */
+  slideDurationsSeconds?: number[];
 }
 
 async function resolveGlobalWordTimings(
   slides: SlideNarrationTimingInput[],
-): Promise<{ words: WordTiming[]; source: PreparedBurnCaptions["timingSource"] }> {
+): Promise<{
+  words: WordTiming[];
+  source: PreparedBurnCaptions["timingSource"];
+  /** Parsed audio duration per slide — reuse to avoid double parsing. */
+  slideDurationsSeconds: number[];
+}> {
   const startedAt = Date.now();
   const globalWords: WordTiming[] = [];
+  const slideDurationsSeconds: number[] = [];
   let offsetSeconds = 0;
   let hasElevenLabs = false;
   let hasEstimated = false;
 
   for (const slide of slides) {
     const durationSeconds = await getMp3DurationSeconds(slide.audio);
-    const videoOffsetSeconds = captionOffsetForVideoCompose(
-      offsetSeconds,
-      slide.slideIndex,
-      VIDEO_CROSSFADE_SECONDS,
-    );
+    slideDurationsSeconds.push(durationSeconds);
+    const audioOffsetSeconds = captionOffsetForVideoCompose(offsetSeconds);
     let slideWords: WordTiming[];
 
     if (slide.wordTimings && slide.wordTimings.length > 0) {
-      slideWords = offsetWordTimings(slide.wordTimings, videoOffsetSeconds);
+      slideWords = offsetWordTimings(slide.wordTimings, audioOffsetSeconds);
       if (slide.timingSource === "elevenlabs") {
         hasElevenLabs = true;
       } else {
@@ -77,7 +81,7 @@ async function resolveGlobalWordTimings(
       slideWords = estimateWordTimingsForScript(
         slide.script,
         durationSeconds,
-        videoOffsetSeconds,
+        audioOffsetSeconds,
       );
       hasEstimated = true;
     }
@@ -97,15 +101,14 @@ async function resolveGlobalWordTimings(
         : "estimated",
   });
 
-  return {
-    words: globalWords,
-    source:
-      hasElevenLabs && hasEstimated
-        ? "mixed"
-        : hasElevenLabs
-          ? "elevenlabs"
-          : "estimated",
-  };
+  const source: PreparedBurnCaptions["timingSource"] =
+    hasElevenLabs && hasEstimated
+      ? "mixed"
+      : hasElevenLabs
+        ? "elevenlabs"
+        : "estimated";
+
+  return { words: globalWords, source, slideDurationsSeconds };
 }
 
 export async function prepareBurnCaptionsAss(
@@ -140,7 +143,7 @@ export async function prepareBurnCaptionsAss(
   }
 
   const alignmentStartedAt = Date.now();
-  const { words, source } = await resolveGlobalWordTimings(input.slides);
+  const { words, source, slideDurationsSeconds } = await resolveGlobalWordTimings(input.slides);
   const alignmentMs = Date.now() - alignmentStartedAt;
 
   const assStartedAt = Date.now();
@@ -162,6 +165,7 @@ export async function prepareBurnCaptionsAss(
     timingSource: source,
     alignmentMs,
     assGenerationMs,
+    slideDurationsSeconds,
   };
 }
 

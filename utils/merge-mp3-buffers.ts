@@ -45,6 +45,8 @@ export async function concatMp3Buffers(buffers: Buffer[]): Promise<Buffer> {
     await writeFile(listPath, `${listLines.join("\n")}\n`);
     const outputPath = join(dir, "merged.mp3");
 
+    // All parts come from the same ElevenLabs model/samplerate so stream copy
+    // is safe and avoids a lossy re-encode round-trip.
     await execFileAsync(ffmpegPath, [
       "-y",
       "-f",
@@ -54,11 +56,7 @@ export async function concatMp3Buffers(buffers: Buffer[]): Promise<Buffer> {
       "-i",
       listPath,
       "-c:a",
-      "libmp3lame",
-      "-b:a",
-      "192k",
-      "-ar",
-      "44100",
+      "copy",
       outputPath,
     ]);
 

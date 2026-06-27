@@ -1,18 +1,16 @@
-/** Keep in sync with `VIDEO_CROSSFADE_SECONDS` in `compose-slide-video.ts`. */
-export const CAPTION_VIDEO_CROSSFADE_SECONDS = 0.45;
-
 /**
- * Maps narration audio timeline to the composed video timeline.
- * Crossfades start each slide's visual transition before its audio boundary.
+ * Maps narration audio timeline to the merged video timeline for caption burn.
+ *
+ * After Fal merges the composed (crossfaded) video with the concatenated
+ * narration audio, both tracks share a single timeline. The audio for slide i
+ * starts at sum(audio_dur[0..i-1]) regardless of the crossfade; captions must
+ * align with the audio, not the earlier visual frame. So the correct offset is
+ * simply the cumulative audio duration — no crossfade adjustment needed.
+ *
+ * (The crossfade only affects when you *see* the slide, not when you *hear* it.)
  */
 export function captionOffsetForVideoCompose(
   audioOffsetSeconds: number,
-  slideIndex: number,
-  crossfadeSeconds = CAPTION_VIDEO_CROSSFADE_SECONDS,
 ): number {
-  if (slideIndex <= 0 || crossfadeSeconds <= 0) {
-    return audioOffsetSeconds;
-  }
-
-  return Math.max(0, audioOffsetSeconds - slideIndex * crossfadeSeconds);
+  return audioOffsetSeconds;
 }

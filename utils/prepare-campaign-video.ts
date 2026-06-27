@@ -165,14 +165,20 @@ export async function prepareCampaignVideo(
       });
     }
 
-    for (const slide of sortedSlides) {
+    for (let i = 0; i < sortedSlides.length; i++) {
+      const slide = sortedSlides[i]!;
       const narration = narrationByIndex.get(slide.slide_index);
 
       if (!narration) {
         throw new Error(`Missing narration for slide ${slide.slide_index + 1}`);
       }
 
-      const durationSeconds = await getMp3DurationSeconds(narration.audio);
+      // Reuse durations parsed during ASS alignment if available; otherwise
+      // parse now. This avoids a second round of music-metadata parsing.
+      const durationSeconds =
+        preparedAss?.slideDurationsSeconds?.[i] ??
+        await getMp3DurationSeconds(narration.audio);
+
       slideClips.push({
         imageUrl: slide.image_url!,
         durationSeconds,

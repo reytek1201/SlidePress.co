@@ -165,34 +165,33 @@ export async function composeSlidesToVideo(
   const dir = await mkdtemp(join(tmpdir(), "slidepress-compose-"));
 
   try {
-    const clipPaths: string[] = [];
-    const durations: number[] = [];
+    // Download all slide images in parallel.
+    const imageBuffers = await Promise.all(
+      slides.map((slide) => downloadImage(slide.imageUrl)),
+    );
 
-    for (let index = 0; index < slides.length; index++) {
-      const slide = slides[index]!;
-      const imageBuffer = await downloadImage(slide.imageUrl);
-      const imagePath = join(dir, `slide-${index}.jpg`);
-      const clipPath = join(dir, `clip-${index}.mp4`);
-      const clipDuration = slideClipDurationForCompose(
-        slide.durationSeconds,
-        index,
-        slides.length,
-        crossfadeSeconds,
-      );
+    // Write images and render clips in parallel. Each renderSlideClip is an
+    // independent FFmpeg invocation so they can safely run concurrently.
+    const clipResults = await Promise.all(
+      slides.map(async (slide, index) => {
+        const imagePath = join(dir, `slide-${index}.jpg`);
+        const clipPath = join(dir, `clip-${index}.mp4`);
+        const clipDuration = slideClipDurationForCompose(
+          slide.durationSeconds,
+          index,
+          slides.length,
+          crossfadeSeconds,
+        );
 
-      await writeFile(imagePath, imageBuffer);
-      await renderSlideClip(
-        imagePath,
-        clipPath,
-        clipDuration,
-        width,
-        height,
-      );
+        await writeFile(imagePath, imageBuffers[index]!);
+        await renderSlideClip(imagePath, clipPath, clipDuration, width, height);
 
-      clipPaths.push(clipPath);
-      durations.push(clipDuration);
-    }
+        return { clipPath, clipDuration };
+      }),
+    );
 
+    const clipPaths = clipResults.map((r) => r.clipPath);
+    const durations = clipResults.map((r) => r.clipDuration);
     const outputPath = join(dir, "composed.mp4");
 
     if (clipPaths.length === 1 || crossfadeSeconds <= 0) {
