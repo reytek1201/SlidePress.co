@@ -3,19 +3,22 @@ export type VideoExportUiStage =
   | "preparing"
   | "compose_slides"
   | "merge_audio"
+  | "burn_captions"
   | "downloading";
 
 export const VIDEO_EXPORT_UI_STAGES: VideoExportUiStage[] = [
   "preparing",
   "compose_slides",
   "merge_audio",
+  "burn_captions",
   "downloading",
 ];
 
 export const VIDEO_EXPORT_STAGE_LABELS: Record<VideoExportUiStage, string> = {
   preparing: "Preparing",
-  compose_slides: "Transitions",
+  compose_slides: "Rendering slides",
   merge_audio: "Adding voiceover",
+  burn_captions: "Burning captions",
   downloading: "Downloading video",
 };
 
@@ -24,12 +27,20 @@ export const VIDEO_EXPORT_STAGE_DESCRIPTIONS: Record<
   string
 > = {
   preparing: "Synthesizing narration and preparing slide timing…",
-  compose_slides: "Applying crossfade transitions between slides…",
+  compose_slides: "Stitching slide images into your video…",
   merge_audio: "Merging AI narration into your video…",
+  burn_captions: "Embedding word-synced captions into your video…",
   downloading: "Saving your MP4 — almost done…",
 };
 
 export const VIDEO_EXPORT_POLL_TIMEOUT_MS = 10 * 60_000;
+export const VIDEO_EXPORT_POLL_TIMEOUT_BURN_CAPTIONS_MS = 20 * 60_000;
+
+export function videoExportPollTimeoutMs(burnCaptions: boolean): number {
+  return burnCaptions
+    ? VIDEO_EXPORT_POLL_TIMEOUT_BURN_CAPTIONS_MS
+    : VIDEO_EXPORT_POLL_TIMEOUT_MS;
+}
 
 export function mapPipelineStageToUiStage(
   stage: string | null | undefined,
@@ -38,11 +49,11 @@ export function mapPipelineStageToUiStage(
     return "merge_audio";
   }
 
-  if (
-    stage === "compose_slides" ||
-    stage === "images_to_video" ||
-    stage === "burn_captions"
-  ) {
+  if (stage === "burn_captions") {
+    return "burn_captions";
+  }
+
+  if (stage === "compose_slides" || stage === "images_to_video") {
     return "compose_slides";
   }
 

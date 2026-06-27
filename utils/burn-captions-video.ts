@@ -54,6 +54,8 @@ export async function burnCaptionsIntoVideo(
       videoFilter,
       "-c:v",
       "libx264",
+      "-preset",
+      "veryfast",
       "-pix_fmt",
       "yuv420p",
       "-c:a",

@@ -1,11 +1,11 @@
 import { fal } from "@fal-ai/client";
 
-/** Legacy Fal pipeline — only used to poll in-flight exports from older builds. */
 export const FAL_IMAGES_TO_VIDEO_MODEL = "fal-ai/ffmpeg-api/images-to-video";
 export const FAL_MERGE_AUDIO_VIDEO_MODEL =
   "fal-ai/ffmpeg-api/merge-audio-video";
 
 export const VIDEO_EXPORT_FPS = 24;
+export const VIDEO_MIN_FRAMES_PER_SLIDE = 12;
 
 import type { AspectRatio } from "@/types/campaign";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
@@ -16,6 +16,11 @@ export type VideoExportPipelineStage =
   | "images_to_video"
   | "merge_audio"
   | "burn_captions";
+
+export interface FalVideoImageFrame {
+  url: string;
+  frames: number;
+}
 
 export interface StoredSlideClip {
   imageUrl: string;
@@ -94,6 +99,22 @@ export async function uploadFalMedia(
   return url;
 }
 
+export function framesForAudioDuration(durationSeconds: number): number {
+  return Math.max(
+    VIDEO_MIN_FRAMES_PER_SLIDE,
+    Math.ceil(durationSeconds * VIDEO_EXPORT_FPS),
+  );
+}
+
+export function buildFalImageFramesFromSlideClips(
+  slideClips: StoredSlideClip[],
+): FalVideoImageFrame[] {
+  return slideClips.map((clip) => ({
+    url: clip.imageUrl,
+    frames: framesForAudioDuration(clip.durationSeconds),
+  }));
+}
+
 export async function submitFalVideoQueue(
   model: string,
   input: Record<string, unknown>,
@@ -121,6 +142,20 @@ export async function submitFalVideoQueue(
   }
 
   return data.request_id;
+}
+
+export async function submitImagesToVideoQueue(
+  images: FalVideoImageFrame[],
+  webhookUrl: string,
+): Promise<string> {
+  return submitFalVideoQueue(
+    FAL_IMAGES_TO_VIDEO_MODEL,
+    {
+      images,
+      fps: VIDEO_EXPORT_FPS,
+    },
+    webhookUrl,
+  );
 }
 
 export async function submitMergeAudioVideoQueue(

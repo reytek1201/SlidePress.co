@@ -1,5 +1,10 @@
-import { createAdminClient } from "@/utils/supabase/admin";
 import { buildFalWebhookUrl } from "@/utils/fal";
+import { createAdminClient } from "@/utils/supabase/admin";
+import {
+  isExportOlderThan,
+  isLegacyComposeStuck,
+  VIDEO_EXPORT_COMPOSE_STUCK_MS,
+} from "@/utils/reconcile-stale-video-export";
 import {
   FAL_IMAGES_TO_VIDEO_MODEL,
   FAL_MERGE_AUDIO_VIDEO_MODEL,
@@ -20,6 +25,7 @@ interface ProcessingExportRow {
   metadata: unknown;
   status: string;
   export_type: string;
+  updated_at?: string | null;
 }
 
 async function markExportFailed(exportId: string, message: string): Promise<void> {
@@ -140,12 +146,28 @@ export async function advanceVideoExportIfReady(
   const metadata = parseVideoExportMetadata(exportRow.metadata);
   if (!metadata) return;
 
-  if (
-    metadata.stage === "compose_slides" &&
-    metadata.slideClips?.length &&
-    !metadata.silentVideoUrl
-  ) {
-    await runComposeSlidesStage(exportRow.id, metadata, appBaseUrl);
+  // Legacy local-compose exports (pre-Fal restore) — fail if stuck, otherwise
+  // let an in-flight encode finish. New exports use images_to_video on Fal.
+  if (metadata.stage === "compose_slides" && !metadata.silentVideoUrl) {
+    if (
+      isLegacyComposeStuck(exportRow.metadata) &&
+      isExportOlderThan(exportRow.updated_at, VIDEO_EXPORT_COMPOSE_STUCK_MS)
+    ) {
+      await markExportFailed(
+        exportRow.id,
+        "Video compose timed out on the server. Please export again.",
+      );
+      return;
+    }
+
+    if (
+      !metadata.composeStarted &&
+      metadata.slideClips?.length &&
+      metadata.aspectRatio
+    ) {
+      await runComposeSlidesStage(exportRow.id, metadata, appBaseUrl);
+    }
+
     return;
   }
 

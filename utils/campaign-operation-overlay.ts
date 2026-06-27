@@ -132,6 +132,7 @@ export function resolveCampaignOperationOverlay(input: {
   elapsedSeconds: number;
   videoStage?: VideoExportUiStage;
   videoPreset?: VideoExportPreset;
+  burnCaptions?: boolean;
   aspectRatio?: AspectRatio;
   slideCount?: number;
   draftBuild?: {
@@ -145,6 +146,7 @@ export function resolveCampaignOperationOverlay(input: {
     elapsedSeconds,
     videoStage = "preparing",
     videoPreset = "quick_reel",
+    burnCaptions = false,
     aspectRatio,
     slideCount = 0,
     draftBuild,
@@ -187,6 +189,10 @@ export function resolveCampaignOperationOverlay(input: {
           return false;
         }
 
+        if (step === "burn_captions" && !burnCaptions) {
+          return false;
+        }
+
         return true;
       });
 
@@ -201,7 +207,9 @@ export function resolveCampaignOperationOverlay(input: {
         kind,
         kicker: "Rendering your video",
         description: VIDEO_EXPORT_STAGE_DESCRIPTIONS[videoStage],
-        durationHint: "This usually takes 1–3 minutes.",
+        durationHint: burnCaptions
+          ? "This usually takes 2–5 minutes with burned-in captions."
+          : "This usually takes 1–3 minutes.",
         errorTitle: "Video export failed",
         stages: visibleStages.map((step) => ({
           id: step,

@@ -1,10 +1,12 @@
 import type { Campaign, Slide } from "@/types/campaign";
 import type { VideoExportMetadata } from "@/utils/fal-video";
 import { prepareCampaignVideo } from "@/utils/prepare-campaign-video";
+import { buildStoredSlideClips } from "@/utils/compose-video-export-stage";
 import {
-  buildComposeStageMetadata,
-  buildStoredSlideClips,
-} from "@/utils/compose-video-export-stage";
+  buildImagesToVideoStageMetadata,
+  queueFalImagesToVideoStage,
+} from "@/utils/queue-fal-images-to-video";
+import { failStaleVideoExportsForCampaign } from "@/utils/reconcile-stale-video-export";
 import { findReusableVideoExportNarration } from "@/utils/find-reusable-video-export-narration";
 import { resolveCampaignVoicePersona } from "@/utils/tts/resolve-campaign-persona";
 import { isTtsError } from "@/utils/tts/types";
@@ -31,6 +33,7 @@ import {
   mergeSlidesWithAspect,
 } from "@/utils/slide-aspect-images";
 import { loadSlideImagesForCampaign } from "@/utils/slide-image-persistence";
+import { getAppBaseUrl } from "@/utils/fal";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -149,6 +152,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await failStaleVideoExportsForCampaign(campaignId);
+
     const { data: processingExport } = await supabase
       .from("exports")
       .select("id")
@@ -238,7 +243,7 @@ export async function POST(request: Request) {
         status: "processing",
         burn_captions: burnCaptions,
         metadata: {
-          stage: "compose_slides",
+          stage: "images_to_video",
           preset,
           persona,
           aspectRatio: targetAspectRatio,
@@ -289,7 +294,7 @@ export async function POST(request: Request) {
     });
 
     const slideClips = buildStoredSlideClips(prepared);
-    const composeMetadata = buildComposeStageMetadata({
+    const exportMetadata = buildImagesToVideoStageMetadata({
       preset,
       persona,
       aspectRatio: targetAspectRatio,
@@ -304,13 +309,19 @@ export async function POST(request: Request) {
     const { error: exportUpdateError } = await supabase
       .from("exports")
       .update({
-        metadata: composeMetadata,
+        metadata: exportMetadata,
       })
       .eq("id", exportRow.id);
 
     if (exportUpdateError) {
-      throw new Error("Failed to update export record with compose metadata");
+      throw new Error("Failed to update export record with video metadata");
     }
+
+    await queueFalImagesToVideoStage(
+      exportRow.id,
+      exportMetadata,
+      getAppBaseUrl(request),
+    );
 
     return NextResponse.json({
       success: true,

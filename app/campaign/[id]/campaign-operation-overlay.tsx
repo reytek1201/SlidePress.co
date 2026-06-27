@@ -17,6 +17,7 @@ interface CampaignOperationOverlayProps {
   elapsedSeconds?: number;
   videoStage?: VideoExportUiStage;
   videoPreset?: VideoExportPreset;
+  burnCaptions?: boolean;
   aspectRatio?: AspectRatio;
   slideCount?: number;
   draftBuild?: {
@@ -40,6 +41,7 @@ export default function CampaignOperationOverlay({
   headline,
   videoStage = "preparing",
   videoPreset = "quick_reel",
+  burnCaptions = false,
   aspectRatio,
   slideCount,
   draftBuild,
@@ -90,6 +92,7 @@ export default function CampaignOperationOverlay({
         elapsedSeconds,
         videoStage,
         videoPreset,
+        burnCaptions,
         aspectRatio,
         slideCount,
         draftBuild,
@@ -99,6 +102,7 @@ export default function CampaignOperationOverlay({
       elapsedSeconds,
       videoStage,
       videoPreset,
+      burnCaptions,
       aspectRatio,
       slideCount,
       draftBuild,

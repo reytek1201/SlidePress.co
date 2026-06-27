@@ -1743,7 +1743,11 @@ export default function CampaignWorkspace({
 
       setVideoExportStage("compose_slides");
 
-      const outputUrl = await pollVideoExport(data.exportId, setVideoExportStage);
+      const outputUrl = await pollVideoExport(
+        data.exportId,
+        setVideoExportStage,
+        { burnCaptions },
+      );
       setPublishRefreshKey((current) => current + 1);
       setWorkspaceTab("video");
       requestAnimationFrame(() => {
@@ -2654,6 +2658,7 @@ export default function CampaignWorkspace({
         headline={campaign.title?.trim() || campaign.topic}
         videoStage={videoExportStage}
         videoPreset={videoPreset}
+        burnCaptions={burnCaptions}
         aspectRatio={videoExportAspectRatio}
         slideCount={slides.length}
         draftBuild={

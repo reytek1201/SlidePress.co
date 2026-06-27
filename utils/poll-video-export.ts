@@ -2,7 +2,7 @@ import { fetchWithRetry } from "@/utils/fetch-with-retry";
 import { readJsonResponse } from "@/utils/read-json-response";
 import {
   mapPipelineStageToUiStage,
-  VIDEO_EXPORT_POLL_TIMEOUT_MS,
+  videoExportPollTimeoutMs,
   type VideoExportUiStage,
 } from "@/utils/video-export-stages";
 
@@ -67,11 +67,15 @@ function resolveCompletedOutputUrl(
 export async function pollVideoExport(
   exportId: string,
   onStageChange: (stage: VideoExportUiStage) => void,
+  options?: { burnCaptions?: boolean },
 ): Promise<string> {
+  const pollTimeoutMs = videoExportPollTimeoutMs(
+    options?.burnCaptions === true,
+  );
   const startedAt = Date.now();
   let consecutiveFetchErrors = 0;
 
-  while (Date.now() - startedAt < VIDEO_EXPORT_POLL_TIMEOUT_MS) {
+  while (Date.now() - startedAt < pollTimeoutMs) {
     await sleep(2000);
 
     try {
