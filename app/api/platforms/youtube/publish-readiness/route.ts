@@ -8,6 +8,7 @@ import { getYouTubeConnectionPublic, getYouTubeConnectionRow } from "@/utils/you
 import { hasYouTubeUploadScope } from "@/utils/platforms/scopes";
 import { resolveYouTubeVideoExport } from "@/utils/youtube/resolve-video-export";
 import { getPlatformConnectionSummary } from "@/utils/platform-connection-limits";
+import { getCanSchedulePublish } from "@/utils/usage-limits";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
     const platformConnections = await getPlatformConnectionSummary(user.id);
     const tierAllowed = platformConnections.canPublish.youtube;
     const canConnectPlatform = platformConnections.canConnect.youtube;
+    const canSchedulePublish = await getCanSchedulePublish(supabase, user.id);
 
     const { data: caption } = await supabase
       .from("platform_captions")
@@ -134,6 +136,7 @@ export async function GET(request: Request) {
         !isScheduled,
       tierAllowed,
       canConnectPlatform,
+      canSchedulePublish,
       upgradeUrl: "/settings/usage",
       postForCurrentExport,
     });

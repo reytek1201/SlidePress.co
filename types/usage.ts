@@ -63,6 +63,7 @@ export interface UsageSummary {
   canExportVideo: boolean;
   canPreviewTts: boolean;
   canExportAudio: boolean;
+  canSchedulePublish: boolean;
   canCreateBrand: boolean;
   brands: UsageBrands;
   platformConnections: UsagePlatformConnections;

@@ -120,6 +120,7 @@ Run on web + one native device after Phase A migrations:
 
 - [ ] Free tier defaults (2 / 4 / 0 campaigns / regens / videos)
 - [ ] Free: 2nd platform connect blocked; 4th campaign upsell
+- [x] Free: scheduled publishing hidden + server-gated (Creator / Agency only) — shipped Jun 28, 2026
 - [x] Stripe upgrade → v2 credits (10/20/10 Creator) — smoke test green (Jun 23, 2026)
 - [ ] Stripe upgrade Agency → v2 credits (30/60/20)
 - [ ] Downgrade → 7-day connection grace then revoke
@@ -171,6 +172,7 @@ Increment build numbers on every store upload.
 | Jun 24, 2026 | **Website ingest Phase A shipped** — URL → topic cards, ingest cache, Use & generate, brand kit save ([#45](https://github.com/reytek1201/SlidePress.co/issues/45) closed) |
 | Jun 24, 2026 | **Campaign flow hardening** — auto-captions with images, Assets journey step, caption/slide realtime + polling fallbacks, regen UI fixes, draft-ready push |
 | Jun 27, 2026 | **Video export reliability** — restored Fal `images-to-video` compose (hard cuts); local multi-pass FFmpeg removed from new exports; burned-caption overlay stage + stale export cleanup ([#46](https://github.com/reytek1201/SlidePress.co/issues/46) for crossfade follow-up) |
+| Jun 28, 2026 | **Scheduled publishing tier-gated** — Creator / Agency only; Free sees Post now only (`assertScheduledPublishAllowed` + hidden schedule UI) |
 
 ---
 

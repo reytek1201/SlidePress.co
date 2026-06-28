@@ -63,7 +63,7 @@ Native apps (Capacitor) load the same Vercel deployment in a WebView — no sepa
 | `GET /api/cron/refill-free-credits` | Free-tier calendar-month credit refill (Vercel Cron, daily) |
 | `GET /api/cron/publish-scheduled-posts` | Fire due scheduled platform posts (GitHub Actions every 5 min on Hobby) |
 | `/api/platforms/*` | OAuth connect, publish, status |
-| `POST /api/platforms/schedule` | Schedule a future platform post |
+| `POST /api/platforms/schedule` | Schedule a future platform post (**Creator / Agency only**) |
 | `DELETE /api/platforms/schedule/:id` | Cancel a pending scheduled post |
 
 ---

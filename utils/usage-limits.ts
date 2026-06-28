@@ -1,7 +1,7 @@
 import type { UsageSummary } from "@/types/usage";
 import { resolveBillingSource } from "@/utils/billing-rail";
 import { HIDDEN_CAMPAIGN_STATUSES } from "@/utils/campaign-visibility";
-import { getPlanLabel, getPlanLimits } from "@/utils/plan-limits";
+import { getPlanLabel, getPlanLimits, isPaidTier } from "@/utils/plan-limits";
 import type { Tier } from "@/utils/plan-limits";
 import { getPlatformConnectionSummary } from "@/utils/platform-connection-limits";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -134,6 +134,7 @@ export async function getUsageSummary(
     canExportVideo: remaining.videos > 0,
     canPreviewTts: remaining.ttsPreviews > 0,
     canExportAudio: remaining.audioExports > 0,
+    canSchedulePublish: isPaidTier(tier),
     canCreateBrand: brandCount < brandLimit,
     brands: {
       count: brandCount,
@@ -223,6 +224,29 @@ export async function assertTtsAudioExportLimit(
       balance.tier,
     );
   }
+}
+
+export async function assertScheduledPublishAllowed(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<void> {
+  const balance = await fetchBalance(supabase, userId);
+  const tier = balance.tier as Tier;
+
+  if (!isPaidTier(tier)) {
+    throw new UsageLimitError(
+      "Scheduled publishing is available on Creator and Agency Pro plans.",
+      balance.tier,
+    );
+  }
+}
+
+export async function getCanSchedulePublish(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const balance = await fetchBalance(supabase, userId);
+  return isPaidTier(balance.tier as Tier);
 }
 
 export async function assertBrandLimit(

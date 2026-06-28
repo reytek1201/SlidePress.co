@@ -40,6 +40,7 @@ Paid subscription tiers with credit-based usage enforcement, dual payment rails 
 | Brand workspaces | 1 | 3 | 15 |
 | **Platform connections** | **1** (YouTube, TikTok, or Instagram — user’s choice) | **All 3** | **All 3** |
 | Direct platform publish | On connected platform only | All connected | All connected |
+| **Scheduled publishing** | **No** (Post now only) | **Yes** | **Yes** |
 | Carousel zip / captions / manual export | Yes (within campaign limits) | Yes | Yes |
 | Reset cadence | Calendar month | Subscription renewal | Subscription renewal |
 
@@ -55,7 +56,7 @@ Paid subscription tiers with credit-based usage enforcement, dual payment rails 
 | Tier | Pitch |
 |------|-------|
 | Free | Create carousel campaigns and captions. Export anywhere. Connect **one** social account to post from SlidePress. |
-| Creator | Post to **YouTube, TikTok, and Instagram**. ~10 Reels/month, more campaigns, video export. |
+| Creator | Post to **YouTube, TikTok, and Instagram**. ~10 Reels/month, more campaigns, video export, **schedule posts**. |
 | Agency Pro | Multiple client brands at volume — agencies and social managers. |
 
 ---
@@ -71,8 +72,9 @@ Paid subscription tiers with credit-based usage enforcement, dual payment rails 
 | Creator / Agency | Up to **3** connections (one per platform) |
 | Downgrade paid → free | If user has 2–3 connections: **grace period** (e.g. 7 days) to pick one; disable publish on extras until resolved |
 | Publish API | Second line of defense: reject publish if platform not in allowed set for tier |
+| Schedule API | `POST /api/platforms/schedule` — Creator / Agency only; Free sees Post now only (UI hidden + server assert) |
 
-**Implementation touchpoints:** `utils/plan-limits.ts` (`maxPlatformConnections`), connect/callback routes under `/api/platforms/*/`, `connected-accounts-settings.tsx`, publish routes.
+**Implementation touchpoints:** `utils/plan-limits.ts` (`maxPlatformConnections`), `utils/usage-limits.ts` (`assertScheduledPublishAllowed`, `canSchedulePublish`), connect/callback routes under `/api/platforms/*/`, `connected-accounts-settings.tsx`, publish routes, publish-readiness routes, campaign publish panels.
 
 ---
 
@@ -185,6 +187,8 @@ isNativeAppRuntime()
 | Add brand | brand create path | tier brand cap |
 | Connect platform | `/api/platforms/*/connect` | v2: connection cap |
 | Publish | `/api/platforms/*/publish*` | v2: tier + connection |
+| Schedule post | `POST /api/platforms/schedule` | paid tier only (`assertScheduledPublishAllowed`) |
+| Cancel scheduled post | `DELETE /api/platforms/schedule/:id` | auth + ownership (any tier — cancel existing pending rows) |
 
 **Error contract:**
 
@@ -358,6 +362,7 @@ Customers on old $19 / $49 Prices **keep that rate** until they cancel or switch
 - [x] Guard connect routes + OAuth callbacks
 - [x] Guard publish routes (YouTube, TikTok, Instagram reel + carousel)
 - [x] Guard publish-authorize / upload-authorize routes
+- [x] Gate scheduled publishing to Creator + Agency (`assertScheduledPublishAllowed`; Free UI hides Schedule for later)
 - [x] Connected accounts UI: locked cards + upgrade CTA on free (Phase 2)
 - [x] Downgrade webhook: 7-day grace + auto-revoke extras (Phase 4)
 - [x] Apply migration `20260624000001_platform_connection_grace.sql` in Supabase

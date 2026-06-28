@@ -202,10 +202,24 @@ Plan for ~6 uploads/day on default quota or request an increase before marketing
 
 ---
 
+## Scheduled publishing (shipped Jun 2026)
+
+Per-platform **Schedule for later** on the Publish tab — pick a future time; GitHub Actions cron (`GET /api/cron/publish-scheduled-posts`) fires due rows every ~5 minutes.
+
+| Piece | Purpose |
+|-------|---------|
+| `platform_posts.scheduled_for` + `schedule_status` | Pending / posted / failed lifecycle |
+| `POST /api/platforms/schedule` | Create scheduled row (content readiness + OAuth scopes validated at schedule time) |
+| `DELETE /api/platforms/schedule/:id` | Cancel pending schedule |
+| `schedule-publish-picker.tsx` | Quick picks + custom date/time bottom sheet per platform panel |
+
+**Tier gating (Jun 28, 2026):** Creator and Agency only. Free tier sees **Post now** only — schedule UI fully hidden; `assertScheduledPublishAllowed` rejects direct API calls with `LIMIT_EXCEEDED`. See [`billing.md`](billing.md).
+
+---
+
 ## Out of scope (this epic)
 
 - LinkedIn, X/Twitter, Facebook feed-only posts
-- Scheduling / queue for future posts
 - Cross-posting one action to all platforms at once (consider after 2+ platforms ship)
 - Replacing manual export flow (keep share sheet as fallback)
 
@@ -222,4 +236,4 @@ Plan for ~6 uploads/day on default quota or request an increase before marketing
 | Instagram Reels | 2–3 weeks + Meta review | ✅ code shipped · review in progress |
 | Instagram Carousel | 2–3 weeks (after Reels) | ✅ code shipped · review in progress |
 
-*Last updated: June 25, 2026*
+*Last updated: June 28, 2026*

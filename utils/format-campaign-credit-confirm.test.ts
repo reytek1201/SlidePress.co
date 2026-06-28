@@ -29,6 +29,7 @@ function baseUsage(overrides: Partial<UsageSummary> = {}): UsageSummary {
     canExportVideo: false,
     canPreviewTts: true,
     canExportAudio: false,
+    canSchedulePublish: false,
     canCreateBrand: true,
     brands: { count: 0, limit: 1, canCreate: true },
     platformConnections: {

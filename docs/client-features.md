@@ -156,6 +156,7 @@ Processing: TTS + optional ASS prep → Fal slide stitch → Fal audio merge →
 - **Writing post copy overlay** — appears while captions generate; amber error + **Try again** if generation fails; polling recovery if realtime misses the insert
 - **Copy all** (via journey strip) or **copy per field** (title, caption, hashtags) to clipboard
 - **Regenerate captions only** — updates publish copy without touching slide images
+- **Schedule for later** (Creator / Agency) — pick a future time per platform on the Publish tab; cron fires due posts every ~5 minutes. Free tier: **Post now** only (schedule option hidden; server rejects direct API calls)
 
 ### Post to YouTube Shorts
 
@@ -215,7 +216,7 @@ Processing: TTS + optional ASS prep → Fal slide stitch → Fal audio merge →
 
 ### Campaign management
 
-- **My campaigns** list with preview thumbnails, format, date, and **publish-status badges** (e.g. Needs captions, Ready to post, On YouTube, On TikTok, On Instagram, Published) — scoped to the active brand
+- **My campaigns** list with preview thumbnails, format, date, and **publish-status badges** (e.g. Needs captions, Ready to post, Scheduled, On YouTube, On TikTok, On Instagram, Published) — scoped to the active brand
 - **Duplicate campaign** — from the workspace (not the list)
 - **Delete campaign** — hidden in workspace Danger zone only
 

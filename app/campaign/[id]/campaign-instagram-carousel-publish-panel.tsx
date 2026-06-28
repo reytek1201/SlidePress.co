@@ -33,6 +33,7 @@ interface PublishReadinessResponse {
   scheduledPost: PlatformPostPublic | null;
   canPublish: boolean;
   tierAllowed?: boolean;
+  canSchedulePublish?: boolean;
   canConnectPlatform?: boolean;
   upgradeUrl?: string;
   postForCarousel: PlatformPostPublic | null;
@@ -355,6 +356,7 @@ export default function CampaignInstagramCarouselPublishPanel({
     carouselFormatPublishState === "ready";
 
   const showSchedule =
+    readiness.canSchedulePublish &&
     readiness.connected &&
     readiness.hasCarouselSlides &&
     readiness.slideCountValid &&

@@ -51,6 +51,7 @@ interface PublishReadinessResponse {
   scheduledPost: PlatformPostPublic | null;
   canPublish: boolean;
   tierAllowed?: boolean;
+  canSchedulePublish?: boolean;
   canConnectPlatform?: boolean;
   upgradeUrl?: string;
   postForCurrentExport: PlatformPostPublic | null;
@@ -600,6 +601,7 @@ export default function CampaignTikTokPublishPanel({
     !scheduledPost;
 
   const showSchedule =
+    readiness.canSchedulePublish &&
     readiness.connected &&
     readiness.hasVideoExport &&
     !readiness.alreadyPublished &&

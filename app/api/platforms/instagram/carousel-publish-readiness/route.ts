@@ -15,6 +15,7 @@ import {
 } from "@/utils/platform-post-store";
 import { resolveCarouselSlidesForCampaign } from "@/utils/platforms/resolve-carousel-slides";
 import { getPlatformConnectionSummary } from "@/utils/platform-connection-limits";
+import { getCanSchedulePublish } from "@/utils/usage-limits";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
     const platformConnections = await getPlatformConnectionSummary(user.id);
     const tierAllowed = platformConnections.canPublish.instagram;
     const canConnectPlatform = platformConnections.canConnect.instagram;
+    const canSchedulePublish = await getCanSchedulePublish(supabase, user.id);
 
     const { data: captionRow } = await supabase
       .from("platform_captions")
@@ -150,6 +152,7 @@ export async function GET(request: Request) {
         !isScheduled,
       tierAllowed,
       canConnectPlatform,
+      canSchedulePublish,
       upgradeUrl: "/settings/usage",
       postForCarousel,
     });

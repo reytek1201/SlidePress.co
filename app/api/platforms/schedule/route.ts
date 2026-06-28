@@ -14,7 +14,10 @@ import { getTikTokConnectionRow } from "@/utils/tiktok/connection-store";
 import { hasTikTokPublishScope } from "@/utils/platforms/scopes";
 import { getInstagramConnectionRow } from "@/utils/instagram/connection-store";
 import { hasInstagramPublishScope } from "@/utils/platforms/scopes";
-import { isUsageLimitError } from "@/utils/usage-limits";
+import {
+  assertScheduledPublishAllowed,
+  isUsageLimitError,
+} from "@/utils/usage-limits";
 import { createClient } from "@/utils/supabase/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -81,6 +84,7 @@ export async function POST(request: Request) {
     }
 
     await assertPlatformPublishAllowed(user.id, platform);
+    await assertScheduledPublishAllowed(supabase, user.id);
 
     // Ownership check
     const { data: campaign, error: campaignError } = await supabase
