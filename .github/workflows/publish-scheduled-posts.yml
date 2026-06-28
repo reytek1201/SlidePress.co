@@ -1,9 +1,14 @@
 # Hobby Vercel plans only allow daily crons — trigger publish-scheduled-posts every 5 min here.
 # Requires repository secret CRON_SECRET (same value as Vercel env CRON_SECRET).
+# Push to this file on main also fires the job (repo activity + manual wake-up).
 
 name: Publish scheduled posts
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-scheduled-posts.yml"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
