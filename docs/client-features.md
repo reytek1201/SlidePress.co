@@ -32,20 +32,20 @@ SlidePress is a marketing automation app for creators and small teams who need s
 - **Instant redirect** to the campaign workspace — a waiting screen runs while Gemini writes slide scripts (usually 15–30 seconds)
 - **Retry** if text generation fails, with a clear error message
 
-### Website URL ingest (Phase A)
+### Website URL ingest
 
 Paste a public business URL on the create form to skip the blank-page start:
 
 - **Analyze site** — fetches homepage metadata and sends content to Gemini for structured suggestions
 - **Rich topic cards** — 2–3 campaign ideas with angle labels (pain point, curiosity, contrarian), audience, and format hints
-- **Use topic** — pre-fills topic and recommended aspect ratio on the create form
-- **Use & generate** — creates the campaign and auto-starts images in one tap
+- **Use this topic** — pre-fills topic and recommended aspect ratio on the create form (no credit)
+- **Create full draft** — cost confirm sheet, then one action writes slide copy, generates images, and platform captions (~2–5 min unattended). Video export stays separate.
 - **Ingest cache** — revisiting the same hostname restores suggestions without re-fetching
 - **Sparse-site fallback** — thin pages still get usable topics; amber error UI with **Try again** on AI/service failures
 - **Optional brand kit** — save extracted hero/logo images to the active brand after ingest
-- **No credits until Generate** — ingest is free; normal campaign limits apply when you run text/images
+- **No credits until Generate / Create full draft** — ingest is free; one campaign credit per full draft (images bundled into that credit)
 
-**API:** `POST /api/campaigns/ingest-url` · UI: `website-topic-suggester.tsx` on web `/new` and mobile create sheet
+**API:** `POST /api/campaigns/ingest-url` · UI: `website-topic-suggester.tsx`, `full-draft-confirm-sheet.tsx` on web `/new` and mobile create sheet
 
 **Desktop:** full create form at **`/new`** (New campaign in nav) — redirects straight to workspace on submit.
 
@@ -295,7 +295,7 @@ Available in the **iOS and Android apps** (not mobile Safari):
 | Area | Status |
 |------|--------|
 | **Paid tiers & billing** | Stripe + RevenueCat shipped; launch QA in progress — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14) · [#25](https://github.com/reytek1201/SlidePress.co/issues/25) |
-| **Website URL ingest** | **Phase A shipped** — topic suggestions + pre-fill ([#45](https://github.com/reytek1201/SlidePress.co/issues/45)); Phase B one-click full draft planned |
+| **Website URL ingest** | **Phase A + B shipped** — topic cards, Use this topic, Create full draft with cost confirm ([#45](https://github.com/reytek1201/SlidePress.co/issues/45)) |
 | **On-screen video captions** | Deferred — export MP4 + platform captions; burned-in captions not in current build |
 | **Direct platform posting** | **YouTube**, **TikTok**, **Instagram** (Reels + carousel) shipped in code; Google OAuth + TikTok audit + Meta App Review pending for public users — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · runbooks in `docs/` |
 | **Voice library browser** | Curated personas today (warm / confident / energetic / professional) |
@@ -338,7 +338,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | **6C** | **YouTube Shorts posting** — connect, upload API, Publish UI ✅; Google OAuth verification 🚧 |
 | **6D** | **TikTok posting** — connect, FILE_UPLOAD API, Publish UI ✅; app audit 🚧 |
 | **6E** | **Instagram posting** — OAuth, Reels + carousel API, Publish UI ✅; Meta App Review 🚧 |
-| **6F** | **Website URL ingest (Phase A)** — paste URL, topic cards, Use & generate, ingest cache ✅ |
+| **6F** | **Website URL ingest** — paste URL, topic cards, Use this topic, Create full draft + cost confirm, ingest cache ✅ |
 | **6F+** | **Streamlined assets flow** — auto-captions, Assets journey step, draft-ready push, regen/polling hardening ✅ |
 
 ### Phase 5 — Mobile app (Capacitor) ✅ (largely complete)

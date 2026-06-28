@@ -89,4 +89,32 @@ describe("formatCampaignCreditConfirmLine", () => {
       "Uses 1 of your 10 campaigns this month — 9 remaining",
     );
   });
+
+  it("uses monthly copy for agency tier", () => {
+    const usage = baseUsage({
+      tier: "agency",
+      planLabel: "Agency Pro",
+      remaining: {
+        campaigns: 30,
+        regenerations: 60,
+        videos: 20,
+        ttsPreviews: 60,
+        audioExports: 15,
+      },
+      limits: {
+        campaigns: 30,
+        regenerations: 60,
+        videos: 20,
+        ttsPreviews: 60,
+        audioExports: 15,
+        brands: 15,
+      },
+      billingSource: "stripe",
+    });
+
+    assert.equal(
+      formatCampaignCreditConfirmLine(usage),
+      "Uses 1 of your 30 campaigns this month — 29 remaining",
+    );
+  });
 });

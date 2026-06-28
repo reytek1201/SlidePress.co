@@ -44,7 +44,7 @@ SlidePress turns a topic into social campaigns: AI slide copy with on-image head
 ## Current focus (June 2026)
 - v2 billing live (Stripe + IAP); QA matrix in progress
 - Platform posting code shipped; external audits pending
-- Website URL ingest Phase A shipped; Phase B planned
+- Website URL ingest Phase A + B shipped (Create full draft with cost confirm)
 - App Store 1.0 draft ready; submit after audits + QA
 
 ## Docs in this Project

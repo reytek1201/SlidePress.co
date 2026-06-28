@@ -184,7 +184,7 @@ Topic form (sheet or /new)
        captions auto → Publish tab when draft ready
 ```
 
-`buildCampaignWorkspaceHref` lives in `utils/campaign-auto-images-preference.ts`. **Create full draft** passes `autoImages: true`; **Generate campaign** (checkbox) uses the same flag when enabled.
+`buildCampaignWorkspaceHref` lives in `utils/campaign-auto-images-preference.ts`. **Create full draft** (website ingest Phase B) shows `FullDraftConfirmSheet` first — cost line from `formatCampaignCreditConfirmLine(usage)` — then passes `autoImages: true` on confirm. **Generate campaign** (checkbox) uses the same flag when enabled.
 
 On catastrophic text failure with `campaignDeleted`, workspace redirects to `/campaigns?generation_error=…&credit_refunded=1`.
 

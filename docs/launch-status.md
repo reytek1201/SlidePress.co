@@ -1,6 +1,6 @@
 # SlidePress — Launch status & next phase
 
-**Last updated:** June 27, 2026
+**Last updated:** June 28, 2026
 
 Single source of truth for where store setup, billing, and platform audits stand — and what to work on next.
 
@@ -14,7 +14,7 @@ Single source of truth for where store setup, billing, and platform audits stand
 
 | Area | Status |
 |------|--------|
-| **Product code** | ✅ Shipped — campaigns, video, billing paywall, 4 platform integrations, **website URL ingest (Phase A)** |
+| **Product code** | ✅ Shipped — campaigns, video, billing paywall, 4 platform integrations, **website URL ingest (Phase A + B)** |
 | **Web (Vercel)** | ✅ Live at `https://www.slidepress.co` |
 | **iOS TestFlight** | ✅ External beta review passed (build 2+); build **4** uploaded |
 | **iOS App Store** | 🟡 **1.0 draft ready** — build + subs attached; **not submitted** (waiting on platform reviews) |
@@ -173,12 +173,13 @@ Increment build numbers on every store upload.
 | Jun 24, 2026 | **Campaign flow hardening** — auto-captions with images, Assets journey step, caption/slide realtime + polling fallbacks, regen UI fixes, draft-ready push |
 | Jun 27, 2026 | **Video export reliability** — restored Fal `images-to-video` compose (hard cuts); local multi-pass FFmpeg removed from new exports; burned-caption overlay stage + stale export cleanup ([#46](https://github.com/reytek1201/SlidePress.co/issues/46) for crossfade follow-up) |
 | Jun 28, 2026 | **Scheduled publishing tier-gated** — Creator / Agency only; Free sees Post now only (`assertScheduledPublishAllowed` + hidden schedule UI) |
+| Jun 28, 2026 | **Website ingest Phase B shipped** — Create full draft with cost confirm sheet; orchestrates text → images → auto-captions via existing routes |
 
 ---
 
 ## Deferred (post-launch)
 
 - **Video export crossfades** — restore smooth slide transitions via dedicated worker or single-pass FFmpeg ([#46](https://github.com/reytek1201/SlidePress.co/issues/46)); Fal stitch uses hard cuts today
-- **Website ingest Phase B** — one-click full draft (text → images → captions → optional video); push when ready — track in GitHub issues
+- **Website ingest Phase B** — one-click full draft with cost confirm (text → images → captions; video separate) — shipped Jun 2026 ([#45](https://github.com/reytek1201/SlidePress.co/issues/45))
 - Studio tier (~$129 web) — reassess H2 2026 per [`billing.md`](billing.md)
 - YouTube API quota increase — only if >~6 Shorts uploads/day

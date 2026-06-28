@@ -566,7 +566,11 @@ export default function CreateCampaignForm({
     nextTopic: string,
     options?: TopicSelectionOptions,
   ) {
-    if (campaignLimitReached || usageLoading) {
+    if (
+      campaignLimitReached ||
+      usageLoading ||
+      (usage !== null && !usage.canCreateCampaign)
+    ) {
       return;
     }
 
@@ -579,8 +583,11 @@ export default function CreateCampaignForm({
     const topic = fullDraftTopic;
     const options = fullDraftOptions;
 
-    setFullDraftSheetOpen(false);
-    await handleUseTopicAndGenerate(topic, options);
+    try {
+      await handleUseTopicAndGenerate(topic, options);
+    } finally {
+      setFullDraftSheetOpen(false);
+    }
   }
 
   function handleSelectTopic(
