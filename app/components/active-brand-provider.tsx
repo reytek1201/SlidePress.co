@@ -187,6 +187,12 @@ export function ActiveBrandProvider({
         return;
       }
 
+      if (pathname.startsWith("/campaigns/schedule")) {
+        router.push(`/campaigns/schedule?brand=${encodeURIComponent(brandId)}`);
+        router.refresh();
+        return;
+      }
+
       router.refresh();
     },
     [pathname, router, searchParams],

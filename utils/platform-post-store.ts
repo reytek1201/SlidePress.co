@@ -280,6 +280,58 @@ export async function getScheduledPlatformPostForCarousel(
   return data ? toPlatformPostPublic(data as PlatformPostRow) : null;
 }
 
+export interface ScheduledPostQueueItem extends PlatformPostPublic {
+  campaignTitle: string;
+}
+
+export async function listPendingScheduledPostsForBrand(
+  userId: string,
+  brandId: string,
+): Promise<ScheduledPostQueueItem[]> {
+  const admin = createAdminClient();
+
+  const { data: campaigns, error: campaignsError } = await admin
+    .from("campaigns")
+    .select("id, title")
+    .eq("user_id", userId)
+    .eq("brand_id", brandId);
+
+  if (campaignsError) {
+    throw new Error(campaignsError.message ?? "Failed to load campaigns");
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return [];
+  }
+
+  const titleByCampaignId = new Map(
+    campaigns.map((row) => [row.id as string, (row.title as string) ?? "Campaign"]),
+  );
+  const campaignIds = campaigns.map((row) => row.id as string);
+
+  const { data: posts, error: postsError } = await admin
+    .from("platform_posts")
+    .select("*")
+    .eq("user_id", userId)
+    .in("campaign_id", campaignIds)
+    .eq("status", "scheduled")
+    .eq("schedule_status", "pending")
+    .order("scheduled_for", { ascending: true });
+
+  if (postsError) {
+    throw new Error(postsError.message ?? "Failed to load scheduled posts");
+  }
+
+  return (posts ?? []).map((row) => {
+    const campaignId = row.campaign_id as string;
+
+    return {
+      ...toPlatformPostPublic(row as PlatformPostRow),
+      campaignTitle: titleByCampaignId.get(campaignId) ?? "Campaign",
+    };
+  });
+}
+
 // 'scheduled' is intentionally excluded — it's a future-intent state, not an
 // active upload. Routes handle it with a separate explicit check.
 const IN_FLIGHT_POST_STATUSES: PlatformPostStatus[] = [

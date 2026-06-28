@@ -14,6 +14,11 @@ import {
   type SuggestedPostTimePlatform,
 } from "@/utils/platforms/suggested-post-times";
 import {
+  cancelScheduledPlatformPostClient,
+  reschedulePendingPlatformPostClient,
+  schedulePlatformPostClient,
+} from "@/utils/platform-schedule-client";
+import {
   createContext,
   useContext,
   useRef,
@@ -234,41 +239,26 @@ export function SchedulePublishRoot({
 
     try {
       const scheduledFor = selectedDate.toISOString();
-
-      const body: Record<string, unknown> = {
+      const scheduleInput = {
         campaignId,
         platform,
         publishKind,
+        exportId,
         scheduledFor,
+        publishSettings:
+          platform === "tiktok" ? (tikTokPublishSettings ?? null) : null,
       };
 
-      if (exportId) {
-        body.exportId = exportId;
-      }
-
-      if (platform === "tiktok" && tikTokPublishSettings) {
-        body.publishSettings = tikTokPublishSettings;
-      }
-
-      const response = await fetch("/api/platforms/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      });
-
-      const data = (await response.json()) as {
-        success: boolean;
-        post?: PlatformPostPublic;
-        error?: string;
-      };
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? "Failed to schedule post");
-      }
+      const post =
+        isPending && scheduledPost
+          ? await reschedulePendingPlatformPostClient(
+              scheduledPost.id,
+              scheduleInput,
+            )
+          : await schedulePlatformPostClient(scheduleInput);
 
       closeSheet();
-      onScheduled(data.post!);
+      onScheduled(post);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to schedule post");
     } finally {
@@ -284,19 +274,7 @@ export function SchedulePublishRoot({
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/platforms/schedule/${scheduledPost.id}`,
-        { method: "DELETE", credentials: "include" },
-      );
-
-      const data = (await response.json()) as {
-        success: boolean;
-        error?: string;
-      };
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error ?? "Failed to cancel scheduled post");
-      }
+      await cancelScheduledPlatformPostClient(scheduledPost.id);
 
       onCancelled();
     } catch (err) {

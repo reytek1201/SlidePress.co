@@ -65,6 +65,7 @@ Native apps (Capacitor) load the same Vercel deployment in a WebView — no sepa
 | `/api/platforms/*` | OAuth connect, publish, status |
 | `POST /api/platforms/schedule` | Schedule a future platform post (**Creator / Agency only**) |
 | `DELETE /api/platforms/schedule/:id` | Cancel a pending scheduled post |
+| `GET /api/platforms/scheduled-posts` | Pending scheduled posts for active brand (Schedule Queue) |
 
 ---
 

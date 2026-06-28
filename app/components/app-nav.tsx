@@ -1,14 +1,16 @@
 "use client";
 
 import CreateCampaignSheet from "@/app/components/create-campaign-sheet";
+import FabActionSheet from "@/app/components/fab-action-sheet";
 import BrandLogo from "@/app/components/brand-logo";
 import CampaignsNavLink from "@/app/components/campaigns-nav-link";
-import { ActiveBrandProvider } from "@/app/components/active-brand-provider";
+import { ActiveBrandProvider, useActiveBrandOptional } from "@/app/components/active-brand-provider";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import {
   CreateSheetProvider,
   useCreateSheet,
 } from "@/app/components/create-sheet-context";
+import { fetchUsageSummary } from "@/utils/client-usage";
 import { createClient } from "@/utils/supabase/client";
 import { hapticImpact, hapticSelection } from "@/utils/haptics";
 import Link from "next/link";
@@ -118,11 +120,17 @@ function useAuthUser() {
 function DesktopNav({
   isCampaignsActive,
   isNewCampaignActive,
+  isScheduleActive,
   isSettingsActive,
+  canSchedulePublish,
+  scheduleHref,
 }: {
   isCampaignsActive: boolean;
   isNewCampaignActive: boolean;
+  isScheduleActive: boolean;
   isSettingsActive: boolean;
+  canSchedulePublish: boolean;
+  scheduleHref: string;
 }) {
   return (
     <header className="sticky top-0 z-50 hidden border-b border-border bg-card md:block">
@@ -140,6 +148,11 @@ function DesktopNav({
             <Link href="/new" className={navLinkClass(isNewCampaignActive)}>
               New campaign
             </Link>
+            {canSchedulePublish ? (
+              <Link href={scheduleHref} className={navLinkClass(isScheduleActive)}>
+                Schedule
+              </Link>
+            ) : null}
             <Link href="/settings" className={navLinkClass(isSettingsActive)}>
               Settings
             </Link>
@@ -171,12 +184,12 @@ function MobileBottomNav({
   isCampaignsActive,
   isSettingsActive,
   isCreateActive,
-  onOpenCreate,
+  onFabPress,
 }: {
   isCampaignsActive: boolean;
   isSettingsActive: boolean;
   isCreateActive: boolean;
-  onOpenCreate: () => void;
+  onFabPress: () => void;
 }) {
   const campaignsActive =
     isCampaignsActive && !isCreateActive && !isSettingsActive;
@@ -215,10 +228,7 @@ function MobileBottomNav({
 
         <button
           type="button"
-          onClick={() => {
-            void hapticImpact("light");
-            onOpenCreate();
-          }}
+          onClick={onFabPress}
           aria-label="Create new campaign"
           aria-expanded={isCreateActive}
           className={`flex min-h-11 flex-col items-center justify-center gap-1 transition active:scale-[0.97] ${
@@ -259,14 +269,36 @@ function MobileBottomNav({
 function AppNavChrome({ user }: { user: User }) {
   const pathname = usePathname();
   const isNativeApp = useIsNativeApp();
+  const activeBrandContext = useActiveBrandOptional();
   const { isOpen, openCreateSheet, closeCreateSheet } = useCreateSheet();
   const [formKey, setFormKey] = useState(0);
+  const [fabActionOpen, setFabActionOpen] = useState(false);
+  const [canSchedulePublish, setCanSchedulePublish] = useState(false);
 
   const isCampaignsActive = pathname === "/campaigns";
   const isNewCampaignActive = pathname === "/new";
+  const isScheduleActive = pathname.startsWith("/campaigns/schedule");
   const isSettingsActive = pathname.startsWith("/settings");
   const isCreateActive = isOpen;
   const previousPathname = useRef(pathname);
+  const activeBrandId = activeBrandContext?.activeBrand?.id ?? null;
+  const scheduleHref = activeBrandId
+    ? `/campaigns/schedule?brand=${encodeURIComponent(activeBrandId)}`
+    : "/campaigns/schedule";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void fetchUsageSummary().then((usage) => {
+      if (!cancelled) {
+        setCanSchedulePublish(Boolean(usage?.canSchedulePublish));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (previousPathname.current === pathname) {
@@ -275,6 +307,7 @@ function AppNavChrome({ user }: { user: User }) {
 
     previousPathname.current = pathname;
     closeCreateSheet();
+    setFabActionOpen(false);
   }, [pathname, closeCreateSheet]);
 
   function handleOpenCreate() {
@@ -282,25 +315,45 @@ function AppNavChrome({ user }: { user: User }) {
     openCreateSheet();
   }
 
+  function handleFabPress() {
+    void hapticImpact("light");
+
+    if (canSchedulePublish) {
+      setFabActionOpen(true);
+      return;
+    }
+
+    handleOpenCreate();
+  }
+
   return (
     <>
       <DesktopNav
         isCampaignsActive={isCampaignsActive}
         isNewCampaignActive={isNewCampaignActive}
+        isScheduleActive={isScheduleActive}
         isSettingsActive={isSettingsActive}
+        canSchedulePublish={canSchedulePublish}
+        scheduleHref={scheduleHref}
       />
       <MobileTopBar hidden={isNativeApp !== false} />
       <MobileBottomNav
         isCampaignsActive={isCampaignsActive}
         isSettingsActive={isSettingsActive}
         isCreateActive={isCreateActive}
-        onOpenCreate={handleOpenCreate}
+        onFabPress={handleFabPress}
       />
       <CreateCampaignSheet
         open={isOpen}
         onClose={closeCreateSheet}
         user={user}
         formKey={formKey}
+      />
+      <FabActionSheet
+        open={fabActionOpen}
+        onClose={() => setFabActionOpen(false)}
+        onNewCampaign={handleOpenCreate}
+        activeBrandId={activeBrandId}
       />
     </>
   );
