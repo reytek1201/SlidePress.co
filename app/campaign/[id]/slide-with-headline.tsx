@@ -50,7 +50,6 @@ export default function SlideWithHeadline({
           style={cssVars as React.CSSProperties}
         >
           <div className="headline-overlay-shell">
-            <div className="headline-overlay-scrim" aria-hidden />
             <p className="headline-overlay-text">{headline.trim()}</p>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import sharp from "sharp";
 import type { Slide } from "@/types/campaign";
 import { buildHeadlineOverlaySvg } from "@/utils/slide-headline-overlay/build-overlay-svg";
+import type { ShouldCompositeHeadlineOptions } from "@/utils/slide-headline-overlay/layout";
 import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 
 let cachedFontBase64: string | null = null;
@@ -20,15 +21,21 @@ async function loadInterBoldBase64(): Promise<string> {
 
 export function shouldCompositeHeadlineOverlay(
   slide: Pick<Slide, "text_overlay">,
+  options?: ShouldCompositeHeadlineOptions,
 ): boolean {
+  if (options?.burnCaptionsVideo) {
+    return false;
+  }
+
   return isTextOverlayLayerEnabled() && Boolean(slide.text_overlay?.trim());
 }
 
 export async function compositeHeadlineOntoImageBuffer(
   imageBuffer: Buffer,
   slide: Pick<Slide, "text_overlay" | "text_region">,
+  options?: ShouldCompositeHeadlineOptions,
 ): Promise<Buffer> {
-  if (!shouldCompositeHeadlineOverlay(slide)) {
+  if (!shouldCompositeHeadlineOverlay(slide, options)) {
     return imageBuffer;
   }
 
@@ -63,6 +70,7 @@ export async function compositeHeadlineOntoImageBuffer(
 export async function compositeHeadlineOntoImageUrl(
   imageUrl: string,
   slide: Pick<Slide, "text_overlay" | "text_region">,
+  options?: ShouldCompositeHeadlineOptions,
 ): Promise<Buffer> {
   const response = await fetch(imageUrl);
   if (!response.ok) {
@@ -70,5 +78,7 @@ export async function compositeHeadlineOntoImageUrl(
   }
 
   const imageBuffer = Buffer.from(await response.arrayBuffer());
-  return compositeHeadlineOntoImageBuffer(imageBuffer, slide);
+  return compositeHeadlineOntoImageBuffer(imageBuffer, slide, options);
 }
+
+export type { ShouldCompositeHeadlineOptions };

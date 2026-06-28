@@ -27,9 +27,14 @@ export interface SlideClipInput {
 export interface ComposeSlideVideoOptions {
   aspectRatio: AspectRatio;
   crossfadeSeconds?: number;
+  /** When true, slide frames stay scene-only so burned captions are the only on-video text. */
+  burnCaptions?: boolean;
 }
 
-async function downloadImage(slide: SlideClipInput): Promise<Buffer> {
+async function downloadImage(
+  slide: SlideClipInput,
+  options?: ComposeSlideVideoOptions,
+): Promise<Buffer> {
   const response = await fetch(slide.imageUrl);
   if (!response.ok) {
     throw new Error("Failed to download slide image for video compose");
@@ -38,14 +43,19 @@ async function downloadImage(slide: SlideClipInput): Promise<Buffer> {
   const rawBuffer = Buffer.from(await response.arrayBuffer());
 
   if (
-    shouldCompositeHeadlineOverlay({
-      text_overlay: slide.text_overlay ?? null,
-    })
+    shouldCompositeHeadlineOverlay(
+      { text_overlay: slide.text_overlay ?? null },
+      { burnCaptionsVideo: options?.burnCaptions === true },
+    )
   ) {
-    return compositeHeadlineOntoImageBuffer(rawBuffer, {
-      text_overlay: slide.text_overlay ?? null,
-      text_region: slide.text_region ?? null,
-    });
+    return compositeHeadlineOntoImageBuffer(
+      rawBuffer,
+      {
+        text_overlay: slide.text_overlay ?? null,
+        text_region: slide.text_region ?? null,
+      },
+      { burnCaptionsVideo: options?.burnCaptions === true },
+    );
   }
 
   return rawBuffer;
@@ -186,7 +196,7 @@ export async function composeSlidesToVideo(
   try {
     // Download all slide images in parallel (pure I/O, safe to fan out).
     const imageBuffers = await Promise.all(
-      slides.map((slide) => downloadImage(slide)),
+      slides.map((slide) => downloadImage(slide, options)),
     );
 
     // Write images then render clips sequentially. FFmpeg H.264 encodes are

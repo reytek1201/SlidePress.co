@@ -230,6 +230,13 @@ export default function CampaignVideoPanel({
             Burns dynamic captions into the video, synced to narration. Turn off
             if you prefer adding captions in TikTok or CapCut.
           </p>
+          {burnCaptions ? (
+            <p className="mt-2 rounded-xl border border-border bg-background/60 px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+              Headlines still appear on carousel slide exports. Burned-caption
+              videos use voiceover and on-screen captions only — no static
+              headline on each frame.
+            </p>
+          ) : null}
         </div>
       )}
 

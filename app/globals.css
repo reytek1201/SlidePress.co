@@ -379,41 +379,44 @@
   container-type: inline-size;
 }
 
-.headline-overlay-shell {
+.headline-overlay-root::before {
+  content: "";
   position: absolute;
-  top: var(--headline-overlay-top, 10%);
-  left: var(--headline-overlay-left, 7%);
-  right: var(--headline-overlay-right, auto);
-  max-width: var(--headline-overlay-max-width, 86%);
-  transform: translate(
-    var(--headline-overlay-translate-x, 0%),
-    var(--headline-overlay-translate-y, 0%)
+  inset: 0;
+  height: var(--headline-overlay-gradient-height, 42%);
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--headline-overlay-gradient-base, 0, 0, 0), var(--headline-overlay-gradient-strong, 0.52)) 0%,
+    rgba(var(--headline-overlay-gradient-base, 0, 0, 0), var(--headline-overlay-gradient-mid, 0.22)) 55%,
+    rgba(var(--headline-overlay-gradient-base, 0, 0, 0), 0) 100%
   );
-  text-align: var(--headline-overlay-align, left);
-}
-
-.headline-overlay-scrim {
-  position: absolute;
-  inset: -0.35em -0.45em;
-  border-radius: var(--headline-overlay-scrim-radius, 12px);
-  background: var(--headline-overlay-scrim, rgba(0, 0, 0, 0.45));
+  pointer-events: none;
   z-index: 0;
 }
 
-.headline-overlay-text {
-  position: relative;
+.headline-overlay-shell {
+  position: absolute;
+  top: var(--headline-overlay-top, 11%);
+  left: var(--headline-overlay-left, 8%);
+  right: var(--headline-overlay-right, auto);
+  max-width: var(--headline-overlay-max-width, 84%);
+  transform: translateX(var(--headline-overlay-translate-x, 0%));
+  text-align: var(--headline-overlay-align, left);
   z-index: 1;
+}
+
+.headline-overlay-text {
   margin: 0;
   font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
   font-weight: 700;
-  font-size: clamp(0.95rem, var(--headline-overlay-font-size, 7.2cqw), 3.25rem);
-  line-height: var(--headline-overlay-line-height, 1.12);
+  font-size: clamp(0.875rem, var(--headline-overlay-font-size, 5.8cqw), 2.75rem);
+  line-height: var(--headline-overlay-line-height, 1.08);
+  letter-spacing: var(--headline-overlay-letter-spacing, -0.025em);
   color: var(--headline-overlay-color, #fff);
-  -webkit-text-stroke: var(--headline-overlay-stroke-width, 3px)
-    var(--headline-overlay-stroke, rgba(0, 0, 0, 0.85));
-  paint-order: stroke fill;
   text-wrap: balance;
-  text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.45),
-    0 2px 10px rgba(0, 0, 0, 0.35);
+  text-shadow: var(
+    --headline-overlay-shadow,
+    0 2px 16px rgba(0, 0, 0, 0.55),
+    0 1px 3px rgba(0, 0, 0, 0.45)
+  );
 }

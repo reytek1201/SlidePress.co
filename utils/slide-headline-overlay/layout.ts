@@ -1,31 +1,58 @@
 import type { TextRegion, TextRegionBackgroundTone, TextRegionPosition } from "@/types/campaign";
 
-export const HEADLINE_OVERLAY_STYLE_V1 = {
-  version: "v1",
+export interface ShouldCompositeHeadlineOptions {
+  /** Skip headline when exporting video with burned captions. */
+  burnCaptionsVideo?: boolean;
+}
+
+/** Carousel headline positions — upper third only (caption-safe). */
+export type HeadlineOverlayPosition =
+  | "upper_left"
+  | "upper_center"
+  | "upper_right";
+
+export const HEADLINE_OVERLAY_POSITIONS: HeadlineOverlayPosition[] = [
+  "upper_left",
+  "upper_center",
+  "upper_right",
+];
+
+export const HEADLINE_OVERLAY_STYLE = {
+  version: "v2",
   fontFamily: "Inter",
   fontWeight: 700,
-  /** Headline size relative to frame width. */
-  fontSizeRatio: 0.072,
-  maxWidthRatio: 0.86,
-  horizontalInsetRatio: 0.07,
-  lineHeight: 1.12,
-  /** Region anchor as fraction of frame height (top / middle / bottom bands). */
-  verticalAnchorRatio: {
-    upper: 0.1,
-    center: 0.44,
-    lower: 0.68,
-  } as const,
-  scrim: {
-    light: { fill: "rgba(0,0,0,0.42)", radius: 12 },
-    dark: { fill: "rgba(255,255,255,0.52)", radius: 12 },
-    mixed: { fill: "rgba(0,0,0,0.48)", radius: 14 },
+  fontSizeRatio: 0.058,
+  maxWidthRatio: 0.84,
+  horizontalInsetRatio: 0.08,
+  lineHeight: 1.08,
+  maxLines: 2,
+  letterSpacingEm: -0.025,
+  verticalAnchorRatio: 0.11,
+  /** Top gradient fade height as fraction of frame height (CSS + SVG). */
+  topGradientHeightRatio: 0.42,
+  topGradientStops: {
+    strong: 0.52,
+    mid: 0.22,
+    clear: 0,
   },
   text: {
-    light: { fill: "#FFFFFF", stroke: "rgba(0,0,0,0.85)", strokeWidth: 3 },
-    dark: { fill: "#141414", stroke: "rgba(255,255,255,0.9)", strokeWidth: 3 },
-    mixed: { fill: "#FFFFFF", stroke: "rgba(0,0,0,0.9)", strokeWidth: 4 },
+    light: {
+      fill: "#FFFFFF",
+      shadow: "0 2px 16px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.45)",
+    },
+    dark: {
+      fill: "#111111",
+      shadow: "0 2px 12px rgba(255,255,255,0.35), 0 1px 3px rgba(0,0,0,0.25)",
+    },
+    mixed: {
+      fill: "#FFFFFF",
+      shadow: "0 2px 18px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.5)",
+    },
   },
 } as const;
+
+/** @deprecated alias */
+export const HEADLINE_OVERLAY_STYLE_V1 = HEADLINE_OVERLAY_STYLE;
 
 export const DEFAULT_TEXT_REGION: TextRegion = {
   position: "upper_center",
@@ -38,38 +65,41 @@ export interface HeadlineOverlayBox {
   width: number;
   maxLines: number;
   textAnchor: "start" | "middle" | "end";
-  dominantBaseline: "hanging" | "middle" | "auto";
   align: "left" | "center" | "right";
-  verticalBand: "upper" | "center" | "lower";
+}
+
+export function clampToUpperThirdPosition(
+  position: TextRegionPosition,
+): HeadlineOverlayPosition {
+  if (position === "upper_left" || position === "upper_center" || position === "upper_right") {
+    return position;
+  }
+
+  if (position.endsWith("_left")) {
+    return "upper_left";
+  }
+
+  if (position.endsWith("_right")) {
+    return "upper_right";
+  }
+
+  return "upper_center";
 }
 
 export function resolveTextRegion(
   textRegion: TextRegion | null | undefined,
-): TextRegion {
-  if (
-    textRegion?.position &&
+): TextRegion & { position: HeadlineOverlayPosition } {
+  const tone =
     textRegion?.background_tone &&
-    isTextRegionPosition(textRegion.position) &&
     isTextRegionBackgroundTone(textRegion.background_tone)
-  ) {
-    return textRegion;
-  }
+      ? textRegion.background_tone
+      : DEFAULT_TEXT_REGION.background_tone;
 
-  return DEFAULT_TEXT_REGION;
-}
+  const position = clampToUpperThirdPosition(
+    textRegion?.position ?? DEFAULT_TEXT_REGION.position,
+  );
 
-function isTextRegionPosition(value: string): value is TextRegionPosition {
-  return [
-    "upper_left",
-    "upper_center",
-    "upper_right",
-    "center_left",
-    "center",
-    "center_right",
-    "lower_left",
-    "lower_center",
-    "lower_right",
-  ].includes(value);
+  return { position, background_tone: tone };
 }
 
 function isTextRegionBackgroundTone(
@@ -81,53 +111,41 @@ function isTextRegionBackgroundTone(
 export function getHeadlineOverlayBox(
   width: number,
   height: number,
-  position: TextRegionPosition,
+  position: HeadlineOverlayPosition,
 ): HeadlineOverlayBox {
-  const style = HEADLINE_OVERLAY_STYLE_V1;
+  const style = HEADLINE_OVERLAY_STYLE;
   const boxWidth = Math.round(width * style.maxWidthRatio);
   const inset = Math.round(width * style.horizontalInsetRatio);
-
-  const verticalBand = position.startsWith("upper")
-    ? "upper"
-    : position.startsWith("lower")
-      ? "lower"
-      : "center";
-
-  const y = Math.round(height * style.verticalAnchorRatio[verticalBand]);
+  const y = Math.round(height * style.verticalAnchorRatio);
 
   let x = inset;
   let textAnchor: HeadlineOverlayBox["textAnchor"] = "start";
   let align: HeadlineOverlayBox["align"] = "left";
 
-  if (position.endsWith("_center")) {
+  if (position === "upper_center") {
     x = Math.round(width / 2);
     textAnchor = "middle";
     align = "center";
-  } else if (position.endsWith("_right")) {
+  } else if (position === "upper_right") {
     x = width - inset;
     textAnchor = "end";
     align = "right";
   }
 
-  const dominantBaseline: HeadlineOverlayBox["dominantBaseline"] =
-    verticalBand === "center" ? "middle" : "hanging";
-
   return {
     x,
     y,
     width: boxWidth,
-    maxLines: 3,
+    maxLines: style.maxLines,
     textAnchor,
-    dominantBaseline,
     align,
-    verticalBand,
   };
 }
 
 export function getHeadlineFontSize(width: number): number {
   return Math.max(
-    18,
-    Math.round(width * HEADLINE_OVERLAY_STYLE_V1.fontSizeRatio),
+    16,
+    Math.round(width * HEADLINE_OVERLAY_STYLE.fontSizeRatio),
   );
 }
 
@@ -176,6 +194,6 @@ export function estimateMaxCharsPerLine(
   boxWidth: number,
   fontSize: number,
 ): number {
-  const averageCharWidth = fontSize * 0.52;
+  const averageCharWidth = fontSize * 0.5;
   return Math.max(8, Math.floor(boxWidth / averageCharWidth));
 }

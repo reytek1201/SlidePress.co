@@ -1,10 +1,16 @@
 import type { Slide } from "@/types/campaign";
 import { buildHeadlineOverlaySvg } from "@/utils/slide-headline-overlay/build-overlay-svg";
 import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
+import type { ShouldCompositeHeadlineOptions } from "@/utils/slide-headline-overlay/layout";
 
 export function shouldRenderHeadlineOverlay(
   slide: Pick<Slide, "text_overlay">,
+  options?: ShouldCompositeHeadlineOptions,
 ): boolean {
+  if (options?.burnCaptionsVideo) {
+    return false;
+  }
+
   return isTextOverlayLayerEnabled() && Boolean(slide.text_overlay?.trim());
 }
 
@@ -21,8 +27,9 @@ async function loadImageBitmap(imageUrl: string): Promise<ImageBitmap> {
 export async function compositeHeadlineOntoImageBlob(
   imageUrl: string,
   slide: Pick<Slide, "text_overlay" | "text_region">,
+  options?: ShouldCompositeHeadlineOptions,
 ): Promise<Blob> {
-  if (!shouldRenderHeadlineOverlay(slide)) {
+  if (!shouldRenderHeadlineOverlay(slide, options)) {
     const response = await fetch(imageUrl);
     if (!response.ok) {
       throw new Error("Failed to fetch slide image");

@@ -71,19 +71,9 @@ const SlideGenerationFieldsSchema = z.object({
     ),
   voiceover_script: z.string().min(1),
   image_prompt: z.string().min(1),
-  // Best-effort hint for Phase 2 overlay placement; does not guarantee legibility alone.
+  // Best-effort hint for overlay placement; upper third only at render time.
   text_region: z.object({
-    position: z.enum([
-      "upper_left",
-      "upper_center",
-      "upper_right",
-      "center_left",
-      "center",
-      "center_right",
-      "lower_left",
-      "lower_center",
-      "lower_right",
-    ]),
+    position: z.enum(["upper_left", "upper_center", "upper_right"]),
     background_tone: z.enum(["light", "dark", "mixed"]),
   }),
 });
