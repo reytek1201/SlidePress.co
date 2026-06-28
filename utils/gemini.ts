@@ -6,7 +6,7 @@ import {
 } from "@/utils/campaign-generation";
 import type { CampaignReferences } from "@/types/references";
 import {
-  slideNarrativeGuidance,
+  slideNarrativeStructuresPromptBlock,
   type SlideCount,
 } from "@/types/slides";
 import {
@@ -74,7 +74,33 @@ function buildReferencePrompt(references: CampaignReferences): string[] {
     );
   }
 
+  if (lines.length === 0) {
+    lines.push(
+      "No brand reference images were provided. Ground each image_prompt in the topic itself — relevant setting, action, objects, or subject matter — rather than generic person-with-emotion stock imagery."
+    );
+  }
+
   return lines;
+}
+
+function buildNarrativeGuidanceBlock(slideCount: SlideCount): string {
+  return [
+    "Content style classification (required):",
+    "Before writing slides, classify this topic as exactly one content_style:",
+    "pain_point (genuine frustration/struggle), announcement (launches/news/new offerings),",
+    "educational (how-to/explainer/fact-based), entertainment (fun/lighthearted/novelty),",
+    "or aspirational (identity/lifestyle, not pain-driven).",
+    "Let that classification genuinely shape slide copy and image_prompts — not just the label.",
+    "",
+    `Narrative structure — pick the ONE row below that matches your content_style for this ${slideCount}-slide campaign:`,
+    slideNarrativeStructuresPromptBlock(slideCount),
+    "",
+    "Narrative and image_prompt rules:",
+    "- Only content_style pain_point may use a \"problem\" or struggle beat.",
+    "- Each image_prompt must illustrate that slide's specific narrative beat.",
+    "- Do not use distressed-person or head-in-hands imagery unless content_style is pain_point AND the beat is explicitly problem/struggle.",
+    "- For all other beats and content_styles, avoid inherited pain-point visual bias — show setting, action, objects, or subject matter tied to the topic.",
+  ].join("\n");
 }
 
 export async function generateCampaignContent(
@@ -121,13 +147,13 @@ export async function generateCampaignContent(
       "- Avoid abbreviations (use \"for example\" not \"e.g.\", \"versus\" not \"vs.\").",
       "- Do not copy text_overlay verbatim; expand the idea for spoken delivery.",
       "",
-      slideNarrativeGuidance(slideCount),
+      buildNarrativeGuidanceBlock(slideCount),
       ...buildReferencePrompt(references),
       "",
-      `Topic / pain point: ${topic}`,
+      `Topic: ${topic}`,
       `Target format: ${aspectRatioContext(aspectRatio)}`,
       "",
-      "Return valid JSON with keys: title, target_audience, slides.",
+      "Return valid JSON with keys: title, target_audience, content_style, slides.",
     ].join("\n"),
   });
 

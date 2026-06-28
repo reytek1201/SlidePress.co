@@ -108,6 +108,7 @@ export async function POST(request: Request) {
         topic,
         title: null,
         target_audience: null,
+        content_style: null,
         aspect_ratio,
         slide_count,
         status: "generating_text",

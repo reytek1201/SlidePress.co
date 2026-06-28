@@ -66,6 +66,7 @@ function BrandPickerSheet({
       description="Campaigns and references are scoped to the brand you choose."
       zIndexClass="z-[70]"
       maxHeightClass="max-h-[min(70vh,28rem)]"
+      desktopModal
     >
       <ul className="space-y-2">
         {brands.map((brand) => {

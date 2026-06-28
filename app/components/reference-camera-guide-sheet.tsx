@@ -56,6 +56,7 @@ export default function ReferenceCameraGuideSheet({
       title={guide.title}
       titleId="reference-camera-guide-title"
       zIndexClass="z-[70]"
+      desktopModal
       footer={
         <div className="flex gap-3">
           <button

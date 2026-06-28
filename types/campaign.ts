@@ -1,3 +1,5 @@
+import type { ContentStyle } from "@/types/slides";
+
 export type AspectRatio = "4:5" | "9:16";
 
 export type CampaignStatus =
@@ -15,6 +17,7 @@ export interface Campaign {
   topic: string;
   title: string | null;
   target_audience: string | null;
+  content_style: ContentStyle | null;
   aspect_ratio: AspectRatio;
   secondary_aspect_ratio: AspectRatio | null;
   image_generation_aspect: AspectRatio | null;

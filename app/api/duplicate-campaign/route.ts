@@ -122,6 +122,7 @@ export async function POST(request: Request) {
         topic: typedSource.topic,
         title: generated.title,
         target_audience: generated.target_audience,
+        content_style: generated.content_style,
         aspect_ratio: typedSource.aspect_ratio,
         slide_count: resolvedSlideCount,
         status: "idle",

@@ -3,7 +3,7 @@ import type { Campaign, Slide } from "@/types/campaign";
 import type { PlatformType } from "@/types/captions";
 import { MAX_HASHTAGS, PLATFORM_ORDER } from "@/types/captions";
 import { aspectRatioContext } from "@/utils/campaign-generation";
-import { slideNarrativeGuidance } from "@/types/slides";
+import { isContentStyle, slideNarrativeGuidance, type ContentStyle } from "@/types/slides";
 
 export const PlatformCaptionOutputSchema = z.object({
   platform: z.enum(["tiktok", "instagram", "youtube_shorts"]),
@@ -205,16 +205,27 @@ export function buildCaptionsPrompt(campaign: Campaign, slides: Slide[]): string
     .join("\n");
 
   const slideCount = sortedSlides.length;
+  const contentStyle: ContentStyle | undefined =
+    campaign.content_style && isContentStyle(campaign.content_style)
+      ? campaign.content_style
+      : undefined;
+  const audienceFraming =
+    contentStyle === "pain_point"
+      ? "Each caption should feel written by a human creator who understands the audience's pain, desire, and objections."
+      : "Each caption should feel written by a human creator who understands the audience's motivations, desires, and context.";
+  const arcGuidance = contentStyle
+    ? `- Reference the campaign story arc across slides (${slideNarrativeGuidance(slideCount, contentStyle)})`
+    : "- Reference the campaign story arc as reflected in the slide narrative below";
 
   return [
     "You are an expert social media strategist and direct-response copywriter.",
     "Write deep, publish-ready captions and hashtag sets for TikTok, Instagram, and YouTube Shorts.",
     `Synthesize the full ${slideCount}-slide narrative into cohesive post copy — do not copy slide overlay text verbatim.`,
-    "Each caption should feel written by a human creator who understands the audience's pain, desire, and objections.",
+    audienceFraming,
     `Use exactly ${MAX_HASHTAGS} evergreen niche hashtags per platform without the # prefix in the JSON array. Do not invent fake trending tags.`,
     "",
     "Depth requirements:",
-    `- Reference the campaign story arc across slides (${slideNarrativeGuidance(slideCount)})`,
+    arcGuidance,
     "- Include specific emotional hooks, relatable scenarios, and a clear next step",
     "- Write captions that stand alone — someone who never saw the slides should still understand the value",
     "- Avoid generic filler like 'link in bio' without context; make CTAs specific to the topic",

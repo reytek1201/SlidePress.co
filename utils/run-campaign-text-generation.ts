@@ -86,6 +86,7 @@ export async function runCampaignTextGeneration(
       .update({
         title: generated.title,
         target_audience: generated.target_audience,
+        content_style: generated.content_style,
         status: "idle",
         error_message: null,
       })

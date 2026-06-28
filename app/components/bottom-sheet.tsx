@@ -29,7 +29,7 @@ interface BottomSheetProps {
   maxHeightClass?: string;
   /** Hide entirely on md+ breakpoints */
   mobileOnly?: boolean;
-  /** Center as a modal on md+ instead of a bottom sheet */
+  /** Center as a modal on md+ instead of a bottom sheet (default true unless mobileOnly) */
   desktopModal?: boolean;
 }
 
@@ -45,7 +45,7 @@ export default function BottomSheet({
   zIndexClass = "z-[60]",
   maxHeightClass = "max-h-[92vh]",
   mobileOnly = false,
-  desktopModal = false,
+  desktopModal = true,
 }: BottomSheetProps) {
   const [dragY, setDragY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);

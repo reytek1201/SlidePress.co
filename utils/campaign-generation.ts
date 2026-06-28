@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { CampaignReferences } from "@/types/references";
 import {
+  CONTENT_STYLES,
   DEFAULT_SLIDE_COUNT,
   getMaxSlideCountForUser,
   isSlideCount,
@@ -91,6 +92,7 @@ export function createCampaignGenerationSchema(slideCount: SlideCount) {
   return z.object({
     title: z.string().min(1),
     target_audience: z.string().min(1),
+    content_style: z.enum(CONTENT_STYLES),
     slides: z
       .array(SlideGenerationSchema)
       .length(slideCount)
