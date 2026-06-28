@@ -81,7 +81,11 @@ export default async function ScheduleQueuePage({
           ) : null}
         </div>
 
-        <ScheduleQueueClient brandId={activeBrand.id} initialPosts={posts} />
+        <ScheduleQueueClient
+          key={activeBrand.id}
+          brandId={activeBrand.id}
+          initialPosts={posts}
+        />
       </main>
     </div>
   );

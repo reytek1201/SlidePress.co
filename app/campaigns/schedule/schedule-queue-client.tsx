@@ -11,7 +11,7 @@ import {
 } from "@/utils/platform-schedule-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 function formatScheduledTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -100,6 +100,13 @@ export default function ScheduleQueueClient({
   const [reschedulePost, setReschedulePost] =
     useState<ScheduledPostQueueItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPosts(initialPosts);
+    setBusyPostId(null);
+    setReschedulePost(null);
+    setError(null);
+  }, [brandId, initialPosts]);
 
   const refreshPosts = useCallback(async () => {
     const response = await fetch(
