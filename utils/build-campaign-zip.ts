@@ -3,6 +3,10 @@ import type { PlatformCaption } from "@/types/captions";
 import { formatAllCaptionsForCopy } from "@/types/captions";
 import JSZip from "jszip";
 import { safeFetch } from "@/utils/safe-fetch";
+import {
+  compositeHeadlineOntoImageBuffer,
+  shouldCompositeHeadlineOverlay,
+} from "@/utils/slide-headline-overlay/composite-server";
 
 function getImageExtension(imageUrl: string, contentType: string | null): string {
   if (contentType?.includes("png")) return "png";
@@ -60,11 +64,13 @@ export async function buildCampaignZip(
         throw new Error(`Failed to fetch slide ${slide.slide_index + 1} image`);
       }
 
-      const buffer = await response.arrayBuffer();
-      const extension = getImageExtension(
-        imageUrl,
-        response.headers.get("content-type"),
-      );
+      const rawBuffer = Buffer.from(await response.arrayBuffer());
+      const buffer = shouldCompositeHeadlineOverlay(slide)
+        ? await compositeHeadlineOntoImageBuffer(rawBuffer, slide)
+        : rawBuffer;
+      const extension = shouldCompositeHeadlineOverlay(slide)
+        ? "jpg"
+        : getImageExtension(imageUrl, response.headers.get("content-type"));
 
       return { slideIndex: slide.slide_index, buffer, extension };
     }),

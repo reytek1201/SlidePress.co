@@ -1,5 +1,6 @@
 "use client";
 
+import SlideWithHeadline from "@/app/campaign/[id]/slide-with-headline";
 import { useIsNativeApp } from "@/app/hooks/use-is-native-app";
 import { useHorizontalSwipe } from "@/app/hooks/use-horizontal-swipe";
 import { useSwipeToDismiss } from "@/app/hooks/use-swipe-to-dismiss";
@@ -145,7 +146,7 @@ export default function CarouselPreviewModal({
 
     try {
       await saveSlideImageToPhotos(
-        activeSlide.image_url,
+        activeSlide,
         slideImageFilename(activeSlide.slide_index),
       );
       setSavedActiveSlide(true);
@@ -169,7 +170,7 @@ export default function CarouselPreviewModal({
 
     try {
       await shareSlideImage(
-        activeSlide.image_url,
+        activeSlide,
         slideImageFilename(activeSlide.slide_index),
         `Slide ${activeSlide.slide_index + 1}`,
       );
@@ -289,12 +290,14 @@ export default function CarouselPreviewModal({
                   : "aspect-9/16 max-w-md md:aspect-auto md:max-h-[85vh] md:max-w-xl lg:max-w-2xl"
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activeSlide.image_url}
+              <SlideWithHeadline
+                imageUrl={activeSlide.image_url}
+                headline={activeSlide.text_overlay}
+                textRegion={activeSlide.text_region}
+                aspectRatio={aspectRatio}
                 alt={`Slide ${activeSlide.slide_index + 1}`}
-                decoding="async"
-                className="max-h-[60vh] w-auto max-w-full rounded-lg object-contain md:max-h-[78vh]"
+                className="max-h-[60vh] w-auto max-w-full md:max-h-[78vh]"
+                imageClassName="max-h-[60vh] w-auto max-w-full rounded-lg object-contain md:max-h-[78vh]"
               />
             </div>
           )}

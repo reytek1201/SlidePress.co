@@ -8,6 +8,7 @@ import {
   type SlideCount,
 } from "@/types/slides";
 import { VoicePersonaSchema } from "@/utils/tts/voice-catalog";
+import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 
 export const ReferencesInputSchema = z.object({
   product: z.string().url().optional(),
@@ -70,6 +71,21 @@ const SlideGenerationFieldsSchema = z.object({
     ),
   voiceover_script: z.string().min(1),
   image_prompt: z.string().min(1),
+  // Best-effort hint for Phase 2 overlay placement; does not guarantee legibility alone.
+  text_region: z.object({
+    position: z.enum([
+      "upper_left",
+      "upper_center",
+      "upper_right",
+      "center_left",
+      "center",
+      "center_right",
+      "lower_left",
+      "lower_center",
+      "lower_right",
+    ]),
+    background_tone: z.enum(["light", "dark", "mixed"]),
+  }),
 });
 
 export const TextOverlayInputSchema = SlideGenerationFieldsSchema.shape.text_overlay;
@@ -154,17 +170,15 @@ export function appendCaptionFriendlyCompositionClause(
 }
 
 export function buildNanoBananaPrompt(
-  textOverlay: string,
   imagePrompt: string,
   aspectRatio: "4:5" | "9:16",
-  references: CampaignReferences = {}
+  references: CampaignReferences = {},
+  textOverlay?: string,
 ): string {
   const formatLabel =
     aspectRatio === "4:5"
       ? "4:5 portrait social carousel slide"
       : "9:16 vertical short-form video slide";
-
-  const safeOverlay = textOverlay.replace(/"/g, '\\"');
 
   const referenceInstructions: string[] = [];
 
@@ -185,6 +199,17 @@ export function buildNanoBananaPrompt(
       "Place the logo reference cleanly in the bottom-right corner at roughly 8% width. Preserve the logo exactly; do not redraw or distort it."
     );
   }
+
+  if (isTextOverlayLayerEnabled()) {
+    return [
+      `Create a polished ${formatLabel} for a performance marketing campaign.`,
+      `Visual style and scene (background and composition only — no text, typography, or words in the image): ${imagePrompt}`,
+      ...referenceInstructions,
+      "Professional social-media creative, vibrant colors, high contrast, no watermark.",
+    ].join(" ");
+  }
+
+  const safeOverlay = (textOverlay ?? "").replace(/"/g, '\\"');
 
   return [
     `Create a polished ${formatLabel} for a performance marketing campaign.`,

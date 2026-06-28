@@ -1,3 +1,5 @@
+import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
+
 export const REGENERATE_FEEDBACK_CHIPS = [
   {
     id: "fix_headline_text",
@@ -72,11 +74,16 @@ export const HEADLINE_TEXT_FIX_CHIP_IDS: RegenerateFeedbackChipId[] = [
   "fix_headline_text",
 ];
 
+/** @deprecated Phase 2 reintroduced fix_headline_text with overlay behavior in the regenerate sheet. */
+export const OVERLAY_LAYER_HIDDEN_CHIP_IDS: RegenerateFeedbackChipId[] = [
+  "fix_headline_text",
+];
+
 export function regenerationResetsScene(
   chipIds: RegenerateFeedbackChipId[],
   options?: { headlineChanged?: boolean },
 ): boolean {
-  if (options?.headlineChanged) {
+  if (options?.headlineChanged && !isTextOverlayLayerEnabled()) {
     return true;
   }
 

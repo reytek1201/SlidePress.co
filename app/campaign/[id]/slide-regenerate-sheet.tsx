@@ -6,6 +6,7 @@ import {
   type RegenerateFeedbackChipId,
 } from "@/types/regenerate-feedback";
 import { hapticSelection } from "@/utils/haptics";
+import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 import {
   blobToFile,
   captureReferencePhoto,
@@ -137,12 +138,39 @@ export default function SlideRegenerateSheet({
     }
   }
 
+  const overlayLayerEnabled = isTextOverlayLayerEnabled();
+  const visibleChips = REGENERATE_FEEDBACK_CHIPS.map((chip) =>
+    overlayLayerEnabled && chip.id === "fix_headline_text"
+      ? {
+          ...chip,
+          description:
+            "Edit the headline field above — updates instantly without regenerating the image",
+        }
+      : chip,
+  );
+
   function handleSubmit() {
     void (async () => {
+      const apiFeedback = overlayLayerEnabled
+        ? selectedChipIds.filter((id) => id !== "fix_headline_text")
+        : selectedChipIds;
+
+      if (
+        overlayLayerEnabled &&
+        selectedChipIds.includes("fix_headline_text") &&
+        apiFeedback.length === 0 &&
+        !notes.trim()
+      ) {
+        onError(
+          "Edit the headline in the text field above — it updates instantly without regenerating the image.",
+        );
+        return;
+      }
+
       try {
         await onRegenerate({
           snapProductUrl: snapUploadedUrl ?? undefined,
-          feedback: selectedChipIds.length > 0 ? selectedChipIds : undefined,
+          feedback: apiFeedback.length > 0 ? apiFeedback : undefined,
           notes: notes.trim() || undefined,
         });
         onClose();
@@ -154,7 +182,8 @@ export default function SlideRegenerateSheet({
 
   const controlsDisabled = disabled || isRegenerating || isSnapping;
   const showLayoutHint = selectedChipIds.includes("different_layout");
-  const showHeadlineHint = selectedChipIds.includes("fix_headline_text");
+  const showHeadlineHint =
+    overlayLayerEnabled && selectedChipIds.includes("fix_headline_text");
 
   return (
     <BottomSheet
@@ -162,7 +191,11 @@ export default function SlideRegenerateSheet({
       onClose={onClose}
       title="Fix this slide"
       titleId="slide-regenerate-title"
-      description="Edit the headline first if the on-slide text should change, then pick what to adjust. Unsaved headline edits are saved when you regenerate."
+      description={
+        overlayLayerEnabled
+          ? "Pick what to adjust in the background scene. Unsaved headline edits in the editor are saved when you regenerate."
+          : "Edit the headline first if the on-slide text should change, then pick what to adjust. Unsaved headline edits are saved when you regenerate."
+      }
       dismissDisabled={isRegenerating || isSnapping}
       zIndexClass="z-[70]"
       maxHeightClass="max-h-[min(90dvh,680px)]"
@@ -237,7 +270,7 @@ export default function SlideRegenerateSheet({
         What should change?
       </p>
       <ul className="mt-2 space-y-2">
-        {REGENERATE_FEEDBACK_CHIPS.map((chip) => {
+        {visibleChips.map((chip) => {
           const isSelected = selectedChipIds.includes(chip.id);
 
           return (
@@ -266,8 +299,8 @@ export default function SlideRegenerateSheet({
 
       {showHeadlineHint ? (
         <p className="mt-3 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs leading-5 text-secondary-foreground">
-          Save the corrected headline above, then regenerate. The image will
-          re-render all on-slide text from your headline.
+          Headline fixes happen in the text field above and update instantly on
+          the slide preview — no image regeneration needed.
         </p>
       ) : null}
 

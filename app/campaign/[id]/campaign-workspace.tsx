@@ -837,7 +837,7 @@ export default function CampaignWorkspace({
   const refreshSlides = useCallback(async () => {
     const { data: refreshedSlides } = await supabase
       .from("slides")
-      .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_url, fal_request_id, created_at, updated_at")
+      .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_prompt, text_region, image_url, fal_request_id, created_at, updated_at")
       .eq("campaign_id", campaign.id)
       .order("slide_index", { ascending: true });
 
@@ -1398,7 +1398,7 @@ export default function CampaignWorkspace({
       if (data.mode === "sync") {
         const { data: refreshedSlides } = await supabase
           .from("slides")
-          .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_url, fal_request_id, created_at, updated_at")
+          .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_prompt, text_region, image_url, fal_request_id, created_at, updated_at")
           .eq("campaign_id", campaign.id)
           .order("slide_index", { ascending: true });
 

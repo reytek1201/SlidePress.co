@@ -18,6 +18,8 @@ export function buildStoredSlideClips(
   return prepared.slideClips.map((clip) => ({
     imageUrl: clip.imageUrl,
     durationSeconds: clip.durationSeconds,
+    text_overlay: clip.text_overlay,
+    text_region: clip.text_region,
   }));
 }
 

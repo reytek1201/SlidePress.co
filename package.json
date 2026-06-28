@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:tts-normalize": "node --experimental-strip-types --test utils/tts/normalize-script.test.ts",
+    "test:slide-image-prompt": "node --experimental-strip-types --test utils/slide-image-prompt.test.ts",
     "brand:process-logo": "node scripts/process-brand-logo.mjs",
     "marketing:compress-hero": "node scripts/compress-marketing-hero-video.mjs",
     "cap:assets:prepare": "node scripts/prepare-capacitor-assets.mjs",

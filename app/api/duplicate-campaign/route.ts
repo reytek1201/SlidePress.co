@@ -151,6 +151,7 @@ export async function POST(request: Request) {
       text_overlay: slide.text_overlay,
       voiceover_script: slide.voiceover_script,
       image_prompt: slide.image_prompt,
+      text_region: slide.text_region,
     }));
 
     const { error: slidesError } = await supabase

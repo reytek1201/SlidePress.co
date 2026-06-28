@@ -3,7 +3,9 @@ import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { slideImageFilename } from "@/utils/download-slide";
+import { fetchExportableSlideBlob } from "@/utils/download-slide";
 import { isNativeAppRuntime } from "@/utils/is-native-app";
+import type { Slide } from "@/types/campaign";
 
 const SLIDEPRESS_ALBUM_NAME = "SlidePress";
 
@@ -13,20 +15,10 @@ export interface SaveAllSlidesResult {
   failedCount: number;
 }
 
-export interface SlideImageRef {
-  image_url: string | null;
-  slide_index: number;
-}
-
-async function fetchImageBlob(imageUrl: string): Promise<Blob> {
-  const response = await fetch(imageUrl);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch slide image");
-  }
-
-  return response.blob();
-}
+export interface SlideImageRef extends Pick<
+  Slide,
+  "image_url" | "slide_index" | "text_overlay" | "text_region"
+> {}
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -50,10 +42,14 @@ function blobToBase64(blob: Blob): Promise<string> {
 }
 
 async function writeImageToCache(
-  imageUrl: string,
+  slide: SlideImageRef,
   filename: string,
 ): Promise<string> {
-  const rawBlob = await fetchImageBlob(imageUrl);
+  if (!slide.image_url) {
+    throw new Error("Slide has no image");
+  }
+
+  const rawBlob = await fetchExportableSlideBlob(slide);
 
   let blob: Blob;
   try {
@@ -112,7 +108,7 @@ export function canUseNativeSlideExport(): boolean {
 }
 
 export async function saveSlideImageToPhotos(
-  imageUrl: string,
+  slide: SlideImageRef,
   filename: string,
   albumIdentifier?: string,
 ): Promise<void> {
@@ -120,7 +116,7 @@ export async function saveSlideImageToPhotos(
     throw new Error("Save to Photos is only available in the mobile app");
   }
 
-  const localUri = await writeImageToCache(imageUrl, filename);
+  const localUri = await writeImageToCache(slide, filename);
 
   await Media.savePhoto({
     path: localUri,
@@ -182,7 +178,7 @@ export async function saveAllSlidesToPhotos(
         .filter((slide) => slide.image_url)
         .map((slide) =>
           saveSlideImageToPhotos(
-            slide.image_url!,
+            slide,
             slideImageFilename(slide.slide_index),
             albumIdentifier,
           ),
@@ -208,7 +204,7 @@ export async function saveAllSlidesToPhotos(
 }
 
 export async function shareSlideImage(
-  imageUrl: string,
+  slide: SlideImageRef,
   filename: string,
   title = "SlidePress slide",
 ): Promise<void> {
@@ -216,7 +212,7 @@ export async function shareSlideImage(
     throw new Error("Share is only available in the mobile app");
   }
 
-  const fileUri = await writeImageToCache(imageUrl, filename);
+  const fileUri = await writeImageToCache(slide, filename);
 
   await Share.share({
     title,

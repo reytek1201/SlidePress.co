@@ -2,6 +2,24 @@ import type { ContentStyle } from "@/types/slides";
 
 export type AspectRatio = "4:5" | "9:16";
 
+export type TextRegionPosition =
+  | "upper_left"
+  | "upper_center"
+  | "upper_right"
+  | "center_left"
+  | "center"
+  | "center_right"
+  | "lower_left"
+  | "lower_center"
+  | "lower_right";
+
+export type TextRegionBackgroundTone = "light" | "dark" | "mixed";
+
+export interface TextRegion {
+  position: TextRegionPosition;
+  background_tone: TextRegionBackgroundTone;
+}
+
 export type CampaignStatus =
   | "idle"
   | "generating_text"
@@ -40,6 +58,8 @@ export interface Slide {
   text_overlay: string | null;
   voiceover_script: string | null;
   image_prompt: string | null;
+  /** Best-effort placement hint for Phase 2 overlay; not a legibility guarantee. */
+  text_region: TextRegion | null;
   image_url: string | null;
   fal_request_id: string | null;
   created_at: string;

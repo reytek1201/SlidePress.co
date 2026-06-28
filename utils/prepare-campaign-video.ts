@@ -1,4 +1,4 @@
-import type { AspectRatio, Slide } from "@/types/campaign";
+import type { AspectRatio, Slide, TextRegion } from "@/types/campaign";
 import { estimateSlideDurationSeconds } from "@/utils/build-caption-srt";
 import { prepareBurnCaptionsAss } from "@/utils/captions/prepare-burn-captions";
 import { uploadFalMedia } from "@/utils/fal-video";
@@ -27,6 +27,8 @@ export interface PrepareCampaignVideoInput {
 export interface PreparedSlideClip {
   imageUrl: string;
   durationSeconds: number;
+  text_overlay?: string | null;
+  text_region?: TextRegion | null;
 }
 
 export interface PrepareCampaignVideoResult {
@@ -182,6 +184,8 @@ export async function prepareCampaignVideo(
       slideClips.push({
         imageUrl: slide.image_url!,
         durationSeconds,
+        text_overlay: slide.text_overlay,
+        text_region: slide.text_region,
       });
       audioBuffers.push(narration.audio);
       totalChars += narration.charCount;
@@ -233,6 +237,8 @@ export async function prepareCampaignVideo(
     slideClips.push({
       imageUrl: slide.image_url!,
       durationSeconds,
+      text_overlay: slide.text_overlay,
+      text_region: slide.text_region,
     });
     totalChars += scripts[index]!.length;
   }

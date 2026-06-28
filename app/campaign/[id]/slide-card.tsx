@@ -10,6 +10,7 @@ import {
   saveSlideImageToPhotos,
   shareSlideImage,
 } from "@/utils/native-slide-export";
+import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 import { memo, useCallback, useEffect, useState } from "react";
 import SlideOverlayEditor from "./slide-overlay-editor";
 import SlideRegenerateSheet, {
@@ -17,6 +18,7 @@ import SlideRegenerateSheet, {
 } from "./slide-regenerate-sheet";
 import SlideVoiceoverEditor from "./slide-voiceover-editor";
 import SlideVoicePreview from "./slide-voice-preview";
+import SlideWithHeadline from "./slide-with-headline";
 import type { VoicePersona } from "@/utils/tts/voice-catalog";
 
 interface SlideCardProps {
@@ -73,12 +75,17 @@ const SlideCard = memo(function SlideCard({
     setHeadlineDraft(slide.text_overlay ?? "");
   }, [slide.text_overlay]);
 
+  const overlayLayerEnabled = isTextOverlayLayerEnabled();
+  const displayHeadline = overlayLayerEnabled
+    ? headlineDraft || slide.text_overlay
+    : slide.text_overlay;
+
   const handleSaveToPhotos = useCallback(async () => {
     if (!slide.image_url) return;
     setIsSaving(true);
     try {
       await saveSlideImageToPhotos(
-        slide.image_url,
+        slide,
         slideImageFilename(slide.slide_index),
       );
       setIsSaved(true);
@@ -88,14 +95,14 @@ const SlideCard = memo(function SlideCard({
     } finally {
       setIsSaving(false);
     }
-  }, [slide.image_url, slide.slide_index, onError]);
+  }, [slide, onError]);
 
   const handleShare = useCallback(async () => {
     if (!slide.image_url) return;
     setIsSharing(true);
     try {
       await shareSlideImage(
-        slide.image_url,
+        slide,
         slideImageFilename(slide.slide_index),
         `Slide ${slide.slide_index + 1}`,
       );
@@ -104,29 +111,27 @@ const SlideCard = memo(function SlideCard({
     } finally {
       setIsSharing(false);
     }
-  }, [slide.image_url, slide.slide_index, onError]);
+  }, [slide, onError]);
 
   const handleDownload = useCallback(async () => {
     if (!slide.image_url) return;
     setIsDownloading(true);
     try {
-      await downloadSlideImage(
-        slide.image_url,
-        slideImageFilename(slide.slide_index),
-      );
+      await downloadSlideImage(slide);
     } catch {
       onError("Could not download slide image");
     } finally {
       setIsDownloading(false);
     }
-  }, [slide.image_url, slide.slide_index, onError]);
+  }, [slide, onError]);
 
   const handleRegenerate = useCallback(
     async (options: SlideRegenerateOptions) => {
       let textOverlay = slide.text_overlay?.trim() ?? "";
       let headlineChanged =
-        headlineNeedsImageSync ||
-        options.feedback?.includes("fix_headline_text") === true;
+        !overlayLayerEnabled &&
+        (headlineNeedsImageSync ||
+          options.feedback?.includes("fix_headline_text") === true);
 
       const draft = headlineDraft.trim();
       if (draft && draft !== textOverlay) {
@@ -149,7 +154,7 @@ const SlideCard = memo(function SlideCard({
 
         textOverlay = data.slide?.text_overlay?.trim() ?? draft;
         onSlideUpdated(slide.id, { text_overlay: textOverlay });
-        headlineChanged = true;
+        headlineChanged = !overlayLayerEnabled;
         setHeadlineNeedsImageSync(false);
       }
 
@@ -163,6 +168,7 @@ const SlideCard = memo(function SlideCard({
     [
       headlineDraft,
       headlineNeedsImageSync,
+      overlayLayerEnabled,
       onError,
       onRegenerate,
       onSlideUpdated,
@@ -226,26 +232,16 @@ const SlideCard = memo(function SlideCard({
           >
             {slide.image_url && !isImageGenerating ? (
               <>
-                <button
-                  type="button"
+                <SlideWithHeadline
+                  imageUrl={slide.image_url}
+                  headline={displayHeadline}
+                  textRegion={slide.text_region}
+                  aspectRatio={aspectRatio}
+                  alt={`Slide ${slide.slide_index + 1}`}
                   onClick={handleOpenPreview}
-                  className="group relative max-h-full max-w-full cursor-zoom-in"
-                  aria-label={`Expand slide ${slide.slide_index + 1}`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={slide.image_url}
-                    alt={`Slide ${slide.slide_index + 1}`}
-                    loading="lazy"
-                    decoding="async"
-                    className="max-h-56 max-w-full rounded-lg object-contain transition group-hover:opacity-95 sm:max-h-72 md:max-h-full"
-                  />
-                  <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
-                    <span className="rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
-                      Expand
-                    </span>
-                  </span>
-                </button>
+                  imageClassName="max-h-56 max-w-full rounded-lg object-contain transition group-hover:opacity-95 sm:max-h-72 md:max-h-full"
+                  showExpandHint
+                />
                 <button
                   type="button"
                   onClick={handleOpenPreview}
@@ -284,7 +280,7 @@ const SlideCard = memo(function SlideCard({
               setHeadlineDraft(textOverlay);
               if (headlineChanged) {
                 setSuggestVoiceoverMatch(true);
-                if (slide.image_url) {
+                if (!overlayLayerEnabled && slide.image_url) {
                   setSuggestRegenerateImage(true);
                   setHeadlineNeedsImageSync(true);
                 }

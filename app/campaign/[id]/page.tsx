@@ -43,7 +43,7 @@ export default async function CampaignPage({ params }: CampaignPageProps) {
   const [slidesResult, captionsResult] = await Promise.all([
     supabase
       .from("slides")
-      .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_url, fal_request_id, created_at, updated_at")
+      .select("id, campaign_id, slide_index, text_overlay, voiceover_script, image_prompt, text_region, image_url, fal_request_id, created_at, updated_at")
       .eq("campaign_id", id)
       .order("slide_index", { ascending: true }),
     supabase

@@ -7,7 +7,7 @@ export const FAL_MERGE_AUDIO_VIDEO_MODEL =
 export const VIDEO_EXPORT_FPS = 24;
 export const VIDEO_MIN_FRAMES_PER_SLIDE = 12;
 
-import type { AspectRatio } from "@/types/campaign";
+import type { AspectRatio, TextRegion } from "@/types/campaign";
 import type { VideoExportPreset } from "@/utils/video-export-presets";
 import type { SlideExportFingerprint } from "@/utils/video-export-fingerprint";
 
@@ -25,6 +25,8 @@ export interface FalVideoImageFrame {
 export interface StoredSlideClip {
   imageUrl: string;
   durationSeconds: number;
+  text_overlay?: string | null;
+  text_region?: TextRegion | null;
 }
 
 export interface VideoExportMetadata {

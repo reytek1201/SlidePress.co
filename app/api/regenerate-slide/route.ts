@@ -44,6 +44,8 @@ const RequestSchema = z.object({
   notes: z.string().trim().max(300).optional(),
   text_overlay: TextOverlayInputSchema.optional(),
   headlineChanged: z.boolean().optional(),
+  // Phase 1: headlineChanged still forces scene reset via buildSlideImagePrompt.
+  // Phase 2: reconsider — overlay headline edits may not need image regeneration.
   snapProductUrl: z.string().url().optional(),
   aspectRatio: z.enum(["4:5", "9:16"]).optional(),
   burn_captions: z.boolean().optional(),

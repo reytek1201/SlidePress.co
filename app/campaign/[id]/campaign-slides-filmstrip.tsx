@@ -1,5 +1,6 @@
 "use client";
 
+import SlideWithHeadline from "@/app/campaign/[id]/slide-with-headline";
 import type { AspectRatio, Slide } from "@/types/campaign";
 import { useEffect, useRef } from "react";
 
@@ -101,13 +102,14 @@ export default function CampaignSlidesFilmstrip({
               >
                 {state === "ready" ? (
                   <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={slide.image_url!}
+                    <SlideWithHeadline
+                      imageUrl={slide.image_url!}
+                      headline={slide.text_overlay}
+                      textRegion={slide.text_region}
+                      aspectRatio={aspectRatio}
                       alt=""
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                      decoding="async"
+                      className="h-full w-full"
+                      imageClassName="h-full w-full object-cover"
                     />
                     <span
                       className="absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-bold text-white shadow"

@@ -11,11 +11,15 @@ import {
   referencesFromCampaign,
 } from "@/utils/campaign-generation";
 import type { CampaignReferences } from "@/types/references";
+import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 
-const REGENERATION_VARIATION_DIRECTIVE =
+const LEGACY_REGENERATION_VARIATION_DIRECTIVE =
   "Create a clearly different visual variation with alternative composition, color treatment, and layout while preserving the headline and campaign message.";
 
-function buildHeadlineOnlyPrompt(
+const OVERLAY_REGENERATION_VARIATION_DIRECTIVE =
+  "Create a clearly different visual variation with alternative composition, color treatment, and layout while preserving the campaign's visual message.";
+
+function buildLegacyHeadlineOnlyPrompt(
   textOverlay: string,
   aspectRatio: Campaign["aspect_ratio"],
   references: CampaignReferences,
@@ -56,6 +60,7 @@ function buildHeadlineOnlyPrompt(
 
 export interface BuildSlideImagePromptOptions {
   isRegeneration?: boolean;
+  /** Phase 1: still triggers scene reset when true; reconsider in Phase 2 (overlay may not need regen). */
   headlineChanged?: boolean;
   burnCaptions?: boolean;
 }
@@ -73,12 +78,13 @@ export function buildSlideImagePrompt(
 
   const references = referencesFromCampaign(campaign);
   const feedback = resolveRegenerationFeedback(feedbackChipIds, customNotes);
+  const useOverlayLayer = isTextOverlayLayerEnabled();
 
   const basePrompt = buildNanoBananaPrompt(
-    slide.text_overlay,
     slide.image_prompt,
     campaign.aspect_ratio,
     references,
+    slide.text_overlay,
   );
 
   if (!options?.isRegeneration) {
@@ -98,20 +104,31 @@ export function buildSlideImagePrompt(
   const resetScene = regenerationResetsScene(feedbackChipIds, {
     headlineChanged: options.headlineChanged,
   });
-  const rerenderHeadline = regenerationRequiresHeadlineRerender(
-    feedbackChipIds,
-    { headlineChanged: options.headlineChanged },
-  );
+  const rerenderHeadline =
+    !useOverlayLayer &&
+    regenerationRequiresHeadlineRerender(feedbackChipIds, {
+      headlineChanged: options.headlineChanged,
+    });
 
   const revisionDirective =
-    feedback || REGENERATION_VARIATION_DIRECTIVE;
+    feedback ||
+    (useOverlayLayer
+      ? OVERLAY_REGENERATION_VARIATION_DIRECTIVE
+      : LEGACY_REGENERATION_VARIATION_DIRECTIVE);
 
   if (resetScene) {
-    const scenePrompt = buildHeadlineOnlyPrompt(
-      slide.text_overlay,
-      campaign.aspect_ratio,
-      references,
-    );
+    const scenePrompt = useOverlayLayer
+      ? buildNanoBananaPrompt(
+          slide.image_prompt,
+          campaign.aspect_ratio,
+          references,
+          slide.text_overlay,
+        )
+      : buildLegacyHeadlineOnlyPrompt(
+          slide.text_overlay,
+          campaign.aspect_ratio,
+          references,
+        );
 
     const parts = [
       "Use the first reference image only for brand context (product, colors, mood). Do NOT preserve its layout, composition, or any on-image text.",
@@ -134,7 +151,7 @@ export function buildSlideImagePrompt(
       parts.push(
         "Replace all on-image headline text; accuracy and spelling are mandatory.",
       );
-    } else {
+    } else if (!useOverlayLayer) {
       parts.push(
         "Keep the headline text accurate and legible unless the user explicitly asked to change the wording.",
       );
@@ -157,7 +174,7 @@ export function buildSlideImagePrompt(
       `MUST re-render the headline exactly as specified below. Do not copy spelling, wording, or typography from text visible in the reference image: "${slide.text_overlay.replace(/"/g, '\\"')}".`,
       "Replace all on-image headline text; accuracy and spelling are mandatory.",
     );
-  } else {
+  } else if (!useOverlayLayer) {
     editParts.push(
       "Keep the headline text exactly as currently shown, with accurate spelling, unless the user explicitly asked to change the wording.",
     );

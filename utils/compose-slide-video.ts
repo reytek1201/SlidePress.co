@@ -3,11 +3,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import type { AspectRatio } from "@/types/campaign";
+import type { AspectRatio, TextRegion } from "@/types/campaign";
 import { requireFfmpegPath } from "@/utils/ffmpeg";
 import { VIDEO_EXPORT_FPS } from "@/utils/fal-video";
 import { getVideoDimensions } from "@/utils/video-dimensions";
 import { slideClipDurationForCompose } from "@/utils/video-compose-duration";
+import {
+  compositeHeadlineOntoImageBuffer,
+  shouldCompositeHeadlineOverlay,
+} from "@/utils/slide-headline-overlay/composite-server";
 
 const execFileAsync = promisify(execFile);
 
@@ -16,6 +20,8 @@ export const VIDEO_CROSSFADE_SECONDS = 0.45;
 export interface SlideClipInput {
   imageUrl: string;
   durationSeconds: number;
+  text_overlay?: string | null;
+  text_region?: TextRegion | null;
 }
 
 export interface ComposeSlideVideoOptions {
@@ -23,13 +29,26 @@ export interface ComposeSlideVideoOptions {
   crossfadeSeconds?: number;
 }
 
-async function downloadImage(url: string): Promise<Buffer> {
-  const response = await fetch(url);
+async function downloadImage(slide: SlideClipInput): Promise<Buffer> {
+  const response = await fetch(slide.imageUrl);
   if (!response.ok) {
     throw new Error("Failed to download slide image for video compose");
   }
 
-  return Buffer.from(await response.arrayBuffer());
+  const rawBuffer = Buffer.from(await response.arrayBuffer());
+
+  if (
+    shouldCompositeHeadlineOverlay({
+      text_overlay: slide.text_overlay ?? null,
+    })
+  ) {
+    return compositeHeadlineOntoImageBuffer(rawBuffer, {
+      text_overlay: slide.text_overlay ?? null,
+      text_region: slide.text_region ?? null,
+    });
+  }
+
+  return rawBuffer;
 }
 
 function buildStaticSlideFilter(width: number, height: number): string {
@@ -167,7 +186,7 @@ export async function composeSlidesToVideo(
   try {
     // Download all slide images in parallel (pure I/O, safe to fan out).
     const imageBuffers = await Promise.all(
-      slides.map((slide) => downloadImage(slide.imageUrl)),
+      slides.map((slide) => downloadImage(slide)),
     );
 
     // Write images then render clips sequentially. FFmpeg H.264 encodes are
