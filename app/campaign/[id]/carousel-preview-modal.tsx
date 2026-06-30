@@ -296,7 +296,7 @@ export default function CarouselPreviewModal({
                 textRegion={activeSlide.text_region}
                 aspectRatio={aspectRatio}
                 alt={`Slide ${activeSlide.slide_index + 1}`}
-                className="max-h-[60vh] rounded-lg md:max-h-[78vh]"
+                className="h-[60vh] w-auto max-w-full rounded-lg md:h-[78vh]"
               />
             </div>
           )}

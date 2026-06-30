@@ -42,7 +42,7 @@ export default function SlideWithHeadline({
 
   const frame = (
     <div
-      className={`relative ${aspectRatioClass(aspectRatio)} max-h-full max-w-full min-w-0 overflow-hidden ${className ?? ""}`}
+      className={`relative ${aspectRatioClass(aspectRatio)} overflow-hidden ${className ?? ""}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -50,7 +50,7 @@ export default function SlideWithHeadline({
         alt={alt}
         loading="lazy"
         decoding="async"
-        className={`absolute inset-0 h-full w-full object-cover ${imageClassName ?? ""}`}
+        className={`block size-full object-cover ${imageClassName ?? ""}`}
       />
       {showOverlay && headline?.trim() ? (
         <div
@@ -79,7 +79,7 @@ export default function SlideWithHeadline({
         onClick={onClick}
         className={
           buttonClassName ??
-          "group inline-flex max-h-full max-w-full min-w-0 cursor-zoom-in"
+          "group block max-w-full min-w-0 cursor-zoom-in"
         }
         aria-label={alt}
       >
@@ -88,9 +88,5 @@ export default function SlideWithHeadline({
     );
   }
 
-  return (
-    <div className="inline-flex max-h-full max-w-full min-w-0">
-      {frame}
-    </div>
-  );
+  return <div className="block max-w-full min-w-0">{frame}</div>;
 }
