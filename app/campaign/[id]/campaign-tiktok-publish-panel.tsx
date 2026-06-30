@@ -20,6 +20,8 @@ import {
   isSelfOnlyPrivacy,
   privacyLevelLabel,
   TIKTOK_BRANDED_CONTENT_POLICY_URL,
+  TIKTOK_COMMERCIAL_CHOICE_REQUIRED_HINT,
+  TIKTOK_COMMERCIAL_DISCLOSURE_LABEL,
   TIKTOK_MUSIC_USAGE_URL,
   type TikTokCreatorInfoPublic,
   type TikTokPublishFormSettings,
@@ -650,6 +652,11 @@ export default function CampaignTikTokPublishPanel({
         <button
           type="button"
           disabled={!canClickPublish}
+          title={
+            !canClickPublish && formValidationError
+              ? formValidationError
+              : undefined
+          }
           onClick={() => void handlePublish()}
           className="btn-primary w-full py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-6"
         >
@@ -683,16 +690,26 @@ export default function CampaignTikTokPublishPanel({
       />
 
       {creator ? (
-        <p className="mb-4 text-xs text-foreground">
-          Posting to{" "}
-          <span className="font-medium">{creator.creatorNickname}</span>
-          {creator.creatorUsername ? (
-            <span className="text-muted-foreground">
-              {" "}
-              (@{creator.creatorUsername.replace(/^@/, "")})
-            </span>
+        <div className="mb-4 flex items-center gap-2.5">
+          {creator.creatorAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- TikTok CDN avatar URL from creator_info
+            <img
+              src={creator.creatorAvatarUrl}
+              alt=""
+              className="h-8 w-8 shrink-0 rounded-full border border-border object-cover"
+            />
           ) : null}
-        </p>
+          <p className="text-xs text-foreground">
+            Posting to{" "}
+            <span className="font-medium">{creator.creatorNickname}</span>
+            {creator.creatorUsername ? (
+              <span className="text-muted-foreground">
+                {" "}
+                (@{creator.creatorUsername.replace(/^@/, "")})
+              </span>
+            ) : null}
+          </p>
+        </div>
       ) : readiness.connection ? (
         <p className="mb-4 text-xs text-foreground">
           Account:{" "}
@@ -813,7 +830,7 @@ export default function CampaignTikTokPublishPanel({
           <div className="space-y-3 rounded-lg border border-border/60 p-3">
             <CheckboxField
               id="tiktok-commercial-disclosure"
-              label="Disclose promotional content"
+              label={TIKTOK_COMMERCIAL_DISCLOSURE_LABEL}
               checked={form.commercialDisclosure}
               onChange={(checked) =>
                 updateForm({
@@ -854,8 +871,7 @@ export default function CampaignTikTokPublishPanel({
                 !form.yourBrand &&
                 !form.brandedContent ? (
                   <p className="text-xs text-amber-200/90">
-                    You need to indicate if your content promotes yourself, a
-                    third party, or both.
+                    {TIKTOK_COMMERCIAL_CHOICE_REQUIRED_HINT}
                   </p>
                 ) : null}
                 {commercialLabel ? (

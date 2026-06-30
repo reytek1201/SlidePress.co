@@ -28,6 +28,7 @@ export interface TikTokPublishFormSettings {
 export interface TikTokCreatorInfoPublic {
   creatorUsername: string;
   creatorNickname: string;
+  creatorAvatarUrl: string | null;
   privacyLevelOptions: string[];
   commentDisabled: boolean;
   duetDisabled: boolean;
@@ -35,12 +36,19 @@ export interface TikTokCreatorInfoPublic {
   maxVideoPostDurationSec: number;
 }
 
+export const TIKTOK_COMMERCIAL_DISCLOSURE_LABEL =
+  "This content promotes yourself, a brand, product, or service";
+
+export const TIKTOK_COMMERCIAL_CHOICE_REQUIRED_HINT =
+  "You need to indicate if your content promotes yourself, a third party, or both.";
+
 export function toPublicCreatorInfo(
   creator: TikTokCreatorInfo,
 ): TikTokCreatorInfoPublic {
   return {
     creatorUsername: creator.creatorUsername,
     creatorNickname: creator.creatorNickname,
+    creatorAvatarUrl: creator.creatorAvatarUrl,
     privacyLevelOptions: creator.privacyLevelOptions,
     commentDisabled: creator.commentDisabled,
     duetDisabled: creator.duetDisabled,
@@ -130,7 +138,7 @@ export function validateTikTokPublishSettings(
   }
 
   if (settings.commercialDisclosure && !settings.yourBrand && !settings.brandedContent) {
-    return "Indicate if your content promotes yourself, a third party, or both.";
+    return TIKTOK_COMMERCIAL_CHOICE_REQUIRED_HINT;
   }
 
   if (

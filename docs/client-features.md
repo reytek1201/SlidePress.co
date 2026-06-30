@@ -175,12 +175,21 @@ Processing: TTS + optional ASS prep → Fal slide stitch → Fal audio merge →
 
 - **Settings → Connected accounts** — connect your TikTok account (Login Kit OAuth)
 - **Campaign → Publish** — **Post to TikTok** when you have a TikTok caption and a completed **9:16** video export
-- Upload uses your TikTok caption and hashtags from the campaign
-- **Grant posting permission** on first publish (separate from connect)
+- Before publishing, SlidePress calls TikTok’s **creator_info** API and shows a compliant pre-publish form:
+  - **Account** — creator nickname, @username, and avatar from TikTok
+  - **Video preview** — duration checked against `max_video_post_duration_sec` (blocks publish if too long)
+  - **Title** — pre-filled from campaign caption/hashtags; editable before post
+  - **Privacy** — required dropdown from `privacy_level_options`; **no default** — user must select
+  - **Interaction settings** — Allow comment, duet, stitch (all off by default; greyed out if disabled in TikTok app settings)
+  - **Commercial content** — disclosure toggle off by default; when on, user selects **Your brand** and/or **Branded content** with required label prompts
+  - **Consent** — “By posting, you agree to TikTok’s Music Usage Confirmation.” shown before the publish button
+- **Grant posting permission** on first publish (`video.publish` — separate from connect)
+- **Post to TikTok** sends user-selected privacy, interactions, and disclosure flags through the Content Posting API (FILE_UPLOAD)
 - **View on TikTok** link after publish; same export cannot be posted twice (duplicate guard)
+- **Schedule for later** (Creator/Agency) stores full TikTok publish settings and fires through the same validated path
 - Disconnect TikTok anytime in Settings; account deletion revokes tokens and removes publish history
 
-*TikTok sandbox (June 2026) — app is unaudited; your TikTok account must be set to **Private** in the TikTok app before posting. Posts are `SELF_ONLY` until TikTok app review passes. See Epic [#27](https://github.com/reytek1201/SlidePress.co/issues/27).*
+*TikTok sandbox (June 2026) — app is unaudited; your TikTok account must be set to **Private** in the TikTok app before posting. Posts are `SELF_ONLY` until TikTok app review passes. Resubmit audit with a new demo video showing the full pre-publish UI — see [`docs/tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md). Epic [#27](https://github.com/reytek1201/SlidePress.co/issues/27).*
 
 ### Post to Instagram (Reels + Carousel)
 
@@ -313,7 +322,7 @@ Available in the **iOS and Android apps** (not mobile Safari):
 ### What we’re not promising until platform audits complete
 
 - YouTube posting for users outside Google OAuth **test users** list until Google verification completes
-- TikTok **public** posting until TikTok app audit passes (sandbox / private account today)
+*TikTok public posting until TikTok app audit passes (sandbox / private account today). Resubmit with compliant demo video — [`docs/tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md).*
 - Instagram posting for users outside Meta app **testers/roles** until Meta App Review approves `instagram_content_publish`
 
 *Internal tracking: ElevenLabs narration & video export epic [#1](https://github.com/reytek1201/SlidePress.co/issues/1) ✅ closed.*
@@ -338,7 +347,7 @@ Phased delivery for SlidePress. **Mobile today** = responsive web + **native iOS
 | **6A+** | **Voiceover editing** — inline script edit, AI rewrite sheet, regenerate slide sheet |
 | **6B** | **Dual format** — one campaign, optional second aspect (confirm upsell), per-format preview/export |
 | **6C** | **YouTube Shorts posting** — connect, upload API, Publish UI ✅; Google OAuth verification 🚧 |
-| **6D** | **TikTok posting** — connect, FILE_UPLOAD API, Publish UI ✅; app audit 🚧 |
+| **6D** | **TikTok posting** — connect, FILE_UPLOAD API, audit-compliant Publish UI ✅; app audit 🚧 (resubmit with new demo video) |
 | **6E** | **Instagram posting** — OAuth, Reels + carousel API, Publish UI ✅; Meta App Review 🚧 |
 | **6F** | **Website URL ingest** — paste URL, topic cards, Use this topic, Create full draft + cost confirm, ingest cache ✅ |
 | **6F+** | **Streamlined assets flow** — auto-captions, Assets journey step, draft-ready push, regen/polling hardening ✅ |
@@ -411,7 +420,7 @@ Mobile engagement: push alerts when async work finishes, and home-screen widgets
 **6C — Business scale** *(in progress)*
 
 - **Usage tiers & billing** — paid plans with higher caps (Stripe) — [Epic #14](https://github.com/reytek1201/SlidePress.co/issues/14)
-- **Direct platform posting** — **YouTube Shorts** ✅ Phases 0–2 shipped; Phase 3 🚧 OAuth under review · **TikTok** ✅ shipped; app audit 🚧 · **Instagram** Reels + Carousel ✅ shipped; Meta app review 🚧 — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/platform-posting.md`](platform-posting.md) · [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md) · [`docs/instagram-phase3-runbook.md`](instagram-phase3-runbook.md)
+- **Direct platform posting** — **YouTube Shorts** ✅ Phases 0–2 shipped; Phase 3 🚧 OAuth under review · **TikTok** ✅ shipped; audit-compliant UX ✅; app audit 🚧 resubmit · **Instagram** Reels + Carousel ✅ shipped; Meta app review 🚧 — [Epic #27](https://github.com/reytek1201/SlidePress.co/issues/27) · [`docs/platform-posting.md`](platform-posting.md) · [`docs/youtube-phase3-runbook.md`](youtube-phase3-runbook.md) · [`docs/tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md) · [`docs/instagram-phase3-runbook.md`](instagram-phase3-runbook.md)
 - **On-screen video captions** — burned-in captions (deferred from beta)
 
 ### Not planned for v1

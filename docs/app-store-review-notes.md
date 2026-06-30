@@ -39,7 +39,7 @@ Dedicated reviewer account with a stable campaign (images + captions complete). 
 **Optional — platform posting (may fail for reviewers):**
 
 - **YouTube:** Google OAuth is in verification. Reviewer Google accounts must be on your OAuth **test users** list until Google approves production access.
-- **TikTok:** App audit pending. Sandbox may require a **private** TikTok account. Treat direct TikTok post as optional for review; core app works without it.
+- **TikTok:** App audit rejected once for UX; compliant pre-publish UI shipped. Resubmit with new demo video per `docs/tiktok-phase3-runbook.md`. Sandbox may require a **private** TikTok account. Treat direct TikTok post as optional for review; core app works without it.
 
 ---
 

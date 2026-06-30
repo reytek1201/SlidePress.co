@@ -22,7 +22,11 @@ export function getTikTokPublishErrorMessage(error: string): string {
   }
 
   if (normalized.includes("spam_risk") || normalized.includes("daily post limit")) {
-    return "TikTok daily post limit reached. Try again tomorrow.";
+    return "This TikTok account cannot post right now — the daily post limit was reached. Try again later.";
+  }
+
+  if (normalized.includes("banned_from_posting")) {
+    return "This TikTok account cannot post right now. Check your TikTok account status and try again later.";
   }
 
   if (normalized.includes("timed out waiting for tiktok")) {

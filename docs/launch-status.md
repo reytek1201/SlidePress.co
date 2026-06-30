@@ -87,7 +87,7 @@ Single source of truth for where store setup, billing, and platform audits stand
 |---------|-------|--------|
 | **Google OAuth verification** (`youtube.upload`) | Google | Monitor email; respond to CASA if requested — [#31](https://github.com/reytek1201/SlidePress.co/issues/31) |
 | **Meta App Review** (`instagram_content_publish`) | Meta | Finish demo video + submit wizard — [`instagram-phase3-runbook.md`](instagram-phase3-runbook.md) |
-| **TikTok public posting** | TikTok | Confirm audit status; verify `TIKTOK_*` on Vercel — may already be approved |
+| **TikTok public posting** | TikTok | Resubmit app audit with **new demo video** (UX rejection fixed) — [`tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md) |
 | **Apple App Store review** | You | Submit **1.0** only when ready to ship shortly after approval |
 
 ---
@@ -112,7 +112,7 @@ Priority: unblock billing QA and platform gating in production.
 
 - [ ] **Instagram:** record demo video → submit Meta App Review — [`instagram-phase3-runbook.md`](instagram-phase3-runbook.md)
 - [ ] **YouTube:** check Google Cloud verification status; add OAuth test users for beta
-- [ ] **TikTok:** test public post from production; confirm audit tier
+- [ ] **TikTok:** record compliant demo video → resubmit app audit — [`tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md)
 
 ### Phase C — Billing & gating QA ([#25](https://github.com/reytek1201/SlidePress.co/issues/25))
 

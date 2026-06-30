@@ -4,7 +4,7 @@ Internal docs for product, ops, and AI context.
 
 **Setting up Claude.ai:** Start with [`claude-project.md`](claude-project.md) — Project instructions, upload checklist, and workflow with Cursor.
 
-*Last updated: June 25, 2026*
+*Last updated: June 30, 2026*
 
 ---
 
@@ -35,6 +35,7 @@ Internal docs for product, ops, and AI context.
 |-----|-------------|
 | [`platform-posting.md`](platform-posting.md) | Direct posting architecture (YouTube, TikTok, Instagram) |
 | [`youtube-phase3-runbook.md`](youtube-phase3-runbook.md) | Google OAuth verification |
+| [`tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md) | TikTok Content Posting API audit |
 | [`instagram-phase3-runbook.md`](instagram-phase3-runbook.md) | Meta App Review |
 
 ---

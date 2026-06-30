@@ -127,15 +127,26 @@ YouTube is first because: single MP4 asset, mature resumable upload API, caption
 
 ## TikTok ([#32](https://github.com/reytek1201/SlidePress.co/issues/32)) ✅ · audit 🚧
 
-**Content:** 9:16 Quick Reel MP4 + `tiktok` caption.
+**Content:** 9:16 Quick Reel MP4 + `tiktok` caption. Video only (no photo/carousel path).
 
-**Status (June 2026):** OAuth, FILE_UPLOAD publish API, and campaign publish panel shipped. TikTok **app audit** pending for public posting; unaudited apps post `SELF_ONLY` (account must be **Private** in TikTok app).
+**Status (June 2026):** OAuth, FILE_UPLOAD publish API, and **audit-compliant** campaign publish panel shipped. TikTok **app audit** rejected once for UX non-compliance; compliant pre-publish UI shipped — **resubmit with new demo video**. Unaudited apps post `SELF_ONLY` (account must be **Private** in TikTok app).
 
-**Reuse from YouTube:** `platform_connections`, `platform_posts`, Settings connected accounts, Publish panel pattern, splash overlay.
+**Reuse from YouTube:** `platform_connections`, `platform_posts`, Settings connected accounts, Publish panel pattern, splash overlay, scheduled publish (`publish_settings` JSONB).
 
-**Key work (done):** TikTok OAuth, Content Posting API file upload, caption + hashtag mapping, publish-readiness + duplicate guard.
+**Key work (done):**
 
-**Remaining:** TikTok app audit package for public visibility.
+| Area | Implementation |
+|------|----------------|
+| OAuth | Login Kit connect + separate `video.publish` grant on first publish |
+| `creator_info` | Called on publish-readiness and before every publish; drives UI + validation |
+| Pre-publish UX | Nickname/avatar, privacy dropdown (no default), comment/duet/stitch toggles, commercial disclosure, music consent line |
+| Validation | Posting eligibility, video duration vs `max_video_post_duration_sec`, privacy + branded-content rules — blocks before upload |
+| API mapping | `toTikTokApiPostSettings()` → `video/init` (`privacy_level`, `disable_*`, `brand_*_toggle`) |
+| Scheduled posts | Cron re-fetches `creator_info` and re-validates stored settings |
+
+**Runbook:** [`docs/tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md) — audit resubmission checklist + demo video script.
+
+**Remaining:** Resubmit TikTok app audit with new end-to-end demo video.
 
 ---
 

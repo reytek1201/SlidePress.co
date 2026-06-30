@@ -78,6 +78,7 @@ Use uploaded knowledge files as source of truth. If something conflicts, prefer 
 | File | Why |
 |------|-----|
 | [`youtube-phase3-runbook.md`](youtube-phase3-runbook.md) | Google OAuth verification |
+| [`tiktok-phase3-runbook.md`](tiktok-phase3-runbook.md) | TikTok Content Posting API audit |
 | [`instagram-phase3-runbook.md`](instagram-phase3-runbook.md) | Meta App Review |
 | [`app-store-review-notes.md`](app-store-review-notes.md) | Store review copy (contains reviewer credentials — **do not share publicly**) |
 | [`notifications-widgets-roadmap.md`](notifications-widgets-roadmap.md) | Push + widgets (shipped) |

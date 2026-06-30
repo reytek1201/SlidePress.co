@@ -27,7 +27,7 @@ Use this before **TestFlight** (iOS) and **Play internal testing** (Android).
 - [ ] **Website ingest:** paste URL on `/new` → topic cards → Use & generate → images + captions without refresh
 - [ ] **Fix slide:** regenerate one slide → spinner + new image without browser refresh
 - [ ] YouTube (optional): connect channel, publish 9:16 Short — see `docs/youtube-phase3-runbook.md`
-- [ ] TikTok (optional): connect, publish 9:16 video — sandbox / private account until audit
+- [ ] TikTok (optional): connect, publish 9:16 video with full pre-publish form — sandbox / private account until audit; see `docs/tiktok-phase3-runbook.md`
 - [ ] Instagram (optional): connect, post Reel + carousel — Meta app testers until App Review — see `docs/instagram-phase3-runbook.md`
 
 ---
@@ -39,7 +39,7 @@ All four integrations shipped in code (June 2026). Public users blocked by platf
 | Platform | Code | Blocker | Runbook |
 |----------|------|---------|---------|
 | YouTube Shorts | ✅ | Google OAuth verification submitted | `docs/youtube-phase3-runbook.md` |
-| TikTok | ✅ | App audit (`SELF_ONLY` today) | `docs/platform-posting.md` |
+| TikTok | ✅ | App audit — resubmit with compliant demo video (`SELF_ONLY` until approved) | `docs/tiktok-phase3-runbook.md` |
 | Instagram Reels | ✅ | Meta App Review in progress | `docs/instagram-phase3-runbook.md` |
 | Instagram Carousel | ✅ | Same Meta review | `docs/instagram-phase3-runbook.md` |
 

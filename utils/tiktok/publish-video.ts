@@ -40,7 +40,15 @@ function assertTikTokApiOk<T>(
     }
 
     if (code === "spam_risk_too_many_posts") {
-      throw new Error("TikTok daily post limit reached. Try again tomorrow.");
+      throw new Error(
+        "This TikTok account cannot post right now — the daily post limit was reached. Try again later.",
+      );
+    }
+
+    if (code === "spam_risk_user_banned_from_posting") {
+      throw new Error(
+        "This TikTok account cannot post right now. Check your TikTok account status and try again later.",
+      );
     }
 
     if (code === "unaudited_client_can_only_post_to_private_accounts") {
@@ -62,6 +70,7 @@ function assertTikTokApiOk<T>(
 export interface TikTokCreatorInfo {
   creatorUsername: string;
   creatorNickname: string;
+  creatorAvatarUrl: string | null;
   privacyLevelOptions: string[];
   commentDisabled: boolean;
   duetDisabled: boolean;
@@ -131,6 +140,7 @@ export async function queryTikTokCreatorInfo(
   const body = (await response.json().catch(() => null)) as TikTokApiResponse<{
     creator_username?: string;
     creator_nickname?: string;
+    creator_avatar_url?: string;
     privacy_level_options?: string[];
     comment_disabled?: boolean;
     duet_disabled?: boolean;
@@ -142,13 +152,20 @@ export async function queryTikTokCreatorInfo(
 
   const data = body.data;
 
-  if (!data.creator_username || !data.privacy_level_options?.length) {
-    throw new Error("TikTok did not return creator posting options");
+  if (!data.creator_username) {
+    throw new Error("TikTok did not return creator account information");
+  }
+
+  if (!data.privacy_level_options?.length) {
+    throw new Error(
+      "This TikTok account cannot post right now. Try again later.",
+    );
   }
 
   return {
     creatorUsername: data.creator_username,
     creatorNickname: data.creator_nickname ?? data.creator_username,
+    creatorAvatarUrl: data.creator_avatar_url ?? null,
     privacyLevelOptions: data.privacy_level_options,
     commentDisabled: Boolean(data.comment_disabled),
     duetDisabled: Boolean(data.duet_disabled),
@@ -240,7 +257,15 @@ async function initTikTokFileUploadPost(input: {
     }
 
     if (code === "spam_risk_too_many_posts") {
-      throw new Error("TikTok daily post limit reached. Try again tomorrow.");
+      throw new Error(
+        "This TikTok account cannot post right now — the daily post limit was reached. Try again later.",
+      );
+    }
+
+    if (code === "spam_risk_user_banned_from_posting") {
+      throw new Error(
+        "This TikTok account cannot post right now. Check your TikTok account status and try again later.",
+      );
     }
 
     if (code === "unaudited_client_can_only_post_to_private_accounts") {

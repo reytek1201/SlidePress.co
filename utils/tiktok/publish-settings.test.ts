@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCommercialContentLabel,
   getPublishDeclarationText,
+  TIKTOK_COMMERCIAL_CHOICE_REQUIRED_HINT,
   validateTikTokPublishSettings,
   type TikTokPublishFormSettings,
 } from "@/utils/tiktok/publish-settings";
@@ -10,6 +11,7 @@ import type { TikTokCreatorInfo } from "@/utils/tiktok/publish-video";
 const creator: TikTokCreatorInfo = {
   creatorUsername: "creator",
   creatorNickname: "Creator",
+  creatorAvatarUrl: null,
   privacyLevelOptions: ["SELF_ONLY", "PUBLIC_TO_EVERYONE"],
   commentDisabled: false,
   duetDisabled: true,
@@ -57,7 +59,7 @@ describe("validateTikTokPublishSettings", () => {
         { ...baseForm, commercialDisclosure: true },
         30,
       ),
-    ).toBe("Indicate if your content promotes yourself, a third party, or both.");
+    ).toBe(TIKTOK_COMMERCIAL_CHOICE_REQUIRED_HINT);
   });
 });
 
