@@ -10,18 +10,24 @@ interface SlideWithHeadlineProps {
   textRegion: Slide["text_region"];
   aspectRatio: AspectRatio;
   alt: string;
+  /** Size constraints for the slide frame (max height, width, etc.). */
   className?: string;
+  /** Optional classes on the image (e.g. hover opacity). */
   imageClassName?: string;
   onClick?: () => void;
   buttonClassName?: string;
   showExpandHint?: boolean;
 }
 
+function aspectRatioClass(aspectRatio: AspectRatio): string {
+  return aspectRatio === "4:5" ? "aspect-[4/5]" : "aspect-[9/16]";
+}
+
 export default function SlideWithHeadline({
   imageUrl,
   headline,
   textRegion,
-  aspectRatio: _aspectRatio,
+  aspectRatio,
   alt,
   className,
   imageClassName,
@@ -34,15 +40,17 @@ export default function SlideWithHeadline({
     ? getHeadlineOverlayCssVars(textRegion)
     : undefined;
 
-  const content = (
-    <>
+  const frame = (
+    <div
+      className={`relative ${aspectRatioClass(aspectRatio)} max-h-full max-w-full min-w-0 overflow-hidden ${className ?? ""}`}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageUrl}
         alt={alt}
         loading="lazy"
         decoding="async"
-        className={imageClassName}
+        className={`absolute inset-0 h-full w-full object-cover ${imageClassName ?? ""}`}
       />
       {showOverlay && headline?.trim() ? (
         <div
@@ -55,13 +63,13 @@ export default function SlideWithHeadline({
         </div>
       ) : null}
       {showExpandHint ? (
-        <span className="pointer-events-none absolute inset-0 hidden items-center justify-center rounded-lg bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
+        <span className="pointer-events-none absolute inset-0 hidden items-center justify-center bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 md:flex">
           <span className="rounded-full border border-border bg-background/95 px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm">
             Expand
           </span>
         </span>
       ) : null}
-    </>
+    </div>
   );
 
   if (onClick) {
@@ -71,18 +79,18 @@ export default function SlideWithHeadline({
         onClick={onClick}
         className={
           buttonClassName ??
-          `group relative max-h-full max-w-full cursor-zoom-in ${className ?? ""}`
+          "group inline-flex max-h-full max-w-full min-w-0 cursor-zoom-in"
         }
         aria-label={alt}
       >
-        {content}
+        {frame}
       </button>
     );
   }
 
   return (
-    <div className={`relative ${className ?? ""}`}>
-      {content}
+    <div className="inline-flex max-h-full max-w-full min-w-0">
+      {frame}
     </div>
   );
 }

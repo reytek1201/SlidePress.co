@@ -18,15 +18,15 @@ export const HEADLINE_OVERLAY_POSITIONS: HeadlineOverlayPosition[] = [
 ];
 
 export const HEADLINE_OVERLAY_STYLE = {
-  version: "v2",
-  fontFamily: "Inter",
-  fontWeight: 700,
-  fontSizeRatio: 0.058,
+  version: "v3",
+  fontFamily: "Montserrat",
+  fontWeight: 800,
+  fontSizeRatio: 0.065,
   maxWidthRatio: 0.84,
   horizontalInsetRatio: 0.08,
-  lineHeight: 1.08,
+  lineHeight: 1.05,
   maxLines: 2,
-  letterSpacingEm: -0.025,
+  letterSpacingEm: -0.03,
   verticalAnchorRatio: 0.11,
   /** Top gradient fade height as fraction of frame height (CSS + SVG). */
   topGradientHeightRatio: 0.42,
@@ -46,7 +46,7 @@ export const HEADLINE_OVERLAY_STYLE = {
     },
     mixed: {
       fill: "#FFFFFF",
-      shadow: "0 2px 18px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.5)",
+      shadow: "0 2px 20px rgba(0,0,0,0.65), 0 1px 4px rgba(0,0,0,0.55)",
     },
   },
 } as const;
@@ -194,6 +194,6 @@ export function estimateMaxCharsPerLine(
   boxWidth: number,
   fontSize: number,
 ): number {
-  const averageCharWidth = fontSize * 0.5;
+  const averageCharWidth = fontSize * 0.55;
   return Math.max(8, Math.floor(boxWidth / averageCharWidth));
 }

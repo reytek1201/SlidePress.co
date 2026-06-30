@@ -109,7 +109,6 @@ export default function CampaignSlidesFilmstrip({
                       aspectRatio={aspectRatio}
                       alt=""
                       className="h-full w-full"
-                      imageClassName="h-full w-full object-cover"
                     />
                     <span
                       className="absolute bottom-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[9px] font-bold text-white shadow"

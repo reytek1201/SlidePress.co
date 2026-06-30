@@ -375,6 +375,14 @@
   }
 }
 
+@font-face {
+  font-family: "Montserrat";
+  src: url("/fonts/montserrat-800.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 .headline-overlay-root {
   container-type: inline-size;
 }
@@ -403,17 +411,19 @@
   transform: translateX(var(--headline-overlay-translate-x, 0%));
   text-align: var(--headline-overlay-align, left);
   z-index: 1;
+  box-sizing: border-box;
 }
 
 .headline-overlay-text {
   margin: 0;
-  font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
-  font-weight: 700;
-  font-size: clamp(0.875rem, var(--headline-overlay-font-size, 5.8cqw), 2.75rem);
+  font-family: "Montserrat", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(0.875rem, var(--headline-overlay-font-size, 6.5cqw), 2.85rem);
   line-height: var(--headline-overlay-line-height, 1.08);
   letter-spacing: var(--headline-overlay-letter-spacing, -0.025em);
   color: var(--headline-overlay-color, #fff);
   text-wrap: balance;
+  overflow-wrap: anywhere;
   text-shadow: var(
     --headline-overlay-shadow,
     0 2px 16px rgba(0, 0, 0, 0.55),

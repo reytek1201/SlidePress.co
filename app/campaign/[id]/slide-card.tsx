@@ -239,7 +239,8 @@ const SlideCard = memo(function SlideCard({
                   aspectRatio={aspectRatio}
                   alt={`Slide ${slide.slide_index + 1}`}
                   onClick={handleOpenPreview}
-                  imageClassName="max-h-56 max-w-full rounded-lg object-contain transition group-hover:opacity-95 sm:max-h-72 md:max-h-full"
+                  className="max-h-56 rounded-lg sm:max-h-72 md:max-h-full"
+                  imageClassName="transition group-hover:opacity-95"
                   showExpandHint
                 />
                 <button

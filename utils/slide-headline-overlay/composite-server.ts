@@ -1,20 +1,19 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import sharp from "sharp";
 import type { Slide } from "@/types/campaign";
 import { buildHeadlineOverlaySvg } from "@/utils/slide-headline-overlay/build-overlay-svg";
+import { getHeadlineFontFilePath } from "@/utils/slide-headline-overlay/headline-font";
 import type { ShouldCompositeHeadlineOptions } from "@/utils/slide-headline-overlay/layout";
 import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 
 let cachedFontBase64: string | null = null;
 
-async function loadInterBoldBase64(): Promise<string> {
+async function loadHeadlineFontBase64(): Promise<string> {
   if (cachedFontBase64) {
     return cachedFontBase64;
   }
 
-  const fontPath = join(process.cwd(), "app/fonts/inter-700.ttf");
-  const buffer = await readFile(fontPath);
+  const buffer = await readFile(getHeadlineFontFilePath());
   cachedFontBase64 = buffer.toString("base64");
   return cachedFontBase64;
 }
@@ -54,7 +53,7 @@ export async function compositeHeadlineOntoImageBuffer(
     height,
     headline: slide.text_overlay!.trim(),
     textRegion: slide.text_region,
-    fontBase64: await loadInterBoldBase64(),
+    fontBase64: await loadHeadlineFontBase64(),
   });
 
   if (!svg) {

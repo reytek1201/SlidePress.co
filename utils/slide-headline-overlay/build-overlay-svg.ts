@@ -1,5 +1,9 @@
 import type { TextRegionBackgroundTone } from "@/types/campaign";
 import {
+  HEADLINE_FONT_FAMILY,
+  HEADLINE_FONT_WEIGHT,
+} from "@/utils/slide-headline-overlay/headline-font";
+import {
   getHeadlineFontSize,
   getHeadlineOverlayBox,
   HEADLINE_OVERLAY_STYLE,
@@ -79,7 +83,7 @@ export function buildHeadlineOverlaySvg(
   const lineHeight = fontSize * HEADLINE_OVERLAY_STYLE.lineHeight;
 
   const fontFace = input.fontBase64
-    ? `@font-face{font-family:'Inter';font-weight:700;src:url(data:font/ttf;base64,${input.fontBase64}) format('truetype');}`
+    ? `@font-face{font-family:'${HEADLINE_FONT_FAMILY}';font-weight:${HEADLINE_FONT_WEIGHT};src:url(data:font/ttf;base64,${input.fontBase64}) format('truetype');}`
     : "";
 
   const tspans = lines
@@ -100,7 +104,7 @@ export function buildHeadlineOverlaySvg(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${input.width}" height="${input.height}">`,
     `<defs><style>${fontFace}</style>${shadowFilter}</defs>`,
     buildTopGradientDef(input.width, input.height, tone),
-    `<text x="${box.x}" y="${box.y + fontSize}" font-family="'Inter', sans-serif" font-size="${fontSize}" font-weight="700"`,
+    `<text x="${box.x}" y="${box.y + fontSize}" font-family="'${HEADLINE_FONT_FAMILY}', sans-serif" font-size="${fontSize}" font-weight="${HEADLINE_FONT_WEIGHT}"`,
     `letter-spacing="${HEADLINE_OVERLAY_STYLE.letterSpacingEm}em"`,
     `fill="${textStyle.fill}" filter="url(#headlineShadow)" text-anchor="${box.textAnchor}">${tspans}</text>`,
     `</svg>`,
@@ -124,27 +128,26 @@ export function getHeadlineOverlayCssVars(
     100 * HEADLINE_OVERLAY_STYLE.topGradientHeightRatio,
   );
 
-  const translateX =
-    box.align === "center"
-      ? "-50%"
-      : box.align === "right"
-        ? "-100%"
-        : "0%";
-
   const gradientBase = tone === "dark" ? "255,255,255" : "0,0,0";
   const stops = HEADLINE_OVERLAY_STYLE.topGradientStops;
+
+  const horizontalInset = `${insetPercent}%`;
 
   return {
     "--headline-overlay-left":
       box.align === "left"
-        ? `${insetPercent}%`
+        ? horizontalInset
         : box.align === "center"
-          ? "50%"
+          ? horizontalInset
           : "auto",
     "--headline-overlay-right":
-      box.align === "right" ? `${insetPercent}%` : "auto",
+      box.align === "right"
+        ? horizontalInset
+        : box.align === "center"
+          ? horizontalInset
+          : "auto",
     "--headline-overlay-top": `${verticalPercent}%`,
-    "--headline-overlay-translate-x": translateX,
+    "--headline-overlay-translate-x": "0%",
     "--headline-overlay-align": box.align,
     "--headline-overlay-max-width": `${Math.round(HEADLINE_OVERLAY_STYLE.maxWidthRatio * 100)}%`,
     "--headline-overlay-font-size": `${HEADLINE_OVERLAY_STYLE.fontSizeRatio * 100}cqw`,

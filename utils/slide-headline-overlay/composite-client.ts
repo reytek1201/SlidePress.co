@@ -1,5 +1,6 @@
 import type { Slide } from "@/types/campaign";
 import { buildHeadlineOverlaySvg } from "@/utils/slide-headline-overlay/build-overlay-svg";
+import { HEADLINE_FONT_PUBLIC_PATH } from "@/utils/slide-headline-overlay/headline-font";
 import { isTextOverlayLayerEnabled } from "@/utils/text-overlay-layer";
 import type { ShouldCompositeHeadlineOptions } from "@/utils/slide-headline-overlay/layout";
 
@@ -12,6 +13,29 @@ export function shouldRenderHeadlineOverlay(
   }
 
   return isTextOverlayLayerEnabled() && Boolean(slide.text_overlay?.trim());
+}
+
+let cachedFontBase64: string | null = null;
+
+async function loadHeadlineFontBase64(): Promise<string> {
+  if (cachedFontBase64) {
+    return cachedFontBase64;
+  }
+
+  const response = await fetch(HEADLINE_FONT_PUBLIC_PATH);
+  if (!response.ok) {
+    throw new Error("Failed to load headline font");
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let binary = "";
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]!);
+  }
+
+  cachedFontBase64 = btoa(binary);
+  return cachedFontBase64;
 }
 
 async function loadImageBitmap(imageUrl: string): Promise<ImageBitmap> {
@@ -58,6 +82,7 @@ export async function compositeHeadlineOntoImageBlob(
     height,
     headline: slide.text_overlay!.trim(),
     textRegion: slide.text_region,
+    fontBase64: await loadHeadlineFontBase64(),
   });
 
   if (svg) {
