@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 const LOADING_STEPS = [
-  "Reading your homepage…",
-  "Understanding your offer…",
+  "Reading your page…",
+  "Understanding your content…",
   "Drafting campaign hooks…",
 ] as const;
 

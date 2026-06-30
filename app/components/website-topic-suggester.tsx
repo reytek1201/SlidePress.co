@@ -77,8 +77,8 @@ function WebsiteIngestCardHeader() {
           Start from your website
         </p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Paste your homepage and we&apos;ll suggest campaign topics grounded in
-          your business.
+          Paste a blog post, recipe, or homepage and we&apos;ll suggest campaign
+          topics grounded in your content.
         </p>
       </div>
     </div>
@@ -791,7 +791,7 @@ export default function WebsiteTopicSuggester({
         autoComplete="url"
         value={url}
         onChange={(event) => setUrl(event.target.value)}
-        placeholder="https://yourbusiness.com"
+        placeholder="https://yourbusiness.com/blog/post-or-recipe"
         disabled={disabled}
         className="mt-4 w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30"
       />

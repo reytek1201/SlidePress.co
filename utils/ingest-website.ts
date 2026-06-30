@@ -5,6 +5,12 @@ import type {
   WebsiteTopicAngle,
   WebsiteTopicFormat,
 } from "@/types/website-ingest";
+import {
+  extractMetaContent,
+  extractPageContent,
+  extractTitle,
+  type PageContentKind,
+} from "@/utils/extract-page-text";
 import { fetchPublicWebsiteHtml } from "@/utils/fetch-public-url";
 import {
   GeminiServiceError,
@@ -15,7 +21,6 @@ import { GoogleGenAI } from "@google/genai";
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const GEMINI_MAX_ATTEMPTS = 3;
 const GEMINI_RETRY_DELAY_MS = 600;
-const MAX_PROMPT_CHARS = 24_000;
 const MIN_PAGE_TEXT_CHARS = 120;
 
 const FALLBACK_PATHS = [
@@ -33,6 +38,10 @@ const FALLBACK_PATH_HINTS = [
   "product",
   "service",
   "what-we-do",
+  "blog",
+  "recipe",
+  "post",
+  "article",
 ] as const;
 
 const INGEST_RESPONSE_SCHEMA = {
@@ -68,6 +77,8 @@ interface FetchedPage {
   html: string;
   finalUrl: string;
   pageText: string;
+  contentKind: PageContentKind;
+  schemaImageUrl: string | null;
 }
 
 function getGeminiClient(): GoogleGenAI {
@@ -88,65 +99,6 @@ function sleep(ms: number): Promise<void> {
 
 function getIngestModel(): string {
   return process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
-}
-
-function decodeHtmlEntities(value: string): string {
-  return value
-    .replace(/&amp;/gi, "&")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&nbsp;/gi, " ");
-}
-
-function extractMetaContent(html: string, property: string): string | null {
-  const patterns = [
-    new RegExp(
-      `<meta[^>]+property=["']${property}["'][^>]+content=["']([^"']+)["']`,
-      "i",
-    ),
-    new RegExp(
-      `<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${property}["']`,
-      "i",
-    ),
-    new RegExp(
-      `<meta[^>]+name=["']${property}["'][^>]+content=["']([^"']+)["']`,
-      "i",
-    ),
-    new RegExp(
-      `<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${property}["']`,
-      "i",
-    ),
-  ];
-
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) {
-      return decodeHtmlEntities(match[1].trim());
-    }
-  }
-
-  return null;
-}
-
-function extractTitle(html: string): string | null {
-  const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  return match?.[1] ? decodeHtmlEntities(match[1].trim()) : null;
-}
-
-function htmlToReadableText(html: string): string {
-  const withoutScripts = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ");
-
-  const text = withoutScripts
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return text.slice(0, MAX_PROMPT_CHARS);
 }
 
 function resolveAbsoluteUrl(
@@ -255,11 +207,14 @@ function extractInternalContentLinks(html: string, baseUrl: string): string[] {
 
 async function fetchReadablePage(rawUrl: string): Promise<FetchedPage> {
   const { html, finalUrl } = await fetchPublicWebsiteHtml(rawUrl);
+  const extracted = extractPageContent(html, finalUrl);
 
   return {
     html,
     finalUrl,
-    pageText: htmlToReadableText(html),
+    pageText: extracted.pageText,
+    contentKind: extracted.contentKind,
+    schemaImageUrl: extracted.schemaImageUrl,
   };
 }
 
@@ -304,7 +259,7 @@ async function fetchWebsiteContentWithFallback(
 
   if (page.pageText.length < MIN_PAGE_TEXT_CHARS) {
     throw new Error(
-      "This page did not include enough readable text. Try your homepage or enter a topic manually.",
+      "This page did not include enough readable text. Try a blog post, recipe, or homepage URL — or enter a topic manually.",
     );
   }
 
@@ -395,12 +350,26 @@ function normalizeTopicSuggestions(
   return normalized;
 }
 
+function contentKindPrompt(contentKind: PageContentKind): string {
+  switch (contentKind) {
+    case "blog":
+      return "This URL is a blog post or article. Suggest campaign topics that tease, repurpose, or promote this specific article — not generic business messaging.";
+    case "recipe":
+      return "This URL is a recipe page. Treat the dish as the hero product. Suggest campaign topics that highlight the recipe, its benefits, and why someone should try it.";
+    case "listing":
+      return "This URL is a content listing (recipes, articles, or products). Suggest campaign topics grounded in the collection theme and standout items.";
+    default:
+      return "This URL is a business website page. Suggest campaign topics grounded in the business positioning and audience.";
+  }
+}
+
 async function generateIngestTopicsFromPage(input: {
   finalUrl: string;
   title: string | null;
   ogTitle: string | null;
   metaDescription: string | null;
   pageText: string;
+  contentKind: PageContentKind;
   excludeTopics: string[];
 }): Promise<{
   businessName?: unknown;
@@ -413,10 +382,11 @@ async function generateIngestTopicsFromPage(input: {
   const promptText = [
     "You are a performance marketing strategist for Instagram and TikTok carousel campaigns.",
     "Analyse the website content and return JSON only.",
+    contentKindPrompt(input.contentKind),
     "Write exactly 3 distinct campaign topic suggestions.",
     "Each topic must be a pain-point, curiosity, or contrarian hook (5–12 words).",
-    "Each topic needs angle (pain_point, curiosity, or contrarian), a one-sentence rationale explaining why it fits this business, and recommendedFormat (4:5 for feed carousels or 9:16 for Reels/TikTok).",
-    "Topics must be specific to this business, not generic social media advice.",
+    "Each topic needs angle (pain_point, curiosity, or contrarian), a one-sentence rationale explaining why it fits this page, and recommendedFormat (4:5 for feed carousels or 9:16 for Reels/TikTok).",
+    "Topics must be specific to this page's content, not generic social media advice.",
     input.excludeTopics.length > 0
       ? `Do not repeat or closely paraphrase these previously suggested topics: ${input.excludeTopics.join("; ")}. Use fresh angles.`
       : "",
@@ -478,9 +448,8 @@ export async function ingestWebsiteForCampaign(
   rawUrl: string,
   options: IngestWebsiteOptions = {},
 ): Promise<WebsiteIngestResult> {
-  const { html, finalUrl, pageText } = await fetchWebsiteContentWithFallback(
-    rawUrl,
-  );
+  const { html, finalUrl, pageText, contentKind, schemaImageUrl } =
+    await fetchWebsiteContentWithFallback(rawUrl);
 
   const title = extractTitle(html);
   const metaDescription =
@@ -488,7 +457,7 @@ export async function ingestWebsiteForCampaign(
     extractMetaContent(html, "og:description");
   const ogTitle = extractMetaContent(html, "og:title");
   const productImageUrl = resolveAbsoluteUrl(
-    extractMetaContent(html, "og:image"),
+    extractMetaContent(html, "og:image") ?? schemaImageUrl,
     finalUrl,
   );
   const logoImageUrl = extractSiteIconUrl(html, finalUrl);
@@ -503,6 +472,7 @@ export async function ingestWebsiteForCampaign(
     ogTitle,
     metaDescription,
     pageText,
+    contentKind,
     excludeTopics,
   });
 
